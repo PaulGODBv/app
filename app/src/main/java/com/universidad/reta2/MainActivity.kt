@@ -16,12 +16,28 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import com.universidad.reta2.ui.navigation.NavGraph
 import com.universidad.reta2.ui.theme.Reta2Theme
+import com.universidad.reta2.data.local.dao.UserStatsDao
+import com.universidad.reta2.data.local.mappers.UserStatsMapper
+import javax.inject.Inject
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             Reta2App()
+        }
+    }
+}
+
+
+class StatsInitializer @Inject constructor(
+    private val userStatsDao: UserStatsDao
+) {
+    suspend fun initializeUserStats(username: String) {
+        val existingStats = userStatsDao.getUserStatsSync(username)
+        if (existingStats == null) {
+            val initialStats = UserStatsMapper.createInitialStats(username)
+            userStatsDao.updateUserStats(initialStats)
         }
     }
 }

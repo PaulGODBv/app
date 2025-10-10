@@ -35,6 +35,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -67,6 +68,13 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("com.google.dagger:hilt-android:2.48.1")
+    implementation("com.google.dagger:hilt-android-gradle-plugin:2.48.1")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation(libs.play.services.dtdi)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    kapt("com.google.dagger:hilt-android-compiler:2.48")
+
 
     // Room Database
     implementation("androidx.room:room-runtime:2.6.0")
