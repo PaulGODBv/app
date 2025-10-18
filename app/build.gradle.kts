@@ -76,6 +76,15 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     kapt("com.google.dagger:hilt-android-compiler:2.48")
 
+    //Hilt
+    implementation ("com.google.dagger:hilt-android:2.48")
+    kapt ("com.google.dagger:hilt-compiler:2.48")
+    implementation ("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation("androidx.navigation:navigation-compose:2.7.5")
+// Para ViewModel con Hilt
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+// Para coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // Room Database
     implementation("androidx.room:room-runtime:2.6.0")

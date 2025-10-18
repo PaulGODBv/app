@@ -19,6 +19,7 @@ import androidx.navigation.NavController
 //import com.google.android.gms.dtdi.analytics.Results
 import com.universidad.reta2.ui.navigation.Screen
 import androidx.activity.compose.BackHandler
+import com.universidad.reta2.ui.screens.results.ResultsScreen
 
 
 private fun formatTime(seconds: Int): String {
@@ -60,7 +61,7 @@ fun QuestionScreen(
     LaunchedEffect(isQuizCompleted) {
         if (isQuizCompleted) {
             navController.navigate(
-                Screen.Results.createRoute(
+                Screen.ResultsScreen.createRoute(
                     competencyId = competencyId,
                     levelId = levelId,
                     score = correctAnswers,
