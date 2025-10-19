@@ -1,4 +1,4 @@
-package com.universidad.reta2.data.mappers
+package com.universidad.reta2.data.local.mappers
 
 import com.google.gson.Gson
 import com.universidad.reta2.data.local.entities.LevelProgressEntity
