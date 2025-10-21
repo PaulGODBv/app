@@ -3,7 +3,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 sealed class Screen(val route: String){
     object Login : Screen("Login")
-
+    object Registration : Screen("registration")
     object Dashboard : Screen("dashboard")
     object Competencies : Screen("competencies")
     object Profile : Screen("profile")

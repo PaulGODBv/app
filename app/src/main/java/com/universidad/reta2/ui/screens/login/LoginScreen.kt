@@ -1,4 +1,4 @@
-package com.udes.reta2app.ui.screens.login
+package com.universidad.reta2.ui.screens.login
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,10 +13,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.NavBackStackEntry
-import com.udes.reta2app.data.UserRepository
-import com.udes.reta2app.data.SessionManager
-import com.udes.reta2app.ui.navigation.Screen
+import com.universidad.reta2.data.preferences.UserRepository
+import com.universidad.reta2.data.preferences.SessionManager
+import com.universidad.reta2.ui.navigation.Screen 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
