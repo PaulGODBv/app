@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.domain.models.Question
 import com.universidad.reta2.domain.usecases.GetRandomizedQuestionsUseCase
 import com.universidad.reta2.domain.usecases.UpdateProgressUseCase
+import com.universidad.reta2.domain.usecases.GetQuestionsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,14 +17,13 @@ import javax.inject.Inject
 @HiltViewModel
 class QuestionViewModel @Inject constructor(
     private val getRandomizedQuestionsUseCase: GetRandomizedQuestionsUseCase,
-    private val updateProgressUseCase: UpdateProgressUseCase
+    private val updateProgressUseCase: UpdateProgressUseCase,
+    private val getQuestionsUseCase: GetQuestionsUseCase
 ) : ViewModel() {
 
-    // Estado de las preguntas (orden fijo durante este intento)
     private val _questions = MutableStateFlow<List<Question>>(emptyList())
     val questions: StateFlow<List<Question>> = _questions.asStateFlow()
 
-    // Estado actual
     private val _currentQuestionIndex = MutableStateFlow(0)
     val currentQuestionIndex: StateFlow<Int> = _currentQuestionIndex.asStateFlow()
 
@@ -41,6 +41,12 @@ class QuestionViewModel @Inject constructor(
 
     private val _isQuizCompleted = MutableStateFlow(false)
     val isQuizCompleted: StateFlow<Boolean> = _isQuizCompleted.asStateFlow()
+
+    private val _answeredQuestions = MutableStateFlow<List<Int>>(emptyList())
+    val answeredQuestions: StateFlow<List<Int>> = _answeredQuestions.asStateFlow()
+
+    private val _correctAnswersList = MutableStateFlow<List<Int>>(emptyList())
+    val correctAnswersList: StateFlow<List<Int>> = _correctAnswersList.asStateFlow()
 
     // Temporizador
     private var isTimerRunning = false
@@ -61,13 +67,27 @@ class QuestionViewModel @Inject constructor(
         isTimerRunning = false
     }
 
-    // Cargar preguntas aleatorizadas (una sola vez por intento)
-    fun loadQuestions(originalQuestions: List<Question>) {
+    // Cargar preguntas
+    fun loadQuestions(competenceId: String, levelId: Int) {
         viewModelScope.launch {
-            val randomizedQuestions = getRandomizedQuestionsUseCase(originalQuestions)
-            _questions.value = randomizedQuestions
-            resetQuizState()
-            startTimer()
+            try {
+                // 1. Obtener preguntas específicas del nivel
+                val questions = getQuestionsUseCase(competenceId, levelId)
+
+                if (questions.isNotEmpty()) {
+                    // 2. Aleatorizar las preguntas
+                    val randomizedQuestions = getRandomizedQuestionsUseCase(questions)
+                    _questions.value = randomizedQuestions
+                    resetQuizState()
+                    startTimer()
+                } else {
+                    // Manejar caso de no encontrar preguntas
+                    _questions.value = emptyList()
+                }
+            } catch (e: Exception) {
+                // Manejar error
+                _questions.value = emptyList()
+            }
         }
     }
 
@@ -78,6 +98,8 @@ class QuestionViewModel @Inject constructor(
         _correctAnswers.value = 0
         _timeElapsed.value = 0
         _isQuizCompleted.value = false
+        _answeredQuestions.value = emptyList()
+        _correctAnswersList.value = emptyList()
     }
 
     // Seleccionar opción
@@ -85,7 +107,7 @@ class QuestionViewModel @Inject constructor(
         _selectedOptionId.value = optionId
     }
 
-    // Verificar respuesta y avanzar automáticamente
+    // Verificar respuesta y avanzar
     fun submitAnswerAndAdvance(): Boolean {
         val currentQuestion = _questions.value.getOrNull(_currentQuestionIndex.value) ?: return false
         val selectedId = _selectedOptionId.value ?: return false
@@ -96,20 +118,23 @@ class QuestionViewModel @Inject constructor(
         if (isCorrect) {
             _streak.value += 1
             _correctAnswers.value += 1
+            _correctAnswersList.value = _correctAnswersList.value + _currentQuestionIndex.value
         } else {
             _streak.value = 0
         }
+
+        _answeredQuestions.value = _answeredQuestions.value + _currentQuestionIndex.value
 
         // Guardar progreso
         viewModelScope.launch {
             updateProgressUseCase(
                 questionId = currentQuestion.id,
                 isCorrect = isCorrect,
-                timeSpent = 1
+                timeSpent = 1 // O el tiempo real por pregunta si lo tienes
             )
         }
 
-        // Avanzar automáticamente a la siguiente pregunta
+        // Avanzar a la siguiente pregunta
         advanceToNextQuestion()
 
         return isCorrect
@@ -124,7 +149,7 @@ class QuestionViewModel @Inject constructor(
             stopTimer()
         } else {
             _currentQuestionIndex.value = nextIndex
-            _selectedOptionId.value = null // Resetear selección para nueva pregunta
+            _selectedOptionId.value = null
         }
     }
 

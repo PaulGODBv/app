@@ -12,45 +12,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.universidad.reta2.data.preferences.UserRepository
-import com.universidad.reta2.data.preferences.SessionManager
-import com.universidad.reta2.ui.navigation.Screen 
+import com.universidad.reta2.ui.navigation.Screen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(navController: NavController) {
-    var usernameOrEmail by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
-    var successMessage by remember { mutableStateOf("") }
-
+fun LoginScreen(
+    navController: NavController,
+    viewModel: LoginViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val userRepository = remember { UserRepository(context) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Obtener mensaje de éxito de los argumentos de navegación
-    LaunchedEffect(Unit) {
-        val backStackEntry = navController.currentBackStackEntry
-        val message = backStackEntry?.arguments?.getString("successMessage")
-        if (message != null) {
-            successMessage = message
-        }
-    }
-
     // Auto-dismiss para mensajes
-    LaunchedEffect(errorMessage) {
-        if (errorMessage.isNotEmpty()) {
-            delay(4000) // 4 segundos
-            errorMessage = ""
+    LaunchedEffect(uiState.errorMessage) {
+        if (uiState.errorMessage.isNotEmpty()) {
+            delay(4000)
+            viewModel.clearMessages()
         }
     }
 
-    LaunchedEffect(successMessage) {
-        if (successMessage.isNotEmpty()) {
-            delay(3000) // 3 segundos
-            successMessage = ""
+    LaunchedEffect(uiState.successMessage) {
+        if (uiState.successMessage.isNotEmpty()) {
+            delay(3000)
+            viewModel.clearMessages()
         }
     }
 
@@ -62,36 +50,33 @@ fun LoginScreen(navController: NavController) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Iniciar sesión", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "Iniciar sesión",
+            style = MaterialTheme.typography.headlineMedium
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = usernameOrEmail,
-            onValueChange = {
-                usernameOrEmail = it
-                errorMessage = "" // Limpiar error al escribir
-            },
+            value = uiState.username,
+            onValueChange = { viewModel.onUsernameChange(it) },
             label = { Text("Usuario o Correo electrónico") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-            isError = errorMessage.isNotEmpty(),
+            isError = uiState.errorMessage.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-                errorMessage = "" // Limpiar error al escribir
-            },
+            value = uiState.password,
+            onValueChange = { viewModel.onPasswordChange(it) },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = errorMessage.isNotEmpty(),
+            isError = uiState.errorMessage.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (errorMessage.isNotEmpty()) {
+        if (uiState.errorMessage.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -100,7 +85,7 @@ fun LoginScreen(navController: NavController) {
                 )
             ) {
                 Text(
-                    text = errorMessage,
+                    text = uiState.errorMessage,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(16.dp)
@@ -108,7 +93,7 @@ fun LoginScreen(navController: NavController) {
             }
         }
 
-        if (successMessage.isNotEmpty()) {
+        if (uiState.successMessage.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -117,7 +102,7 @@ fun LoginScreen(navController: NavController) {
                 )
             ) {
                 Text(
-                    text = successMessage,
+                    text = uiState.successMessage,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(16.dp)
@@ -130,40 +115,29 @@ fun LoginScreen(navController: NavController) {
         Button(
             onClick = {
                 coroutineScope.launch {
-                    try {
-                        errorMessage = ""
-
-                        when {
-                            usernameOrEmail.isEmpty() -> {
-                                errorMessage = "El usuario o correo no puede estar vacío"
-                            }
-                            password.isEmpty() -> {
-                                errorMessage = "La contraseña no puede estar vacía"
-                            }
-                            else -> {
-                                val user = userRepository.getUserByUsernameOrEmail(usernameOrEmail, usernameOrEmail)
-
-                                if (user != null && user.password == password) {
-                                    // Guardar sesión del usuario
-                                    SessionManager.saveUserSession(
-                                        context,
-                                        user.username,
-                                        user.email
-                                    )
-                                    navController.navigate(Screen.Dashboard.route)
-                                } else {
-                                    errorMessage = "Usuario/Correo o contraseña incorrectos"
-                                }
+                    when (viewModel.login(context)) {
+                        is LoginResult.Success -> {
+                            navController.navigate(Screen.Dashboard.route) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
                             }
                         }
-                    } catch (e: Exception) {
-                        errorMessage = "Error al verificar credenciales: ${e.message}"
+                        else -> {
+                            // Los errores ya se manejan en el ViewModel
+                        }
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading
         ) {
-            Text("Entrar")
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Entrar")
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

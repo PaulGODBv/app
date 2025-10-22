@@ -5,7 +5,7 @@ import androidx.navigation.navArgument
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
-
+    object Registration : Screen("registration")
     object Dashboard : Screen("dashboard")
     object Competencies : Screen("competencies")
     object Profile : Screen("profile")
@@ -17,26 +17,26 @@ sealed class Screen(val route: String) {
         )
     }
 
-    object Questions : Screen("questions/{competenceId}/{moduleId}") {
-        fun createRoute(competenceId: String, moduleId: String) = "questions/$competenceId/$moduleId"
+    object Questions : Screen("questions/{competenceId}/{levelId}") {
+        fun createRoute(competenceId: String, levelId: String) = "questions/$competenceId/$levelId"
         val arguments = listOf(
             navArgument("competenceId") { type = NavType.StringType },
-            navArgument("moduleId") { type = NavType.StringType }
+            navArgument("levelId") { type = NavType.StringType }
         )
     }
 
-    object Results : Screen("results/{competenceId}/{moduleId}/{score}/{totalQuestions}/{timeSpent}") {
+    object Results : Screen("results/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}") {
         fun createRoute(
             competenceId: String,
-            moduleId: String,
+            levelId: String,
             score: Int,
             totalQuestions: Int,
             timeSpent: Int
-        ) = "results/$competenceId/$moduleId/$score/$totalQuestions/$timeSpent"
+        ) = "results/$competenceId/$levelId/$score/$totalQuestions/$timeSpent"
 
         val arguments = listOf(
             navArgument("competenceId") { type = NavType.StringType },
-            navArgument("moduleId") { type = NavType.StringType },
+            navArgument("levelId") { type = NavType.StringType },
             navArgument("score") { type = NavType.IntType },
             navArgument("totalQuestions") { type = NavType.IntType },
             navArgument("timeSpent") { type = NavType.IntType }

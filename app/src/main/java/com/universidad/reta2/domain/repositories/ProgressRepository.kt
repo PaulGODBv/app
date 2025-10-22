@@ -1,7 +1,8 @@
 package com.universidad.reta2.domain.repositories
 
 import com.universidad.reta2.domain.models.LevelProgress
-import com.universidad.reta2.domain.models.UserProgress
+import com.universidad.reta2.domain.models.UserStats
+import com.universidad.reta2.domain.models.LevelStats
 import kotlinx.coroutines.flow.Flow
 
 interface ProgressRepository {
@@ -23,7 +24,7 @@ interface ProgressRepository {
     suspend fun saveLevelProgress(progress: LevelProgress)
 
     // Obtener historial de progreso del usuario
-    fun getUserProgress(): Flow<List<UserProgress>>
+    fun getUserProgress(): Flow<List<LevelProgress>>
 
     // Obtener preguntas correctas/incorrectas por nivel
     suspend fun getLevelStats(levelId: Int): LevelStats

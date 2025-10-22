@@ -1,13 +1,14 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-kapt")
+    alias(libs.plugins.hilt.android)
+    kotlin("kapt")
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
 }
 
 android {
     namespace = "com.universidad.reta2"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.universidad.reta2"
@@ -73,6 +74,7 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation(libs.play.services.dtdi)
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation(libs.androidx.foundation)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     kapt("com.google.dagger:hilt-android-compiler:2.48")
 

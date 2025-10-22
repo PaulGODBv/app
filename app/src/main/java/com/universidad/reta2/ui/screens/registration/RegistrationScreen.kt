@@ -1,99 +1,172 @@
 package com.universidad.reta2.ui.screens.registration
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.universidad.reta2.ui.navigation.Screen
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegistrationScreen(navController: NavController) {
-    var username by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+fun RegistrationScreen(
+    navController: NavController,
+    viewModel: RegistrationViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Registro") },
-                navigationIcon = {
-                    // Evitamos usar Icons para no requerir la dependencia de iconos;
-                    // un TextButton simple es suficiente como "volver".
-                    TextButton(onClick = { navController.popBackStack() }) {
-                        Text("Volver")
-                    }
-                }
-            )
+    // Auto-dismiss para mensajes
+    LaunchedEffect(uiState.errorMessage) {
+        if (uiState.errorMessage.isNotEmpty()) {
+            delay(4000)
+            viewModel.clearMessages()
         }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(24.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+    }
 
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Nombre de usuario") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Correo electrónico") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Contraseña") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    // TODO: conectar con ViewModel / repositorio para crear usuario
-                    navController.navigate(Screen.Login.route)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Registrar")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = {
-                navController.navigate(Screen.Login.route)
-            }) {
-                Text("¿Ya tienes cuenta? Inicia sesión")
+    LaunchedEffect(uiState.successMessage) {
+        if (uiState.successMessage.isNotEmpty()) {
+            delay(3000)
+            // Navegar al login después de mostrar mensaje de éxito
+            navController.navigate(Screen.Login.route) {
+                popUpTo(Screen.Registration.route) { inclusive = true }
             }
         }
     }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Registro de Usuario",
+            style = MaterialTheme.typography.headlineMedium
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        OutlinedTextField(
+            value = uiState.username,
+            onValueChange = { viewModel.onUsernameChange(it) },
+            label = { Text("Nombre de usuario") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            isError = uiState.errorMessage.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = uiState.email,
+            onValueChange = { viewModel.onEmailChange(it) },
+            label = { Text("Correo electrónico") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            isError = uiState.errorMessage.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = uiState.password,
+            onValueChange = { viewModel.onPasswordChange(it) },
+            label = { Text("Contraseña") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = uiState.errorMessage.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = uiState.confirmPassword,
+            onValueChange = { viewModel.onConfirmPasswordChange(it) },
+            label = { Text("Confirmar contraseña") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = uiState.errorMessage.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (uiState.errorMessage.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Text(
+                    text = uiState.errorMessage,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        if (uiState.successMessage.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Text(
+                    text = uiState.successMessage,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                coroutineScope.launch {
+                    when (viewModel.register()) {
+                        is RegistrationResult.Success -> {
+                            // La navegación se maneja automáticamente con el mensaje de éxito
+                        }
+                        else -> {
+                            // Los errores ya se manejan en el ViewModel
+                        }
+                    }
+                }
+            },
+            enabled = !uiState.isLoading,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Registrar")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(onClick = {
+            navController.navigate(Screen.Login.route)
+        }) {
+            Text("¿Ya tienes cuenta? Inicia sesión aquí")
+        }
+    }
 }
-
-
-

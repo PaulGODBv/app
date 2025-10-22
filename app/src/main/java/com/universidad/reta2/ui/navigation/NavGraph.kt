@@ -11,6 +11,7 @@ import com.universidad.reta2.ui.screens.competencies.CompetenciesScreen
 import com.universidad.reta2.ui.screens.competenceDetail.CompetenceDetailScreen
 import com.universidad.reta2.ui.screens.questions.QuestionScreen
 import com.universidad.reta2.ui.screens.profile.ProfileScreen
+import com.universidad.reta2.ui.screens.registration.RegistrationScreen
 
 @Composable
 fun NavGraph(
@@ -20,20 +21,20 @@ fun NavGraph(
     NavHost(
         navController = navController,
         startDestination = Screen.Login.route,
-        modifier=modifier
+        modifier = modifier
     ) {
         composable(route = Screen.Login.route) {
-            LoginScreen(
-                onLoginSuccess = {
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
-                }
-            )
+            LoginScreen(navController = navController) // Solo pasa navController
+        }
+
+        composable(route = Screen.Registration.route) {
+            RegistrationScreen(navController = navController)
         }
 
         composable(route = Screen.Dashboard.route) {
             DashboardScreen(
+                // Add the missing parameter here
+                mainNavController = navController,
                 onCompetenceClick = { competenceId ->
                     navController.navigate(Screen.CompetenceDetail.createRoute(competenceId))
                 },
@@ -71,19 +72,20 @@ fun NavGraph(
             arguments = Screen.Questions.arguments
         ) { backStackEntry ->
             val competenceId = backStackEntry.arguments?.getString("competenceId") ?: ""
-            val moduleId = backStackEntry.arguments?.getString("moduleId") ?: ""
+            val levelId = backStackEntry.arguments?.getString("levelId") ?: ""
             QuestionScreen(
-                competenceId = competenceId,
-                moduleId = moduleId,
-                onBackClick = { navController.popBackStack() },
-                onComplete = { navController.popBackStack() }
+                navController = navController,
+                competencyId = competenceId,
+                levelId = levelId
             )
         }
 
         composable(route = Screen.Profile.route) {
             ProfileScreen(
+                navController = navController,
                 onBackClick = { navController.popBackStack() }
             )
         }
+
     }
 }

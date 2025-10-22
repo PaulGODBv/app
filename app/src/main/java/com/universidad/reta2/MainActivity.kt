@@ -3,36 +3,32 @@ package com.universidad.reta2
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
-import com.universidad.reta2.ui.navigation.NavGraph
 import com.universidad.reta2.ui.navigation.BottomNavigationBar
+import com.universidad.reta2.ui.navigation.NavGraph
 import com.universidad.reta2.ui.theme.Reta2Theme
-import javax.inject.Inject
 import dagger.hilt.android.AndroidEntryPoint
-
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Reta2App()
+            AppContent()
         }
     }
 }
 
+
 @Composable
-fun Reta2App() {
+fun AppContent() {
     Reta2Theme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -40,14 +36,14 @@ fun Reta2App() {
         ) {
             val navController = rememberNavController()
 
-            androidx.compose.material3.Scaffold(
+            Scaffold(
                 bottomBar = {
                     BottomNavigationBar(navController = navController)
                 }
-            ) { paddingValues ->
+            ) { innerPadding ->
                 NavGraph(
                     navController = navController,
-                    modifier = Modifier.padding(paddingValues)
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
         }

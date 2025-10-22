@@ -2,33 +2,44 @@ package com.universidad.reta2.data.repositories
 
 import com.universidad.reta2.data.local.dao.ProgressDao
 import com.universidad.reta2.data.local.dao.UserStatsDao
-import com.universidad.reta2.data.mappers.ProgressMapper
+import com.universidad.reta2.data.local.mappers.ProgressMapper
 import com.universidad.reta2.domain.models.LevelProgress
-import com.universidad.reta2.domain.models.UserProgress
+import com.universidad.reta2.domain.models.LevelStats
 import com.universidad.reta2.domain.repositories.ProgressRepository
+import com.universidad.reta2.data.local.entities.QuestionAttemptEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
+import android.content.Context
+import com.universidad.reta2.data.preferences.SessionManager
+import dagger.hilt.android.qualifiers.ApplicationContext
+
 
 class ProgressRepositoryImpl @Inject constructor(
     private val progressDao: ProgressDao,
-    private val userStatsDao: UserStatsDao
+    private val userStatsDao: UserStatsDao,
+    @ApplicationContext private val context: Context,
+    private val sessionManager: SessionManager
 ) : ProgressRepository {
+
 
     override suspend fun recordQuestionAttempt(
         questionId: Int,
         isCorrect: Boolean,
         timeSpentSeconds: Int
     ) {
-        // Obtener username actual (podría venir de SessionManager)
-        val username = "usuario_actual" // TODO: Obtener del usuario logueado
+        val username = sessionManager.getCurrentUsername(context) ?: "invitado"
+        val levelId = 1 // TODO: determina el nivel actual si lo tienes disponible
 
-        progressDao.insertQuestionAttempt(
-            questionId = questionId,
+        val attempt = QuestionAttemptEntity(
             username = username,
+            questionId = questionId,
+            levelId = levelId,
             isCorrect = isCorrect,
             timeSpentSeconds = timeSpentSeconds
         )
+
+        progressDao.insertQuestionAttempt(attempt)
     }
 
     override suspend fun getLevelProgress(
@@ -42,11 +53,13 @@ class ProgressRepositoryImpl @Inject constructor(
     }
 
     override suspend fun saveLevelProgress(progress: LevelProgress) {
-        val entity = ProgressMapper.toEntity(progress)
+        val username = sessionManager.getCurrentUsername(context) ?: "invitado"
+        val entity = ProgressMapper.toEntity(progress, username)
         progressDao.saveLevelProgress(entity)
     }
 
-    override fun getUserProgress(): Flow<List<UserProgress>> {
+
+    override fun getUserProgress(): Flow<List<LevelProgress>> {
         val username = "usuario_actual"
         return progressDao.getUserProgress(username).map { entities ->
             entities.map { ProgressMapper.toDomain(it) }

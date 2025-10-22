@@ -16,11 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-//import com.google.android.gms.dtdi.analytics.Results
 import com.universidad.reta2.ui.navigation.Screen
 import androidx.activity.compose.BackHandler
-import com.universidad.reta2.ui.screens.results.ResultsScreen
-
 
 private fun formatTime(seconds: Int): String {
     val minutes = seconds / 60
@@ -48,12 +45,12 @@ fun QuestionScreen(
     val currentQuestion = viewModel.getCurrentQuestion()
     val isLastQuestion = viewModel.isLastQuestion()
 
-    // Cargar preguntas al iniciar
     LaunchedEffect(competencyId, levelId) {
         if (questions.isEmpty()) {
-            // TODO: Reemplazar con tu lógica de carga de CompetencyData
-            val levelQuestions = emptyList<com.universidad.reta2.domain.models.Question>()
-            viewModel.loadQuestions(levelQuestions)
+            viewModel.loadQuestions(
+                competenceId = competencyId,
+                levelId = levelId.toIntOrNull() ?: 1
+            )
         }
     }
 
@@ -61,8 +58,8 @@ fun QuestionScreen(
     LaunchedEffect(isQuizCompleted) {
         if (isQuizCompleted) {
             navController.navigate(
-                Screen.ResultsScreen.createRoute(
-                    competencyId = competencyId,
+                Screen.Results.createRoute(
+                    competenceId = competencyId,
                     levelId = levelId,
                     score = correctAnswers,
                     totalQuestions = questions.size,
