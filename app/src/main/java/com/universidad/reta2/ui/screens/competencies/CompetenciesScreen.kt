@@ -1,25 +1,25 @@
 package com.universidad.reta2.ui.screens.competencies
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.ui.navigation.Screen
+import com.universidad.reta2.ui.screens.competencies.CompetenciesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,66 +30,52 @@ fun CompetenciesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Cargar competencias al iniciar
-    LaunchedEffect(Unit) {
-        viewModel.loadCompetencies()
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "Competencias",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+                title = { Text("Competencias", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
         }
     ) { paddingValues ->
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-            }
-            uiState.error != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Error: ${uiState.error}")
+                uiState.error != null -> {
+                    Text(
+                        text = "Error: ${uiState.error}",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(uiState.competencies) { competency ->
-                        CompetencyCard(
-                            competency = competency,
-                            onClick = { onCompetenceClick(competency.id) }
-                        )
+                uiState.competences.isEmpty() -> {
+                    Text(
+                        text = "No hay competencias registradas",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(uiState.competences) { competence ->
+                            CompetenceCard(
+                                competence = competence,
+                                onClick = { onCompetenceClick(competence.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -97,116 +83,46 @@ fun CompetenciesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompetencyCard(
-    competency: com.universidad.reta2.domain.models.Competence,
+fun CompetenceCard(
+    competence: Competence,
     onClick: () -> Unit
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Icono de la competencia
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = competency.name.take(1).uppercase(),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
+            Image(
+                painter = painterResource(id = competence.iconResId),
+                contentDescription = competence.name,
+                modifier = Modifier
+                    .size(64.dp)
+                    .padding(end = 16.dp)
+            )
 
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = competency.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = competency.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                    }
-
-                    // Indicador de progreso
-                    Box(
-                        modifier = Modifier.size(50.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            progress = competency.totalProgress.toFloat(),
-                            modifier = Modifier.size(50.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 4.dp,
-                            trackColor = MaterialTheme.colorScheme.surface
-                        )
-                        Text(
-                            text = "${(competency.totalProgress * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Información de niveles
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    val nivelesCompletados = competency.levels.count { it.isCompleted }
-                    val nivelesDesbloqueados = competency.levels.count { !it.isLocked }
-
-                    Text(
-                        text = "$nivelesCompletados/${competency.levels.size} niveles completados",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Text(
-                        text = "$nivelesDesbloqueados/${competency.levels.size} niveles desbloqueados",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Barra de progreso
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = competence.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = competence.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(
-                    progress = competency.totalProgress.toFloat(),
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surface
+                    progress = competence.totalProgress,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }

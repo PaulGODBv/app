@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,10 +107,15 @@ fun CompetenceDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Text(
-                                    text = competence.icon,
-                                    style = MaterialTheme.typography.displayMedium
+                                // Imagen del ícono de la competencia 🎨
+                                Image(
+                                    painter = painterResource(id = competence.iconResId),
+                                    contentDescription = competence.name,
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .padding(end = 8.dp)
                                 )
+
                                 Column {
                                     Text(
                                         text = competence.name,

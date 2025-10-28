@@ -21,13 +21,6 @@ object UseCaseModule {
         return GetRandomizedQuestionsUseCase()
     }
 
-    @Provides
-    @Singleton
-    fun provideGetUserStatsUseCase(
-        userStatsRepository: com.universidad.reta2.domain.repositories.UserStatsRepository
-    ): GetUserStatsUseCase {
-        return GetUserStatsUseCase(userStatsRepository)
-    }
 
     @Provides
     @Singleton
@@ -38,13 +31,6 @@ object UseCaseModule {
         return UpdateProgressUseCase(progressRepository, userStatsRepository)
     }
 
-    @Provides
-    @Singleton
-    fun provideUpdateStreakUseCase(
-        userStatsRepository: com.universidad.reta2.domain.repositories.UserStatsRepository
-    ): UpdateStreakUseCase {
-        return UpdateStreakUseCase(userStatsRepository)
-    }
 
     @Provides
     @Singleton

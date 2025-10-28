@@ -6,8 +6,13 @@ import com.universidad.reta2.domain.models.Question
 import com.universidad.reta2.domain.usecases.GetRandomizedQuestionsUseCase
 import com.universidad.reta2.domain.usecases.UpdateProgressUseCase
 import com.universidad.reta2.domain.usecases.GetQuestionsUseCase
+import com.universidad.reta2.domain.repositories.CompetenceRepository
+import com.universidad.reta2.domain.models.Competence
+import com.universidad.reta2.domain.models.Level
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +23,8 @@ import javax.inject.Inject
 class QuestionViewModel @Inject constructor(
     private val getRandomizedQuestionsUseCase: GetRandomizedQuestionsUseCase,
     private val updateProgressUseCase: UpdateProgressUseCase,
-    private val getQuestionsUseCase: GetQuestionsUseCase
+    private val getQuestionsUseCase: GetQuestionsUseCase,
+    private val competenceRepository: CompetenceRepository
 ) : ViewModel() {
 
     private val _questions = MutableStateFlow<List<Question>>(emptyList())
@@ -48,6 +54,22 @@ class QuestionViewModel @Inject constructor(
     private val _correctAnswersList = MutableStateFlow<List<Int>>(emptyList())
     val correctAnswersList: StateFlow<List<Int>> = _correctAnswersList.asStateFlow()
 
+    private val _currentCompetence = MutableStateFlow<Competence?>(null)
+    val currentCompetence: StateFlow<Competence?> = _currentCompetence.asStateFlow()
+
+    private val _currentLevelId = MutableStateFlow<Int>(1)
+    val currentLevelId: StateFlow<Int> = _currentLevelId.asStateFlow()
+
+    // Propiedades simples sin transformaciones complejas
+    fun getCompetenceName(): String? = _currentCompetence.value?.name
+
+    fun getCurrentLevel(): Level? {
+        val competence = _currentCompetence.value
+        val levelId = _currentLevelId.value
+        return competence?.levels?.find { it.id == levelId }
+    }
+
+
     // Temporizador
     private var isTimerRunning = false
 
@@ -71,17 +93,22 @@ class QuestionViewModel @Inject constructor(
     fun loadQuestions(competenceId: String, levelId: Int) {
         viewModelScope.launch {
             try {
-                // 1. Obtener preguntas específicas del nivel
+                // Guardar el levelId
+                _currentLevelId.value = levelId
+
+                // 1. Cargar la competencia completa
+                _currentCompetence.value = competenceRepository.getCompetenceById(competenceId)
+
+                // 2. Obtener preguntas específicas del nivel
                 val questions = getQuestionsUseCase(competenceId, levelId)
 
                 if (questions.isNotEmpty()) {
-                    // 2. Aleatorizar las preguntas
+                    // 3. Aleatorizar las preguntas
                     val randomizedQuestions = getRandomizedQuestionsUseCase(questions)
                     _questions.value = randomizedQuestions
                     resetQuizState()
                     startTimer()
                 } else {
-                    // Manejar caso de no encontrar preguntas
                     _questions.value = emptyList()
                 }
             } catch (e: Exception) {
@@ -175,4 +202,5 @@ class QuestionViewModel @Inject constructor(
         super.onCleared()
         stopTimer()
     }
+
 }

@@ -117,7 +117,7 @@ fun LoginScreen(
                 coroutineScope.launch {
                     when (viewModel.login(context)) {
                         is LoginResult.Success -> {
-                            navController.navigate(Screen.Dashboard.route) {
+                            navController.navigate(Screen.Home.route) {
                                 popUpTo(Screen.Login.route) { inclusive = true }
                             }
                         }

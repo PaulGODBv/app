@@ -5,7 +5,9 @@ data class Question(
     val text: String,
     val options: List<QuestionOption>,
     val correctOptionId: Int,
-    val explanation: String=""
+    val explanation: String="",
+    val readingText: String="",
+    val contextImage: String?=null
 )
 
 data class QuestionOption(

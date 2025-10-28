@@ -1,17 +1,19 @@
 package com.universidad.reta2.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.compose.ui.Modifier
-import com.universidad.reta2.ui.screens.dashboard.DashboardScreen
 import com.universidad.reta2.ui.screens.login.LoginScreen
 import com.universidad.reta2.ui.screens.competencies.CompetenciesScreen
 import com.universidad.reta2.ui.screens.competenceDetail.CompetenceDetailScreen
 import com.universidad.reta2.ui.screens.questions.QuestionScreen
 import com.universidad.reta2.ui.screens.profile.ProfileScreen
 import com.universidad.reta2.ui.screens.registration.RegistrationScreen
+import com.universidad.reta2.ui.screens.progress.ProgressScreen
+import com.universidad.reta2.ui.screens.splash.SplashScreen
+import com.universidad.reta2.ui.screens.home.HomeScreen
 
 @Composable
 fun NavGraph(
@@ -20,30 +22,31 @@ fun NavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = Screen.Splash.route,
         modifier = modifier
     ) {
+        // Splash
+        composable(route = Screen.Splash.route) {
+            SplashScreen(navController = navController)
+        }
+        // ---------- Login ----------
         composable(route = Screen.Login.route) {
-            LoginScreen(navController = navController) // Solo pasa navController
+            LoginScreen(navController = navController)
         }
 
+        // ---------- Registro ----------
         composable(route = Screen.Registration.route) {
             RegistrationScreen(navController = navController)
         }
 
-        composable(route = Screen.Dashboard.route) {
-            DashboardScreen(
-                // Add the missing parameter here
-                mainNavController = navController,
-                onCompetenceClick = { competenceId ->
-                    navController.navigate(Screen.CompetenceDetail.createRoute(competenceId))
-                },
-                onProfileClick = {
-                    navController.navigate(Screen.Profile.route)
-                }
-            )
+        // ---------- Home ----------
+        composable(route = Screen.Home.route) {
+            HomeScreen(navController = navController) // <-- Agregar esta línea
         }
 
+
+
+        // ---------- Competencias ----------
         composable(route = Screen.Competencies.route) {
             CompetenciesScreen(
                 onCompetenceClick = { competenceId ->
@@ -53,6 +56,7 @@ fun NavGraph(
             )
         }
 
+        // ---------- Detalle de competencia ----------
         composable(
             route = Screen.CompetenceDetail.route,
             arguments = Screen.CompetenceDetail.arguments
@@ -67,6 +71,7 @@ fun NavGraph(
             )
         }
 
+        // ---------- Preguntas ----------
         composable(
             route = Screen.Questions.route,
             arguments = Screen.Questions.arguments
@@ -80,12 +85,17 @@ fun NavGraph(
             )
         }
 
+        // ---------- Progreso ----------
+        composable(route = Screen.Progress.route) {
+            ProgressScreen(navController = navController)
+        }
+
+        // ---------- Perfil ----------
         composable(route = Screen.Profile.route) {
             ProfileScreen(
                 navController = navController,
                 onBackClick = { navController.popBackStack() }
             )
         }
-
     }
 }

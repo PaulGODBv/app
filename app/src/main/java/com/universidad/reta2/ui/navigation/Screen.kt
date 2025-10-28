@@ -6,9 +6,12 @@ import androidx.navigation.navArgument
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Registration : Screen("registration")
-    object Dashboard : Screen("dashboard")
     object Competencies : Screen("competencies")
     object Profile : Screen("profile")
+    object Progress : Screen("progress")
+    object Splash:Screen("splash")
+    object Home:Screen("home")
+
 
     object CompetenceDetail : Screen("competence_detail/{competenceId}") {
         fun createRoute(competenceId: String) = "competence_detail/$competenceId"

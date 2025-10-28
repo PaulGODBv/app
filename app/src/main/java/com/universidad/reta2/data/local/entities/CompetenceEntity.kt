@@ -16,7 +16,7 @@ data class CompetenceEntity(
     val description: String,
     
     @ColumnInfo(name = "icon")
-    val icon: String,
+    val iconResId: Int,
     
     @ColumnInfo(name = "total_progress")
     val totalProgress: Float = 0f

@@ -5,6 +5,7 @@ import com.universidad.reta2.data.local.mappers.CompetenceMapper
 import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.models.Level
 import com.universidad.reta2.domain.repositories.CompetenceRepository
+import com.universidad.reta2.R
 import javax.inject.Inject
 
 class CompetenceRepositoryImpl @Inject constructor(
@@ -138,7 +139,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 id = "lectura_critica",
                 name = "Lectura Crítica",
                 description = "Desarrolla habilidades para analizar, interpretar y evaluar textos de manera crítica",
-                icon = "📖",
+                iconResId = R.mipmap.ic_lectura_critica,
                 levels = listOf(
                     Level(
                         id = 1,
@@ -174,7 +175,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 id = "razonamiento_cuantitativo",
                 name = "Razonamiento Cuantitativo",
                 description = "Capacidad para comprender, analizar y resolver problemas que involucran información cuantitativa",
-                icon = "🧮",
+                iconResId = R.mipmap.ic_razonamiento_critico,
                 levels = listOf(
                     Level(
                         id = 1,
@@ -210,7 +211,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 id = "ingles",
                 name = "Inglés",
                 description = "Desarrolla habilidades en comprensión, gramática y vocabulario en inglés",
-                icon = "🇺🇸",
+                iconResId = R.mipmap.ic_ingles,
                 levels = listOf(
                     Level(
                         id = 1,
@@ -255,7 +256,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 id = "competencias_ciudadanas",
                 name = "Competencias Ciudadanas",
                 description = "Desarrolla habilidades para la participación ciudadana responsable",
-                icon = "🏛️",
+                iconResId = R.mipmap.ic_competencia_ciudadana,
                 levels = listOf(
                     Level(
                         id = 1,

@@ -42,8 +42,11 @@ fun QuestionScreen(
     val correctAnswers by viewModel.correctAnswers.collectAsState()
     val isQuizCompleted by viewModel.isQuizCompleted.collectAsState()
 
+    val currentCompetence by viewModel.currentCompetence.collectAsState()
+
     val currentQuestion = viewModel.getCurrentQuestion()
     val isLastQuestion = viewModel.isLastQuestion()
+
 
     LaunchedEffect(competencyId, levelId) {
         if (questions.isEmpty()) {
@@ -99,7 +102,7 @@ fun QuestionScreen(
         TopAppBar(
             title = {
                 Text(
-                    text = "Competencia", // TODO: Obtener nombre real de la competencia
+                    text = currentCompetence?.name ?: "Competencia",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -171,31 +174,33 @@ fun QuestionScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Información del nivel (placeholder - TODO: cargar datos reales)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+            viewModel.getCurrentLevel()?.let { level ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
                 ) {
-                    Text(
-                        text = "Nivel Actual", // TODO: Obtener nombre real del nivel
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = "Completa todas las preguntas para avanzar", // TODO: Descripción real
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = level.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = level.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
             }
 
-            // Pregunta
+
+        // Pregunta
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(

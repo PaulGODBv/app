@@ -18,10 +18,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem("Inicio", Screen.Dashboard.route, Icons.Filled.Home),
+        BottomNavItem("Inicio", Screen.Home.route, Icons.Filled.Home),
         BottomNavItem("Competencias", Screen.Competencies.route, Icons.Filled.List),
-        BottomNavItem("Progreso", Screen.Dashboard.route, Icons.Filled.Star), // Temporalmente a Dashboard
+        BottomNavItem("Progreso", Screen.Progress.route, Icons.Filled.Star),
         BottomNavItem("Perfil", Screen.Profile.route, Icons.Filled.Person)
+
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -29,9 +30,10 @@ fun BottomNavigationBar(navController: NavController) {
 
     // Solo mostrar bottom nav en pantallas principales
     val showBottomNav = currentRoute in listOf(
-        Screen.Dashboard.route,
+        Screen.Home.route,
         Screen.Competencies.route,
-        Screen.Profile.route
+        Screen.Profile.route,
+        Screen.Progress.route
     )
 
     if (showBottomNav) {

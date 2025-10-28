@@ -8,6 +8,8 @@ import com.universidad.reta2.data.preferences.SessionManager
 import com.universidad.reta2.domain.repositories.UserRepository
 import com.universidad.reta2.data.repositories.UserRepositoryImpl
 import com.universidad.reta2.data.repositories.ProgressRepositoryImpl
+import com.universidad.reta2.data.repositories.SessionRepositoryImpl
+import com.universidad.reta2.domain.repositories.SessionRepository
 import com.universidad.reta2.data.repositories.UserStatsRepositoriesImp
 import com.universidad.reta2.domain.repositories.ProgressRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
@@ -21,6 +23,7 @@ import com.universidad.reta2.domain.repositories.QuestionRepository
 import com.universidad.reta2.domain.usecases.GetQuestionsUseCase
 import dagger.Module
 import dagger.Provides
+import dagger.Binds
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
@@ -105,5 +108,15 @@ object RepositoryModule {
     @Singleton
     fun provideGetQuestionsUseCase(questionRepository: QuestionRepository): GetQuestionsUseCase {
         return GetQuestionsUseCase(questionRepository)
+    }
+
+    @Module
+    @InstallIn(SingletonComponent::class)
+    abstract class SessionModule {
+        @Binds
+        @Singleton
+        abstract fun bindSessionRepository(
+            impl: SessionRepositoryImpl
+        ): SessionRepository
     }
 }

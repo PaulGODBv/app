@@ -11,7 +11,7 @@ object CompetenceMapper {
             id = entity.id,
             name = entity.name,
             description = entity.description,
-            icon = entity.icon,
+            iconResId = entity.iconResId,
             levels = levels,
             totalProgress = entity.totalProgress
         )
@@ -22,7 +22,7 @@ object CompetenceMapper {
             id = domain.id,
             name = domain.name,
             description = domain.description,
-            icon = domain.icon,
+            iconResId = domain.iconResId,
             totalProgress = domain.totalProgress
         )
     }
@@ -32,7 +32,7 @@ object CompetenceMapper {
         id: String,
         name: String,
         description: String,
-        icon: String,
+        icon: Int,
         category: String = "",
         isFeatured: Boolean = false
     ): CompetenceEntity {
@@ -40,7 +40,7 @@ object CompetenceMapper {
             id = id,
             name = name,
             description = description,
-            icon = icon,
+            iconResId = icon,
             totalProgress = 0f
         )
     }
