@@ -24,7 +24,7 @@ import com.universidad.reta2.ui.screens.competencies.CompetenciesViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetenciesScreen(
-    onCompetenceClick: (String) -> Unit,
+    onCompetenceClick: (Int) -> Unit,
     onBackClick: () -> Unit,
     viewModel: CompetenciesViewModel = hiltViewModel()
 ) {
@@ -73,7 +73,7 @@ fun CompetenciesScreen(
                         items(uiState.competences) { competence ->
                             CompetenceCard(
                                 competence = competence,
-                                onClick = { onCompetenceClick(competence.id) }
+                                onClick = {onCompetenceClick(competence.id)}
                             )
                         }
                     }

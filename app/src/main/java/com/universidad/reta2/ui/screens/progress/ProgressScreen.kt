@@ -18,7 +18,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.universidad.reta2.domain.models.LevelProgress
 import com.universidad.reta2.domain.models.UserStats
+import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.ui.navigation.Screen
+import androidx.compose.ui.res.painterResource
+
 
 @Composable
 fun ProgressScreen(
@@ -65,35 +68,43 @@ fun ProgressScreen(
                 }
 
                 items(uiState.progressList) { progress ->
-                    ProgressCard(
-                        progress = progress,
-                        onClick = {
-                            navController.navigate(
-                                Screen.CompetenceDetail.createRoute(progress.competenceId.toString())
-                            )
-                        }
-                    )
+                    val competence = uiState.competences.find { it.id == progress.competenceId }
+                    competence?.let {
+                        ProgressCard(
+                            progress = progress,
+                            competence = it,
+                            onClick = {
+                                navController.navigate(
+                                    Screen.CompetenceDetail.createRoute(it.id))
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+
+// ---------- COMPONENTES ----------
+
 @Composable
 fun UserStatsCard(stats: UserStats) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = MaterialTheme.colorScheme.primary
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatItem("Preguntas", stats.totalQuestionsAnswered.toString())
             StatItem("Tiempo", "${stats.dailyPracticeTime}s")
+            StatItem("Preguntas", stats.totalQuestionsAnswered.toString())
             StatItem("Racha", "${stats.currentStreakDays} días")
         }
     }
@@ -106,18 +117,22 @@ fun StatItem(label: String, value: String) {
             text = value,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            color = MaterialTheme.colorScheme.onPrimary
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
         )
     }
 }
 
 @Composable
-fun ProgressCard(progress: LevelProgress, onClick: () -> Unit) {
+fun ProgressCard(
+    progress: LevelProgress,
+    competence: Competence,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -133,26 +148,18 @@ fun ProgressCard(progress: LevelProgress, onClick: () -> Unit) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ícono
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = progress.levelId.toString(),
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
+            Icon(
+                painter = painterResource(id = competence.iconResId),
+                contentDescription = competence.name,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(40.dp)
+            )
 
             Spacer(Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Competencia ${progress.competenceId}",
+                    text = competence.name,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -172,3 +179,6 @@ fun ProgressCard(progress: LevelProgress, onClick: () -> Unit) {
         }
     }
 }
+
+
+

@@ -21,8 +21,8 @@ import androidx.compose.foundation.Image
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetenceDetailScreen(
-    competenceId: String,
-    onModuleClick: (String) -> Unit,
+    competenceId: Int,
+    onModuleClick: (Int) -> Unit,
     onBackClick: () -> Unit,
     viewModel: CompetenceDetailViewModel = hiltViewModel()
 ) {
@@ -146,7 +146,7 @@ fun CompetenceDetailScreen(
                             level = level,
                             onLevelClick = {
                                 if (!level.isLocked) {
-                                    onModuleClick(level.id.toString())
+                                    onModuleClick(level.id)
                                 }
                             }
                         )

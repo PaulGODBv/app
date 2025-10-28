@@ -29,7 +29,7 @@ object CompetenceMapper {
 
     // Para crear entidades desde datos externos (API, JSON, etc.)
     fun fromNetworkData(
-        id: String,
+        id: Int,
         name: String,
         description: String,
         icon: Int,

@@ -7,7 +7,7 @@ import androidx.room.ColumnInfo
 @Entity(tableName = "competences")
 data class CompetenceEntity(
     @PrimaryKey
-    val id: String,
+    val id: Int,
     
     @ColumnInfo(name = "name")
     val name: String,

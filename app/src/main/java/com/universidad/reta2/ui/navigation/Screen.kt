@@ -14,23 +14,25 @@ sealed class Screen(val route: String) {
 
 
     object CompetenceDetail : Screen("competence_detail/{competenceId}") {
-        fun createRoute(competenceId: String) = "competence_detail/$competenceId"
+        fun createRoute(competenceId: Int) = "competence_detail/$competenceId"
         val arguments = listOf(
-            navArgument("competenceId") { type = NavType.StringType }
+            navArgument("competenceId") { type = NavType.IntType }
         )
     }
 
+
     object Questions : Screen("questions/{competenceId}/{levelId}") {
-        fun createRoute(competenceId: String, levelId: String) = "questions/$competenceId/$levelId"
+        fun createRoute(competenceId: Int, levelId: Int) = "questions/$competenceId/$levelId"
         val arguments = listOf(
-            navArgument("competenceId") { type = NavType.StringType },
-            navArgument("levelId") { type = NavType.StringType }
+            navArgument("competenceId") { type = NavType.IntType },
+            navArgument("levelId") { type = NavType.IntType }
         )
     }
+
 
     object Results : Screen("results/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}") {
         fun createRoute(
-            competenceId: String,
+            competenceId: Int,
             levelId: String,
             score: Int,
             totalQuestions: Int,
@@ -38,7 +40,7 @@ sealed class Screen(val route: String) {
         ) = "results/$competenceId/$levelId/$score/$totalQuestions/$timeSpent"
 
         val arguments = listOf(
-            navArgument("competenceId") { type = NavType.StringType },
+            navArgument("competenceId") { type = NavType.IntType },
             navArgument("levelId") { type = NavType.StringType },
             navArgument("score") { type = NavType.IntType },
             navArgument("totalQuestions") { type = NavType.IntType },

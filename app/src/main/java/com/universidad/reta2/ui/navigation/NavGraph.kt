@@ -41,7 +41,7 @@ fun NavGraph(
 
         // ---------- Home ----------
         composable(route = Screen.Home.route) {
-            HomeScreen(navController = navController) // <-- Agregar esta línea
+            HomeScreen(navController = navController)
         }
 
 
@@ -61,15 +61,21 @@ fun NavGraph(
             route = Screen.CompetenceDetail.route,
             arguments = Screen.CompetenceDetail.arguments
         ) { backStackEntry ->
-            val competenceId = backStackEntry.arguments?.getString("competenceId") ?: ""
+            val competenceId = backStackEntry.arguments?.getInt("competenceId") ?: 0
             CompetenceDetailScreen(
                 competenceId = competenceId,
                 onModuleClick = { moduleId ->
-                    navController.navigate(Screen.Questions.createRoute(competenceId, moduleId))
+                    navController.navigate(
+                        Screen.Questions.createRoute(
+                            competenceId = competenceId,
+                            levelId = moduleId
+                        )
+                    )
                 },
                 onBackClick = { navController.popBackStack() }
             )
         }
+
 
         // ---------- Preguntas ----------
         composable(

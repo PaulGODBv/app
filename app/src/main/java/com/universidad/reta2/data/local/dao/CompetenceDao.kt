@@ -11,7 +11,7 @@ interface CompetenceDao {
     suspend fun getAllCompetences(): List<CompetenceEntity>
 
     @Query("SELECT * FROM competences WHERE id = :id")
-    suspend fun getCompetenceById(id: String): CompetenceEntity?
+    suspend fun getCompetenceById(id: Int): CompetenceEntity?
 
     @Query("SELECT * FROM competences WHERE name LIKE :query OR description LIKE :query ORDER BY name ASC")
     suspend fun searchCompetences(query: String): List<CompetenceEntity>

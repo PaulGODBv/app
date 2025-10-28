@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.domain.models.LevelProgress
 import com.universidad.reta2.domain.models.UserStats
+import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.repositories.ProgressRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
+import com.universidad.reta2.domain.repositories.CompetenceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -15,13 +17,15 @@ data class ProgressUiState(
     val isLoading: Boolean = true,
     val userStats: UserStats? = null,
     val progressList: List<LevelProgress> = emptyList(),
+    val competences: List<Competence> = emptyList(),
     val error: String? = null
 )
 
 @HiltViewModel
 class ProgressViewModel @Inject constructor(
     private val progressRepository: ProgressRepository,
-    private val userStatsRepository: UserStatsRepository
+    private val userStatsRepository: UserStatsRepository,
+    private val competenceRepository: CompetenceRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProgressUiState())
@@ -36,20 +40,21 @@ class ProgressViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true)
 
-                // Flujos
+                val competences = competenceRepository.getAllCompetences()
+
                 val progressFlow: Flow<List<LevelProgress>> = progressRepository.getUserProgress()
                 val statsFlow: Flow<UserStats> = userStatsRepository.getUserStats()
 
-                // Combina ambos flujos: cada vez que cualquiera emita, recibimos la pareja (progressList, stats)
                 progressFlow
                     .combine(statsFlow) { progressList, stats ->
-                        Pair(progressList, stats)
+                        Triple(progressList, stats, competences)
                     }
-                    .collect { (progressList, stats) ->
+                    .collect { (progressList, stats, competences) ->
                         _uiState.value = ProgressUiState(
                             isLoading = false,
                             userStats = stats,
                             progressList = progressList,
+                            competences = competences,
                             error = null
                         )
                     }
@@ -63,3 +68,4 @@ class ProgressViewModel @Inject constructor(
         }
     }
 }
+

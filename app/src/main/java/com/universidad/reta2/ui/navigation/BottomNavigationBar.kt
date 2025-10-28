@@ -22,41 +22,29 @@ fun BottomNavigationBar(navController: NavController) {
         BottomNavItem("Competencias", Screen.Competencies.route, Icons.Filled.List),
         BottomNavItem("Progreso", Screen.Progress.route, Icons.Filled.Star),
         BottomNavItem("Perfil", Screen.Profile.route, Icons.Filled.Person)
-
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Solo mostrar bottom nav en pantallas principales
-    val showBottomNav = currentRoute in listOf(
-        Screen.Home.route,
-        Screen.Competencies.route,
-        Screen.Profile.route,
-        Screen.Progress.route
-    )
-
-    if (showBottomNav) {
-        NavigationBar {
-            items.forEach { item ->
-                NavigationBarItem(
-                    icon = { Icon(item.icon, contentDescription = item.title) },
-                    label = { Text(item.title) },
-                    selected = currentRoute == item.route,
-                    onClick = {
-                        if (currentRoute != item.route) {
-                            navController.navigate(item.route) {
-                                // Configuración para navegación limpia
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+    NavigationBar {
+        items.forEach { item ->
+            NavigationBarItem(
+                icon = { Icon(item.icon, contentDescription = item.title) },
+                label = { Text(item.title) },
+                selected = currentRoute == item.route,
+                onClick = {
+                    if (currentRoute != item.route) {
+                        navController.navigate(item.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
                             }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
-                )
-            }
+                }
+            )
         }
     }
 }

@@ -3,7 +3,7 @@ package com.universidad.reta2.domain.models
 import androidx.annotation.DrawableRes
 
 data class Competence (
-    val id: String,
+    val id: Int,
     val name: String,
     val description: String,
     @DrawableRes val iconResId: Int,

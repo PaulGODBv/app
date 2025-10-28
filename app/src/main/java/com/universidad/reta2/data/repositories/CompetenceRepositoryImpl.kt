@@ -34,7 +34,7 @@ class CompetenceRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getCompetenceById(id: String): Competence? {
+    override suspend fun getCompetenceById(id: Int): Competence? {
         return try {
             val entity = competenceDao.getCompetenceById(id)
             if (entity != null) {
@@ -98,7 +98,7 @@ class CompetenceRepositoryImpl @Inject constructor(
     /**
      * Crea los 3 niveles para una competencia (si no existen en la BD)
      */
-    private fun createLevelsForCompetence(competenceId: String, competenceName: String): List<Level> {
+    private fun createLevelsForCompetence(competenceId: Int, competenceName: String): List<Level> {
         return listOf(
             Level(
                 id = 1,
@@ -136,7 +136,7 @@ class CompetenceRepositoryImpl @Inject constructor(
     private fun getHardcodedCompetences(): List<Competence> {
         return listOf(
             Competence(
-                id = "lectura_critica",
+                id = 1,
                 name = "Lectura Crítica",
                 description = "Desarrolla habilidades para analizar, interpretar y evaluar textos de manera crítica",
                 iconResId = R.mipmap.ic_lectura_critica,
@@ -172,7 +172,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 totalProgress = 0f
             ),
             Competence(
-                id = "razonamiento_cuantitativo",
+                id = 2,
                 name = "Razonamiento Cuantitativo",
                 description = "Capacidad para comprender, analizar y resolver problemas que involucran información cuantitativa",
                 iconResId = R.mipmap.ic_razonamiento_critico,
@@ -208,7 +208,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 totalProgress = 0f
             ),
             Competence(
-                id = "ingles",
+                id = 3,
                 name = "Inglés",
                 description = "Desarrolla habilidades en comprensión, gramática y vocabulario en inglés",
                 iconResId = R.mipmap.ic_ingles,
@@ -253,7 +253,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 totalProgress = 0f
             ),
             Competence(
-                id = "competencias_ciudadanas",
+                id = 4,
                 name = "Competencias Ciudadanas",
                 description = "Desarrolla habilidades para la participación ciudadana responsable",
                 iconResId = R.mipmap.ic_competencia_ciudadana,

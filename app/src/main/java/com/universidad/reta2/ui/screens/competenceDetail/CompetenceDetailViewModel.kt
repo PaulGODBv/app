@@ -19,7 +19,7 @@ class CompetenceDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CompetenceDetailUiState())
     val uiState: StateFlow<CompetenceDetailUiState> = _uiState.asStateFlow()
 
-    fun loadCompetenceDetail(competenceId: String) {
+    fun loadCompetenceDetail(competenceId: Int) {
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
         viewModelScope.launch {
