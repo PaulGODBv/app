@@ -30,7 +30,7 @@ private fun formatTime(seconds: Int): String {
 fun QuestionScreen(
     navController: NavController,
     competencyId: Int,
-    levelId: String,
+    levelId: Int,
     viewModel: QuestionViewModel = hiltViewModel()
 ) {
     // Estados del ViewModel
@@ -52,7 +52,7 @@ fun QuestionScreen(
         if (questions.isEmpty()) {
             viewModel.loadQuestions(
                 competenceId = competencyId,
-                levelId = levelId.toIntOrNull() ?: 1
+                levelId = levelId
             )
         }
     }

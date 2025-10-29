@@ -139,7 +139,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 id = 1,
                 name = "Lectura Crítica",
                 description = "Desarrolla habilidades para analizar, interpretar y evaluar textos de manera crítica",
-                iconResId = R.mipmap.ic_lectura_critica,
+                iconResId = R.drawable.ic_lectura_critica,
                 levels = listOf(
                     Level(
                         id = 1,
@@ -175,7 +175,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 id = 2,
                 name = "Razonamiento Cuantitativo",
                 description = "Capacidad para comprender, analizar y resolver problemas que involucran información cuantitativa",
-                iconResId = R.mipmap.ic_razonamiento_critico,
+                iconResId = R.drawable.ic_razonamiento_critico,
                 levels = listOf(
                     Level(
                         id = 1,
@@ -211,7 +211,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 id = 3,
                 name = "Inglés",
                 description = "Desarrolla habilidades en comprensión, gramática y vocabulario en inglés",
-                iconResId = R.mipmap.ic_ingles,
+                iconResId = R.drawable.ic_ingles,
                 levels = listOf(
                     Level(
                         id = 1,
@@ -256,7 +256,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 id = 4,
                 name = "Competencias Ciudadanas",
                 description = "Desarrolla habilidades para la participación ciudadana responsable",
-                iconResId = R.mipmap.ic_competencia_ciudadana,
+                iconResId = R.drawable.ic_competencia_ciudadana,
                 levels = listOf(
                     Level(
                         id = 1,

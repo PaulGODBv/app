@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.universidad.reta2.R
 
 @HiltViewModel
 class CompetenciesViewModel @Inject constructor(
@@ -27,6 +28,7 @@ class CompetenciesViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 val competences = competenceRepository.getAllCompetences()
+
                 _uiState.value = CompetenceUiState(
                     competences = competences,
                     isLoading = false
