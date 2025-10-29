@@ -7,7 +7,7 @@ import javax.inject.Inject
 class GetCompetenceByIdUseCase @Inject constructor(
     private val competenceRepository: CompetenceRepository
 ) {
-    suspend operator fun invoke(id: String): Competence? {
+    suspend operator fun invoke(id: Int): Competence? {
         return competenceRepository.getCompetenceById(id)
     }
 }

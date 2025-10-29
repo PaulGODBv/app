@@ -11,6 +11,9 @@ interface UserStatsRepository {
 
     // Actualizar estadísticas completas
     suspend fun updateUserStats(stats: UserStats)
+    // Actualizar progreso de un nivel específico
+    suspend fun updateLevelProgress(competenceId: Int, levelId: Int, progress: Float)
+
 
     // Incrementar contadores específicos
     suspend fun addQuestionsAnswered(count: Int = 1)

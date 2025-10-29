@@ -28,6 +28,28 @@ class UserStatsRepositoriesImp @Inject constructor(
         userStatsDao.updateUserStats(entity)
     }
 
+    override suspend fun updateLevelProgress(competenceId: Int, levelId: Int, progress: Float) {
+        try {
+            val username = getCurrentUsername()
+            val currentStats = userStatsDao.getUserStatsSync(username)
+
+            // Simulamos actualización del progreso global
+            val updatedStats = currentStats.copy(
+                totalQuestionsAnswered = currentStats.totalQuestionsAnswered + (progress * 10).toInt(),
+                totalPracticeTimeSeconds = currentStats.totalPracticeTimeSeconds + 60,
+                dailyPracticeTime = currentStats.dailyPracticeTime + 60
+            )
+
+            userStatsDao.updateUserStats(updatedStats)
+            println("✅ Progreso actualizado: competencia $competenceId, nivel $levelId (${(progress * 100).toInt()}%)")
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            println("⚠️ Error al actualizar progreso: ${e.message}")
+        }
+    }
+
+
     override suspend fun addQuestionsAnswered(count: Int) {
         val username = getCurrentUsername()
         val currentStats = userStatsDao.getUserStatsSync(username)

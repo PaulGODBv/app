@@ -90,7 +90,7 @@ class QuestionViewModel @Inject constructor(
     }
 
     // Cargar preguntas
-    fun loadQuestions(competenceId: String, levelId: Int) {
+    fun loadQuestions(competenceId: Int, levelId: Int) {
         viewModelScope.launch {
             try {
                 // Guardar el levelId

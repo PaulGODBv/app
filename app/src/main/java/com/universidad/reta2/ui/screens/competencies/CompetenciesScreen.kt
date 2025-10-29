@@ -16,8 +16,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.universidad.reta2.domain.models.Competence
+import androidx.navigation.NavController
 import com.universidad.reta2.ui.navigation.Screen
 import com.universidad.reta2.ui.screens.competencies.CompetenciesViewModel
 

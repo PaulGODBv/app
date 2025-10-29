@@ -7,7 +7,7 @@ import javax.inject.Inject
 
 class QuestionRepositoryImpl @Inject constructor() : QuestionRepository {
 
-    override suspend fun getQuestionsByCompetenceAndLevel(competenceId: String, levelId: Int): List<Question> {
+    override suspend fun getQuestionsByCompetenceAndLevel(competenceId: Int, levelId: Int): List<Question> {
         return CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId)
     }
 }

@@ -29,7 +29,7 @@ private fun formatTime(seconds: Int): String {
 @Composable
 fun QuestionScreen(
     navController: NavController,
-    competencyId: String,
+    competencyId: Int,
     levelId: String,
     viewModel: QuestionViewModel = hiltViewModel()
 ) {

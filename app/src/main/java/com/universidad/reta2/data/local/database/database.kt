@@ -31,7 +31,7 @@ import com.universidad.reta2.data.local.dao.CompetenceDao
         QuestionAttemptEntity::class,
         LevelProgressEntity::class
     ],
-    version = 1
+    version = 2
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao

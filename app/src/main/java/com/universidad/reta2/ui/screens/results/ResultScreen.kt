@@ -24,8 +24,8 @@ import com.universidad.reta2.ui.navigation.Screen
 @Composable
 fun ResultsScreen(
     navController: NavController,
-    competencyId: String,
-    levelId: String,
+    competencyId: Int,
+    levelId: Int,
     score: Int,
     totalQuestions: Int,
     timeSpent: Int,

@@ -5,12 +5,12 @@ import com.universidad.reta2.domain.models.QuestionOption
 
 object CompetencyData {
 
-    fun getQuestionsByCompetenceAndLevel(competenceId: String, levelId: Int): List<Question> {
+    fun getQuestionsByCompetenceAndLevel(competenceId: Int, levelId: Int): List<Question> {
         return when (competenceId) {
-            "lectura_critica" -> getLecturaCriticaQuestions(levelId)
-            "razonamiento_cuantitativo" -> getRazonamientoCuantitativoQuestions(levelId)
-            "ingles" -> getInglesQuestions(levelId)
-            "competencias_ciudadanas" -> getCompetenciasCiudadanasQuestions(levelId)
+            1 -> getLecturaCriticaQuestions(levelId)
+            2 -> getRazonamientoCuantitativoQuestions(levelId)
+            3 -> getInglesQuestions(levelId)
+            4 -> getCompetenciasCiudadanasQuestions(levelId)
             else -> emptyList()
         }
     }

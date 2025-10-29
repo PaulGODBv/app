@@ -82,7 +82,7 @@ fun NavGraph(
             route = Screen.Questions.route,
             arguments = Screen.Questions.arguments
         ) { backStackEntry ->
-            val competenceId = backStackEntry.arguments?.getString("competenceId") ?: ""
+            val competenceId = backStackEntry.arguments?.getInt("competenceId") ?: 0
             val levelId = backStackEntry.arguments?.getString("levelId") ?: ""
             QuestionScreen(
                 navController = navController,

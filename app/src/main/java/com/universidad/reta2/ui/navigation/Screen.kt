@@ -33,7 +33,7 @@ sealed class Screen(val route: String) {
     object Results : Screen("results/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}") {
         fun createRoute(
             competenceId: Int,
-            levelId: String,
+            levelId: Int,
             score: Int,
             totalQuestions: Int,
             timeSpent: Int
@@ -41,7 +41,7 @@ sealed class Screen(val route: String) {
 
         val arguments = listOf(
             navArgument("competenceId") { type = NavType.IntType },
-            navArgument("levelId") { type = NavType.StringType },
+            navArgument("levelId") { type = NavType.IntType },
             navArgument("score") { type = NavType.IntType },
             navArgument("totalQuestions") { type = NavType.IntType },
             navArgument("timeSpent") { type = NavType.IntType }
