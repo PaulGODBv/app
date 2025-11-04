@@ -30,6 +30,7 @@ sealed class Screen(val route: String) {
     }
 
 
+
     object Results : Screen("results/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}") {
         fun createRoute(
             competenceId: Int,

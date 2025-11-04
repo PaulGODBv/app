@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.universidad.reta2.domain.models.Competence
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +42,7 @@ fun CompetenciesScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            painter = painterResource(id = android.R.drawable.ic_media_previous),
+                            imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Volver"
                         )
                     }
@@ -115,7 +117,7 @@ fun CompetenceCard(
                     Image(
                         painter = painterResource(id = competence.iconResId),
                         contentDescription = competence.name,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(62.dp)
                     )
                 }
 

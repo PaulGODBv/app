@@ -61,14 +61,14 @@ fun NavGraph(
             route = Screen.CompetenceDetail.route,
             arguments = Screen.CompetenceDetail.arguments
         ) { backStackEntry ->
-            val competenceId = backStackEntry.arguments?.getInt("competenceId") ?: 0
+            val competenceId = backStackEntry.arguments?.getInt("competenceId") ?: 1
             CompetenceDetailScreen(
                 competenceId = competenceId,
-                onModuleClick = { moduleId ->
+                onLevelClick = { levelId ->
                     navController.navigate(
                         Screen.Questions.createRoute(
                             competenceId = competenceId,
-                            levelId = moduleId
+                            levelId = levelId
                         )
                     )
                 },

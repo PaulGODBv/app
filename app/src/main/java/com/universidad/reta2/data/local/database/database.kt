@@ -16,6 +16,8 @@ import com.universidad.reta2.data.local.dao.UserStatsDao
 import com.universidad.reta2.data.local.dao.ProgressDao
 import com.universidad.reta2.data.local.dao.QuestionDao
 import com.universidad.reta2.data.local.dao.CompetenceDao
+import android.content.Context
+import androidx.room.Room
 
 
 
@@ -31,7 +33,7 @@ import com.universidad.reta2.data.local.dao.CompetenceDao
         QuestionAttemptEntity::class,
         LevelProgressEntity::class
     ],
-    version = 2
+    version = 4
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -39,4 +41,23 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
     abstract fun questionDao(): QuestionDao
     abstract fun competenceDao(): CompetenceDao
+
+    companion object {
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
+
+        fun getDatabase(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "reta2_database"
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
 }

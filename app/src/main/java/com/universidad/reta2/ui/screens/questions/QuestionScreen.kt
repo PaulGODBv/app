@@ -17,22 +17,19 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.universidad.reta2.ui.navigation.Screen
+import com.universidad.reta2.domain.models.Question
 import androidx.activity.compose.BackHandler
 
-private fun formatTime(seconds: Int): String {
-    val minutes = seconds / 60
-    val remainingSeconds = seconds % 60
-    return String.format("%02d:%02d", minutes, remainingSeconds)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
+// 🔹 FUNCIÓN PÚBLICA - Esta es la que usas en el NavGraph
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun QuestionScreen(
     navController: NavController,
     competencyId: Int,
-    levelId: Int,
-    viewModel: QuestionViewModel = hiltViewModel()
+    levelId: Int
 ) {
+    val viewModel: QuestionViewModel = hiltViewModel()
+
     // Estados del ViewModel
     val questions by viewModel.questions.collectAsState()
     val currentQuestionIndex by viewModel.currentQuestionIndex.collectAsState()
@@ -41,64 +38,47 @@ fun QuestionScreen(
     val timeElapsed by viewModel.timeElapsed.collectAsState()
     val correctAnswers by viewModel.correctAnswers.collectAsState()
     val isQuizCompleted by viewModel.isQuizCompleted.collectAsState()
-
     val currentCompetence by viewModel.currentCompetence.collectAsState()
 
-    val currentQuestion = viewModel.getCurrentQuestion()
-    val isLastQuestion = viewModel.isLastQuestion()
+    // 🔹 Manejo de navegación
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvent.collect { event ->
+            when (event) {
+                is QuestionViewModel.NavigationEvent.NavigateToResults -> {
+                    navController.navigate(
+                        Screen.Results.createRoute(
+                            competenceId = event.competenceId,
+                            levelId = event.levelId,
+                            score = event.score,
+                            totalQuestions = event.totalQuestions,
+                            timeSpent = event.timeSpent
+                        )
+                    ) {
+                        popUpTo(Screen.Questions.route) { inclusive = true }
+                    }
+                }
+                is QuestionViewModel.NavigationEvent.NavigateBack -> {
+                    navController.popBackStack()
+                }
+            }
+        }
+    }
 
-
+    // 🔹 Cargar preguntas al iniciar
     LaunchedEffect(competencyId, levelId) {
         if (questions.isEmpty()) {
-            viewModel.loadQuestions(
-                competenceId = competencyId,
-                levelId = levelId
-            )
+            viewModel.loadQuestions(competencyId, levelId)
         }
     }
 
-    // Navegar a resultados cuando se complete
-    LaunchedEffect(isQuizCompleted) {
-        if (isQuizCompleted) {
-            navController.navigate(
-                Screen.Results.createRoute(
-                    competenceId = competencyId,
-                    levelId = levelId,
-                    score = correctAnswers,
-                    totalQuestions = questions.size,
-                    timeSpent = timeElapsed
-                )
-            ) {
-                // Limpiar el back stack para no volver a las preguntas
-                popUpTo(Screen.Questions.route) { inclusive = true }
-            }
-        }
-    }
-
-    // Manejar back press
+    // 🔹 Back handler
     BackHandler {
-        viewModel.stopTimer()
-        navController.popBackStack()
+        viewModel.navigateBack()
     }
 
-    if (currentQuestion == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            if (questions.isEmpty()) {
-                Text("Cargando preguntas...")
-            } else {
-                Text("Error al cargar la pregunta")
-            }
-        }
-        return
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Header con temporizador
+    // UI
+    Column(Modifier.fillMaxSize()) {
+        // Header
         TopAppBar(
             title = {
                 Text(
@@ -108,34 +88,65 @@ fun QuestionScreen(
                 )
             },
             navigationIcon = {
-                IconButton(onClick = {
-                    viewModel.stopTimer()
-                    navController.popBackStack()
-                }) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Volver"
-                    )
+                IconButton(onClick = { viewModel.navigateBack() }) {
+                    Icon(Icons.Filled.ArrowBack, "Volver")
                 }
             },
             actions = {
-                // Temporizador
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = formatTime(timeElapsed),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+                Text(
+                    text = formatTime(timeElapsed),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         )
 
+        // Contenido
+        if (questions.isEmpty()) {
+            // Estado de carga
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(16.dp))
+                    Text("Cargando preguntas...")
+                }
+            }
+        } else {
+            val currentQuestion = viewModel.getCurrentQuestion()
+            if (currentQuestion != null) {
+                QuestionContent(
+                    viewModel = viewModel,
+                    currentQuestion = currentQuestion,
+                    currentQuestionIndex = currentQuestionIndex,
+                    totalQuestions = questions.size,
+                    streak = streak,
+                    selectedOptionId = selectedOptionId,
+                    isLastQuestion = viewModel.isLastQuestion()
+                )
+            } else {
+                Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text("Error al cargar la pregunta")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun QuestionContent(
+    viewModel: QuestionViewModel,
+    currentQuestion: Question,
+    currentQuestionIndex: Int,
+    totalQuestions: Int,
+    streak: Int,
+    selectedOptionId: Int?,
+    isLastQuestion: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
         // Contenido scrolleable
         Column(
             modifier = Modifier
@@ -145,18 +156,12 @@ fun QuestionScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Racha
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "🔥",
-                    style = MaterialTheme.typography.titleLarge
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🔥", style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Racha $streak",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -167,49 +172,21 @@ fun QuestionScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Información de progreso actual
+            // Progreso actual
             Text(
-                text = "Pregunta ${currentQuestionIndex + 1} de ${questions.size}",
+                text = "Pregunta ${currentQuestionIndex + 1} de $totalQuestions",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            viewModel.getCurrentLevel()?.let { level ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = level.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = level.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-            }
-
-
-        // Pregunta
+            // Pregunta
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "🧠 Pregunta:",
                         style = MaterialTheme.typography.titleMedium,
@@ -219,13 +196,12 @@ fun QuestionScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = currentQuestion.text,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
             }
 
-            // Opciones de respuesta (adaptado a la nueva estructura con IDs)
+            // Opciones de respuesta
             Column(
                 modifier = Modifier.selectableGroup(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -247,16 +223,13 @@ fun QuestionScreen(
                                 MaterialTheme.colorScheme.primaryContainer
                             else
                                 MaterialTheme.colorScheme.surface
-                        ),
-                        elevation = if (isSelected) CardDefaults.cardElevation(4.dp)
-                        else CardDefaults.cardElevation(1.dp)
+                        )
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
                                 selected = isSelected,
@@ -275,7 +248,7 @@ fun QuestionScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Botón fijo en la parte inferior
+        // Botón inferior fijo
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -284,10 +257,7 @@ fun QuestionScreen(
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Button(
-                onClick = {
-                    // Enviar respuesta y avanzar automáticamente
-                    viewModel.submitAnswerAndAdvance()
-                },
+                onClick = { viewModel.submitAnswerAndAdvance() },
                 enabled = selectedOptionId != null,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -300,4 +270,10 @@ fun QuestionScreen(
             }
         }
     }
+}
+
+private fun formatTime(seconds: Int): String {
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    return String.format("%02d:%02d", minutes, remainingSeconds)
 }

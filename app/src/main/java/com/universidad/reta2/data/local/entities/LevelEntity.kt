@@ -21,7 +21,7 @@ data class LevelEntity(
     val id: Int,
 
     @ColumnInfo(name = "competence_id")
-    val competenceId: String,
+    val competenceId: Int,
 
     @ColumnInfo(name = "name")
     val name: String,

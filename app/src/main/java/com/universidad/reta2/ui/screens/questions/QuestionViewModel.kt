@@ -2,6 +2,7 @@ package com.universidad.reta2.ui.screens.questions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.universidad.reta2.data.source.CompetencyData
 import com.universidad.reta2.domain.models.Question
 import com.universidad.reta2.domain.usecases.GetRandomizedQuestionsUseCase
 import com.universidad.reta2.domain.usecases.UpdateProgressUseCase
@@ -11,19 +12,17 @@ import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.models.Level
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class QuestionViewModel @Inject constructor(
-    private val getRandomizedQuestionsUseCase: GetRandomizedQuestionsUseCase,
     private val updateProgressUseCase: UpdateProgressUseCase,
-    private val getQuestionsUseCase: GetQuestionsUseCase,
     private val competenceRepository: CompetenceRepository
 ) : ViewModel() {
 
@@ -48,27 +47,15 @@ class QuestionViewModel @Inject constructor(
     private val _isQuizCompleted = MutableStateFlow(false)
     val isQuizCompleted: StateFlow<Boolean> = _isQuizCompleted.asStateFlow()
 
-    private val _answeredQuestions = MutableStateFlow<List<Int>>(emptyList())
-    val answeredQuestions: StateFlow<List<Int>> = _answeredQuestions.asStateFlow()
-
-    private val _correctAnswersList = MutableStateFlow<List<Int>>(emptyList())
-    val correctAnswersList: StateFlow<List<Int>> = _correctAnswersList.asStateFlow()
-
     private val _currentCompetence = MutableStateFlow<Competence?>(null)
     val currentCompetence: StateFlow<Competence?> = _currentCompetence.asStateFlow()
 
     private val _currentLevelId = MutableStateFlow<Int>(1)
     val currentLevelId: StateFlow<Int> = _currentLevelId.asStateFlow()
 
-    // Propiedades simples sin transformaciones complejas
-    fun getCompetenceName(): String? = _currentCompetence.value?.name
-
-    fun getCurrentLevel(): Level? {
-        val competence = _currentCompetence.value
-        val levelId = _currentLevelId.value
-        return competence?.levels?.find { it.id == levelId }
-    }
-
+    // 🔹 Navegación
+    private val _navigationEvent = MutableSharedFlow<NavigationEvent>()
+    val navigationEvent: SharedFlow<NavigationEvent> = _navigationEvent
 
     // Temporizador
     private var isTimerRunning = false
@@ -89,7 +76,7 @@ class QuestionViewModel @Inject constructor(
         isTimerRunning = false
     }
 
-    // Cargar preguntas
+    // 🔹 CARGAR PREGUNTAS DESDE COMPETENCY DATA
     fun loadQuestions(competenceId: Int, levelId: Int) {
         viewModelScope.launch {
             try {
@@ -99,12 +86,12 @@ class QuestionViewModel @Inject constructor(
                 // 1. Cargar la competencia completa
                 _currentCompetence.value = competenceRepository.getCompetenceById(competenceId)
 
-                // 2. Obtener preguntas específicas del nivel
-                val questions = getQuestionsUseCase(competenceId, levelId)
+                // 2. Obtener preguntas directamente desde CompetencyData
+                val questions = CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId)
 
                 if (questions.isNotEmpty()) {
-                    // 3. Aleatorizar las preguntas
-                    val randomizedQuestions = getRandomizedQuestionsUseCase(questions)
+                    // 3. Aleatorizar las preguntas (opcional)
+                    val randomizedQuestions = questions.shuffled()
                     _questions.value = randomizedQuestions
                     resetQuizState()
                     startTimer()
@@ -114,6 +101,7 @@ class QuestionViewModel @Inject constructor(
             } catch (e: Exception) {
                 // Manejar error
                 _questions.value = emptyList()
+                println("Error loading questions from CompetencyData: ${e.message}")
             }
         }
     }
@@ -125,8 +113,6 @@ class QuestionViewModel @Inject constructor(
         _correctAnswers.value = 0
         _timeElapsed.value = 0
         _isQuizCompleted.value = false
-        _answeredQuestions.value = emptyList()
-        _correctAnswersList.value = emptyList()
     }
 
     // Seleccionar opción
@@ -135,9 +121,9 @@ class QuestionViewModel @Inject constructor(
     }
 
     // Verificar respuesta y avanzar
-    fun submitAnswerAndAdvance(): Boolean {
-        val currentQuestion = _questions.value.getOrNull(_currentQuestionIndex.value) ?: return false
-        val selectedId = _selectedOptionId.value ?: return false
+    fun submitAnswerAndAdvance() {
+        val currentQuestion = _questions.value.getOrNull(_currentQuestionIndex.value) ?: return
+        val selectedId = _selectedOptionId.value ?: return
 
         val isCorrect = selectedId == currentQuestion.correctOptionId
 
@@ -145,38 +131,49 @@ class QuestionViewModel @Inject constructor(
         if (isCorrect) {
             _streak.value += 1
             _correctAnswers.value += 1
-            _correctAnswersList.value = _correctAnswersList.value + _currentQuestionIndex.value
         } else {
             _streak.value = 0
         }
 
-        _answeredQuestions.value = _answeredQuestions.value + _currentQuestionIndex.value
-
-        // Guardar progreso
-        viewModelScope.launch {
-            updateProgressUseCase(
-                questionId = currentQuestion.id,
-                isCorrect = isCorrect,
-                timeSpent = 1 // O el tiempo real por pregunta si lo tienes
-            )
-        }
-
         // Avanzar a la siguiente pregunta
         advanceToNextQuestion()
-
-        return isCorrect
     }
 
     private fun advanceToNextQuestion() {
         val nextIndex = _currentQuestionIndex.value + 1
 
         if (nextIndex >= _questions.value.size) {
-            // Quiz completado
-            _isQuizCompleted.value = true
-            stopTimer()
+            // Quiz completado - disparar evento de navegación
+            completeQuiz()
         } else {
             _currentQuestionIndex.value = nextIndex
             _selectedOptionId.value = null
+        }
+    }
+
+    // 🔹 Completar quiz y disparar navegación
+    private fun completeQuiz() {
+        _isQuizCompleted.value = true
+        stopTimer()
+
+        viewModelScope.launch {
+            _navigationEvent.emit(
+                NavigationEvent.NavigateToResults(
+                    competenceId = _currentCompetence.value?.id ?: 0,
+                    levelId = _currentLevelId.value,
+                    score = _correctAnswers.value,
+                    totalQuestions = _questions.value.size,
+                    timeSpent = _timeElapsed.value
+                )
+            )
+        }
+    }
+
+    // 🔹 Navegación manual
+    fun navigateBack() {
+        stopTimer()
+        viewModelScope.launch {
+            _navigationEvent.emit(NavigationEvent.NavigateBack)
         }
     }
 
@@ -203,4 +200,16 @@ class QuestionViewModel @Inject constructor(
         stopTimer()
     }
 
+    // 🔹 Sellado para eventos de navegación
+    sealed class NavigationEvent {
+        data class NavigateToResults(
+            val competenceId: Int,
+            val levelId: Int,
+            val score: Int,
+            val totalQuestions: Int,
+            val timeSpent: Int
+        ) : NavigationEvent()
+
+        object NavigateBack : NavigationEvent()
+    }
 }

@@ -21,7 +21,6 @@ class CompetenceDetailViewModel @Inject constructor(
 
     fun loadCompetenceDetail(competenceId: Int) {
         _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
         viewModelScope.launch {
             try {
                 val competence = competenceRepository.getCompetenceById(competenceId)
@@ -35,6 +34,7 @@ class CompetenceDetailViewModel @Inject constructor(
                     isLoading = false,
                     error = e.message ?: "Error al cargar la competencia"
                 )
+                println("❌ Error cargando competencia: ${e.message}")
             }
         }
     }
@@ -45,3 +45,4 @@ data class CompetenceDetailUiState(
     val isLoading: Boolean = false,
     val error: String? = null
 )
+

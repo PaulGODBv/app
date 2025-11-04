@@ -29,6 +29,4 @@ interface CompetenceDao {
     @Query("SELECT * FROM competences ORDER BY name ASC")
     fun getAllCompetencesFlow(): Flow<List<CompetenceEntity>>
 
-    @Query("SELECT * FROM competences WHERE id = :id")
-    fun getCompetenceByIdFlow(id: String): Flow<CompetenceEntity?>
 }

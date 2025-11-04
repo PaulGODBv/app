@@ -1,6 +1,7 @@
 package com.universidad.reta2.ui.screens.competenceDetail
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,22 +14,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.Image
+import com.universidad.reta2.domain.models.Level
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompetenceDetailScreen(
     competenceId: Int,
-    onModuleClick: (Int) -> Unit,
+    onLevelClick: (Int) -> Unit,
     onBackClick: () -> Unit,
     viewModel: CompetenceDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Cargar detalles de la competencia
     LaunchedEffect(competenceId) {
         viewModel.loadCompetenceDetail(competenceId)
     }
@@ -65,6 +65,7 @@ fun CompetenceDetailScreen(
                     CircularProgressIndicator()
                 }
             }
+
             uiState.error != null -> {
                 Box(
                     modifier = Modifier
@@ -75,6 +76,7 @@ fun CompetenceDetailScreen(
                     Text("Error: ${uiState.error}")
                 }
             }
+
             uiState.competence == null -> {
                 Box(
                     modifier = Modifier
@@ -85,6 +87,7 @@ fun CompetenceDetailScreen(
                     Text("Competencia no encontrada")
                 }
             }
+
             else -> {
                 val competence = uiState.competence!!
 
@@ -95,6 +98,7 @@ fun CompetenceDetailScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // --- Tarjeta principal de la competencia ---
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -107,13 +111,9 @@ fun CompetenceDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Imagen del ícono de la competencia 🎨
-                                Image(
-                                    painter = painterResource(id = competence.iconResId),
-                                    contentDescription = competence.name,
-                                    modifier = Modifier
-                                        .size(64.dp)
-                                        .padding(end = 8.dp)
+                                Text(
+                                    text = getCompetenceIcon(competence.name),
+                                    style = MaterialTheme.typography.displayMedium
                                 )
 
                                 Column {
@@ -133,6 +133,7 @@ fun CompetenceDetailScreen(
                         }
                     }
 
+                    // --- Título de niveles ---
                     item {
                         Text(
                             text = "Niveles",
@@ -141,13 +142,12 @@ fun CompetenceDetailScreen(
                         )
                     }
 
+                    // --- Lista de niveles ---
                     items(competence.levels) { level ->
                         LevelCard(
                             level = level,
                             onLevelClick = {
-                                if (!level.isLocked) {
-                                    onModuleClick(level.id)
-                                }
+                                if (!level.isLocked) onLevelClick(level.id)
                             }
                         )
                     }
@@ -158,12 +158,18 @@ fun CompetenceDetailScreen(
 }
 
 @Composable
-fun LevelCard(
-    level: com.universidad.reta2.domain.models.Level,
-    onLevelClick: () -> Unit
-) {
+fun LevelCard(level: Level, onLevelClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = !level.isLocked,
+                indication = LocalIndication.current,
+                interactionSource = interactionSource,
+                onClick = onLevelClick
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (level.isLocked)
                 MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
@@ -171,77 +177,71 @@ fun LevelCard(
                 MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(
-                    enabled = !level.isLocked,
-                    onClick = onLevelClick
-                )
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (level.isLocked) {
-                        Icon(
-                            imageVector = Icons.Filled.Lock,
-                            contentDescription = "Bloqueado",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = "Disponible",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                Icon(
+                    imageVector = if (level.isLocked) Icons.Filled.Lock else Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = if (level.isLocked)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.primary
+                )
 
-                    Column {
-                        Text(
-                            text = level.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (level.isLocked)
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else
-                                MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = level.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                // Barra de progreso y porcentaje
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    LinearProgressIndicator(
-                        progress = level.progress,
-                        modifier = Modifier.width(100.dp)
+                Column {
+                    Text(
+                        text = level.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (level.isLocked)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "${(level.progress * 100).toInt()}%",
+                        text = level.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                LinearProgressIndicator(
+                    progress = level.progress,
+                    modifier = Modifier.width(100.dp)
+                )
+                Text(
+                    text = "${(level.progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
+
+fun getCompetenceIcon(name: String): String {
+    return when {
+        "Lectura" in name -> "📖"
+        "Razonamiento" in name -> "🧮"
+        "Inglés" in name -> "🇬🇧"
+        "Ciudadanas" in name -> "🤝"
+        else -> "🎯"
+    }
+}
+
