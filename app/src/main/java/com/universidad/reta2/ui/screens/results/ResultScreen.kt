@@ -11,7 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +37,11 @@ fun ResultsScreen(
 
     val percentage = if (totalQuestions > 0) (score * 100) / totalQuestions else 0
 
+    // Actualiza el progreso una sola vez al mostrar la pantalla
+    LaunchedEffect(competencyId, levelId, score, totalQuestions) {
+        viewModel.updateUserProgress(competencyId, levelId, score, totalQuestions)
+    }
+    
     Column(
         modifier = Modifier.fillMaxSize()
     ) {

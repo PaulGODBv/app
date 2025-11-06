@@ -18,6 +18,10 @@ import androidx.navigation.NavController
 import com.universidad.reta2.ui.navigation.Screen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 
 @Composable
 fun ProfileScreen(
@@ -137,6 +141,87 @@ fun ProfileScreen(
                 }
             }
 
+            // ----- Reporte de Progreso -----
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "📊 Reporte de Progreso",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Text(
+                        text = "Envía un reporte detallado de tu progreso a administración",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Información del destinatario
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = "📧 Destino: appreta2@gmail.com",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = "Se enviará un análisis completo de tu progreso",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = { 
+                            coroutineScope.launch {
+                                viewModel.exportStatisticsToAdmin()
+                            }
+                        },
+                        enabled = !state.isLoading,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onTertiary
+                            )
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = android.R.drawable.ic_menu_send),
+                                    contentDescription = "Enviar reporte"
+                                )
+                                Text("Enviar Reporte Detallado")
+                            }
+                        }
+                    }
+                }
+            }
+
             // Mensajes de error o éxito
             if (state.errorMessage.isNotEmpty()) {
                 MessageCard(
@@ -202,6 +287,7 @@ fun ProfileScreen(
     }
 }
 
+// Move MessageCard outside of ProfileScreen function and keep it private
 @Composable
 private fun MessageCard(text: String, color: androidx.compose.ui.graphics.Color, textColor: androidx.compose.ui.graphics.Color) {
     Card(

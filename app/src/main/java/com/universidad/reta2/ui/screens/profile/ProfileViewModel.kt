@@ -1,21 +1,30 @@
 package com.universidad.reta2.ui.screens.profile
 
 import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.data.preferences.SessionManager
 import com.universidad.reta2.domain.repositories.UserRepository
+import com.universidad.reta2.domain.repositories.UserStatsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val sessionManager: SessionManager,
+    private val userStatsRepository: UserStatsRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -96,6 +105,120 @@ class ProfileViewModel @Inject constructor(
 
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(errorMessage = "", successMessage = "")
+    }
+
+    // 🔥 CORREO FIJO PARA REPORTES
+    private companion object {
+        const val ADMIN_EMAIL = "appreta2@gmail.com"
+    }
+
+    // 🔥 NUEVA FUNCIÓN para exportar estadísticas
+    fun exportStatisticsToAdmin() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "", successMessage = "")
+
+            try {
+                // 1. Generar CSV con estadísticas
+                val csvContent = generateStatisticsCSV()
+
+                // 2. Enviar por correo
+                sendEmailWithCSV(csvContent)
+
+                showSuccess("Estadísticas enviadas a administración exitosamente")
+
+            } catch (e: Exception) {
+                showError("Error al exportar estadísticas: ${e.message}")
+            } finally {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    // 🔥 GENERAR CSV CON ESTADÍSTICAS
+    private suspend fun generateStatisticsCSV(): String {
+        val username = sessionManager.getCurrentUsername(context) ?: "Usuario"
+        val userEmail = sessionManager.getCurrentEmail(context) ?: "No especificado"
+
+        // Collect stats using Flow
+        val stats = userStatsRepository.getUserStats().first()
+        val weeklyProgress = userStatsRepository.getWeeklyProgress()
+        val achievements = userStatsRepository.getAchievementsProgress()
+
+        val csvBuilder = StringBuilder()
+
+        // Headers
+        csvBuilder.append("Usuario,Email,Métricas,Valor,Fecha Reporte\n")
+
+        val currentDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+        // General stats
+        csvBuilder.append("$username,$userEmail,Preguntas Respondidas,${stats.totalQuestionsAnswered},$currentDate\n")
+        csvBuilder.append("$username,$userEmail,Tiempo Total (min),${stats.totalPracticeTimeSeconds / 60},$currentDate\n")
+        csvBuilder.append("$username,$userEmail,Racha Actual,${stats.currentStreakDays},$currentDate\n")
+        csvBuilder.append("$username,$userEmail,Tiempo Hoy (min),${stats.dailyPracticeTime / 60},$currentDate\n")
+
+        // Weekly progress
+        weeklyProgress.forEach { daily ->
+            csvBuilder.append("$username,$userEmail,Preguntas ${daily.date},${daily.questionsAnswered},$currentDate\n")
+            csvBuilder.append("$username,$userEmail,Tiempo ${daily.date} (min),${daily.practiceTime / 60},$currentDate\n")
+        }
+
+        // Achievements progress
+        achievements.forEach { (achievement, progress) ->
+            csvBuilder.append("$username,$userEmail,Logro $achievement,${(progress * 100).toInt()}%,$currentDate\n")
+        }
+
+        return csvBuilder.toString()
+    }
+
+    // 🔥 ENVIAR CORREO A ADMINISTRACIÓN
+    private fun sendEmailWithCSV(csvContent: String) {
+        val username = sessionManager.getCurrentUsername(context) ?: "Usuario"
+        val userEmail = sessionManager.getCurrentEmail(context) ?: "No especificado"
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(ADMIN_EMAIL))
+            putExtra(Intent.EXTRA_SUBJECT, "Reporte de Progreso - $username")
+            putExtra(Intent.EXTRA_TEXT,
+                """
+                Reporte de progreso generado automáticamente desde la app Reta2.
+
+                Usuario: $username
+                Email: $userEmail
+                Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}
+
+                El archivo CSV adjunto contiene las estadísticas detalladas del usuario.
+
+                ¡Saludos!
+                """.trimIndent()
+            )
+
+            // Crear archivo temporal CSV
+            val tempFile = createTempCSVFile(csvContent, username)
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                tempFile
+            )
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        // Launch email intent
+        context.startActivity(Intent.createChooser(intent, "Enviar reporte a administración"))
+    }
+
+    // 🔥 CREAR ARCHIVO TEMPORAL CSV CON NOMBRE PERSONALIZADO
+    private fun createTempCSVFile(csvContent: String, username: String): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val safeUsername = username.replace("[^a-zA-Z0-9]".toRegex(), "_")
+        val fileName = "reporte_${safeUsername}_$timeStamp.csv"
+
+        val file = File(context.getExternalFilesDir(null), fileName)
+        file.writeText(csvContent, Charsets.UTF_8)
+
+        return file
     }
 
     private fun showError(msg: String) {

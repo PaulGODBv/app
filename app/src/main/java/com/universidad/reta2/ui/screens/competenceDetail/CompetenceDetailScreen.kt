@@ -147,6 +147,7 @@ fun CompetenceDetailScreen(
                         LevelCard(
                             level = level,
                             onLevelClick = {
+                                println("🎯 LevelCard CLICKED - levelId: ${level.id}")
                                 if (!level.isLocked) onLevelClick(level.id)
                             }
                         )

@@ -2,214 +2,170 @@ package com.universidad.reta2.ui.screens.questions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.universidad.reta2.data.source.CompetencyData
 import com.universidad.reta2.domain.models.Question
-import com.universidad.reta2.domain.usecases.GetRandomizedQuestionsUseCase
-import com.universidad.reta2.domain.usecases.UpdateProgressUseCase
 import com.universidad.reta2.domain.usecases.GetQuestionsUseCase
-import com.universidad.reta2.domain.repositories.CompetenceRepository
-import com.universidad.reta2.domain.models.Competence
-import com.universidad.reta2.domain.models.Level
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class QuestionViewModel @Inject constructor(
-    private val updateProgressUseCase: UpdateProgressUseCase,
-    private val competenceRepository: CompetenceRepository
+    private val getQuestionsUseCase: GetQuestionsUseCase
 ) : ViewModel() {
 
-    private val _questions = MutableStateFlow<List<Question>>(emptyList())
-    val questions: StateFlow<List<Question>> = _questions.asStateFlow()
+    private val _uiState = MutableStateFlow(QuestionUiState())
+    val uiState: StateFlow<QuestionUiState> = _uiState.asStateFlow()
 
-    private val _currentQuestionIndex = MutableStateFlow(0)
-    val currentQuestionIndex: StateFlow<Int> = _currentQuestionIndex.asStateFlow()
+    private var timerJob: Job? = null
+    private var isViewModelActive = true
 
-    private val _selectedOptionId = MutableStateFlow<Int?>(null)
-    val selectedOptionId: StateFlow<Int?> = _selectedOptionId.asStateFlow()
+    init {
+        println("🔧 QuestionViewModel INIT")
+    }
 
-    private val _streak = MutableStateFlow(0)
-    val streak: StateFlow<Int> = _streak.asStateFlow()
-
-    private val _timeElapsed = MutableStateFlow(0)
-    val timeElapsed: StateFlow<Int> = _timeElapsed.asStateFlow()
-
-    private val _correctAnswers = MutableStateFlow(0)
-    val correctAnswers: StateFlow<Int> = _correctAnswers.asStateFlow()
-
-    private val _isQuizCompleted = MutableStateFlow(false)
-    val isQuizCompleted: StateFlow<Boolean> = _isQuizCompleted.asStateFlow()
-
-    private val _currentCompetence = MutableStateFlow<Competence?>(null)
-    val currentCompetence: StateFlow<Competence?> = _currentCompetence.asStateFlow()
-
-    private val _currentLevelId = MutableStateFlow<Int>(1)
-    val currentLevelId: StateFlow<Int> = _currentLevelId.asStateFlow()
-
-    // 🔹 Navegación
-    private val _navigationEvent = MutableSharedFlow<NavigationEvent>()
-    val navigationEvent: SharedFlow<NavigationEvent> = _navigationEvent
-
-    // Temporizador
-    private var isTimerRunning = false
-
-    fun startTimer() {
-        if (isTimerRunning) return
-
-        isTimerRunning = true
-        viewModelScope.launch {
-            while (isTimerRunning && !_isQuizCompleted.value) {
-                delay(1000)
-                _timeElapsed.value += 1
-            }
+    fun loadQuestions(competencyId: Int, levelId: Int) {
+        if (!isViewModelActive) {
+            println("⚠️ ViewModel no activo, ignorando carga")
+            return
         }
-    }
 
-    fun stopTimer() {
-        isTimerRunning = false
-    }
-
-    // 🔹 CARGAR PREGUNTAS DESDE COMPETENCY DATA
-    fun loadQuestions(competenceId: Int, levelId: Int) {
         viewModelScope.launch {
             try {
-                // Guardar el levelId
-                _currentLevelId.value = levelId
+                println("🔄 Cargando preguntas para competency: $competencyId, level: $levelId")
 
-                // 1. Cargar la competencia completa
-                _currentCompetence.value = competenceRepository.getCompetenceById(competenceId)
+                _uiState.update { it.copy(isLoading = true, error = null) }
 
-                // 2. Obtener preguntas directamente desde CompetencyData
-                val questions = CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId)
+                val questions = getQuestionsUseCase(competencyId, levelId)
 
-                if (questions.isNotEmpty()) {
-                    // 3. Aleatorizar las preguntas (opcional)
-                    val randomizedQuestions = questions.shuffled()
-                    _questions.value = randomizedQuestions
-                    resetQuizState()
+                if (isViewModelActive && questions.isNotEmpty()) {
+                    println("✅ ${questions.size} preguntas cargadas exitosamente")
+
+                    _uiState.update {
+                        it.copy(
+                            questions = questions,
+                            isLoading = false,
+                            currentQuestionIndex = 0,
+                            score = 0,
+                            timeElapsed = 0,
+                            selectedOptionId = null
+                        )
+                    }
                     startTimer()
                 } else {
-                    _questions.value = emptyList()
+                    println("❌ No se pudieron cargar preguntas o ViewModel inactivo")
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "No se pudieron cargar las preguntas"
+                        )
+                    }
                 }
+
             } catch (e: Exception) {
-                // Manejar error
-                _questions.value = emptyList()
-                println("Error loading questions from CompetencyData: ${e.message}")
+                println("❌ Error cargando preguntas: ${e.message}")
+                if (isViewModelActive) {
+                    _uiState.update {
+                        it.copy(
+                            error = e.message ?: "Error desconocido al cargar preguntas",
+                            isLoading = false
+                        )
+                    }
+                }
             }
         }
     }
 
-    private fun resetQuizState() {
-        _currentQuestionIndex.value = 0
-        _selectedOptionId.value = null
-        _streak.value = 0
-        _correctAnswers.value = 0
-        _timeElapsed.value = 0
-        _isQuizCompleted.value = false
+    private fun startTimer() {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            while (isViewModelActive) {
+                delay(1000)
+                if (isViewModelActive) {
+                    _uiState.update { it.copy(timeElapsed = it.timeElapsed + 1) }
+                }
+            }
+        }
     }
 
-    // Seleccionar opción
     fun selectOption(optionId: Int) {
-        _selectedOptionId.value = optionId
+        if (!isViewModelActive) return
+
+        println("🎯 Opción seleccionada: $optionId")
+        _uiState.update { it.copy(selectedOptionId = optionId) }
     }
 
-    // Verificar respuesta y avanzar
-    fun submitAnswerAndAdvance() {
-        val currentQuestion = _questions.value.getOrNull(_currentQuestionIndex.value) ?: return
-        val selectedId = _selectedOptionId.value ?: return
+    fun nextQuestion() {
+        if (!isViewModelActive) return
 
-        val isCorrect = selectedId == currentQuestion.correctOptionId
+        val currentState = _uiState.value
 
-        // Actualizar estadísticas
-        if (isCorrect) {
-            _streak.value += 1
-            _correctAnswers.value += 1
-        } else {
-            _streak.value = 0
+        // Validación extra de seguridad
+        if (currentState.questions.isEmpty() ||
+            currentState.currentQuestionIndex >= currentState.questions.size) {
+            println("⚠️ No se puede avanzar: estado inválido")
+            return
         }
 
-        // Avanzar a la siguiente pregunta
-        advanceToNextQuestion()
-    }
+        val currentQuestion = currentState.questions[currentState.currentQuestionIndex]
+        val isCorrect = currentState.selectedOptionId == currentQuestion.correctOptionId
+        val newScore = if (isCorrect) currentState.score + 1 else currentState.score
 
-    private fun advanceToNextQuestion() {
-        val nextIndex = _currentQuestionIndex.value + 1
+        println("➡️ Avanzando a siguiente pregunta. Score: $newScore")
 
-        if (nextIndex >= _questions.value.size) {
-            // Quiz completado - disparar evento de navegación
-            completeQuiz()
-        } else {
-            _currentQuestionIndex.value = nextIndex
-            _selectedOptionId.value = null
-        }
-    }
-
-    // 🔹 Completar quiz y disparar navegación
-    private fun completeQuiz() {
-        _isQuizCompleted.value = true
-        stopTimer()
-
-        viewModelScope.launch {
-            _navigationEvent.emit(
-                NavigationEvent.NavigateToResults(
-                    competenceId = _currentCompetence.value?.id ?: 0,
-                    levelId = _currentLevelId.value,
-                    score = _correctAnswers.value,
-                    totalQuestions = _questions.value.size,
-                    timeSpent = _timeElapsed.value
-                )
+        _uiState.update {
+            it.copy(
+                currentQuestionIndex = it.currentQuestionIndex + 1,
+                selectedOptionId = null,
+                score = newScore
             )
         }
     }
 
-    // 🔹 Navegación manual
-    fun navigateBack() {
-        stopTimer()
-        viewModelScope.launch {
-            _navigationEvent.emit(NavigationEvent.NavigateBack)
-        }
-    }
-
-    // Obtener pregunta actual
-    fun getCurrentQuestion(): Question? {
-        return _questions.value.getOrNull(_currentQuestionIndex.value)
-    }
-
-    // Verificar si es la última pregunta
     fun isLastQuestion(): Boolean {
-        return _currentQuestionIndex.value == _questions.value.size - 1
+        val state = _uiState.value
+        return state.currentQuestionIndex >= state.questions.size - 1
     }
 
-    // Obtener progreso para la barra
-    fun getProgress(): Float {
-        val total = _questions.value.size
-        return if (total > 0) {
-            (_currentQuestionIndex.value + 1).toFloat() / total
-        } else 0f
+    fun getCurrentQuestion(): Question? {
+        val state = _uiState.value
+        return state.questions.getOrNull(state.currentQuestionIndex)
+    }
+
+    fun resetState() {
+        println("🔄 Reseteando estado del ViewModel")
+        isViewModelActive = false
+        timerJob?.cancel()
+        _uiState.value = QuestionUiState()
+    }
+
+    fun activate() {
+        println("✅ Activando ViewModel")
+        isViewModelActive = true
     }
 
     override fun onCleared() {
+        println("🧹 ViewModel siendo destruido")
         super.onCleared()
-        stopTimer()
+        isViewModelActive = false
+        timerJob?.cancel()
     }
 
-    // 🔹 Sellado para eventos de navegación
-    sealed class NavigationEvent {
-        data class NavigateToResults(
-            val competenceId: Int,
-            val levelId: Int,
-            val score: Int,
-            val totalQuestions: Int,
-            val timeSpent: Int
-        ) : NavigationEvent()
-
-        object NavigateBack : NavigationEvent()
+    data class QuestionUiState(
+        val questions: List<Question> = emptyList(),
+        val currentQuestionIndex: Int = 0,
+        val selectedOptionId: Int? = null,
+        val score: Int = 0,
+        val timeElapsed: Int = 0,
+        val isLoading: Boolean = false,
+        val error: String? = null
+    ) {
+        val hasValidCurrentQuestion: Boolean
+            get() = questions.isNotEmpty() && currentQuestionIndex < questions.size
     }
 }
