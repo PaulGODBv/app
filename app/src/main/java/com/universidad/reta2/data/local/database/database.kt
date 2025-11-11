@@ -16,6 +16,7 @@ import com.universidad.reta2.data.local.dao.UserStatsDao
 import com.universidad.reta2.data.local.dao.ProgressDao
 import com.universidad.reta2.data.local.dao.QuestionDao
 import com.universidad.reta2.data.local.dao.CompetenceDao
+import com.universidad.reta2.data.local.dao.LevelDao
 import android.content.Context
 import androidx.room.Room
 
@@ -41,6 +42,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
     abstract fun questionDao(): QuestionDao
     abstract fun competenceDao(): CompetenceDao
+    abstract fun levelDao(): LevelDao
+
+
 
     companion object {
         @Volatile

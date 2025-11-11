@@ -41,4 +41,7 @@ object DatabaseModule {
 
     @Provides
     fun provideQuestionDao(database: AppDatabase): QuestionDao = database.questionDao()
+    @Provides
+    fun provideLevelDao(database: AppDatabase): LevelDao = database.levelDao()
+
 }

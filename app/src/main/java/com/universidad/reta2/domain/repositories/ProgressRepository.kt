@@ -1,6 +1,7 @@
 package com.universidad.reta2.domain.repositories
 
 import com.universidad.reta2.domain.models.LevelProgress
+import com.universidad.reta2.domain.models.Level
 import com.universidad.reta2.domain.models.UserStats
 import com.universidad.reta2.domain.models.LevelStats
 import kotlinx.coroutines.flow.Flow
@@ -11,7 +12,8 @@ interface ProgressRepository {
     suspend fun recordQuestionAttempt(
         questionId: Int,
         isCorrect: Boolean,
-        timeSpentSeconds: Int
+        timeSpentSeconds: Int,
+        levelId: Int=1
     )
 
     // Obtener progreso de un nivel específico
@@ -19,6 +21,14 @@ interface ProgressRepository {
         competenceId: Int,
         levelId: Int
     ): LevelProgress?
+
+    suspend fun completeLevelAndUnlockNext(
+        competenceId: Int,
+        levelId: Int,
+        score: Int,
+        totalQuestions: Int,
+        timeSpent: Int
+    ): Boolean
 
     // Guardar progreso completo de un nivel
     suspend fun saveLevelProgress(progress: LevelProgress)
@@ -31,5 +41,7 @@ interface ProgressRepository {
 
     // Reiniciar progreso de un nivel
     suspend fun resetLevelProgress(competenceId: Int, levelId: Int)
+
+    suspend fun getLevelsWithProgress(competenceId: Int): List<Level>
 }
 

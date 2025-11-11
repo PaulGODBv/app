@@ -2,70 +2,109 @@ package com.universidad.reta2.ui.screens.progress
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.universidad.reta2.domain.models.LevelProgress
 import com.universidad.reta2.domain.models.UserStats
 import com.universidad.reta2.domain.models.Competence
-import com.universidad.reta2.domain.repositories.ProgressRepository
-import com.universidad.reta2.domain.repositories.UserStatsRepository
-import com.universidad.reta2.domain.repositories.CompetenceRepository
+import com.universidad.reta2.domain.usecases.GetUserStatsUseCase
+import com.universidad.reta2.domain.usecases.GetCompetencesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class ProgressUiState(
+data class ProgressState(
     val isLoading: Boolean = true,
     val userStats: UserStats? = null,
-    val progressList: List<LevelProgress> = emptyList(),
     val competences: List<Competence> = emptyList(),
     val error: String? = null
 )
 
 @HiltViewModel
 class ProgressViewModel @Inject constructor(
-    private val progressRepository: ProgressRepository,
-    private val userStatsRepository: UserStatsRepository,
-    private val competenceRepository: CompetenceRepository
+    private val getUserStatsUseCase: GetUserStatsUseCase,
+    private val getCompetencesUseCase: GetCompetencesUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ProgressUiState())
-    val uiState: StateFlow<ProgressUiState> = _uiState.asStateFlow()
+    // 🔒 ESTADO SEGURO CON PROTECCIONES
+    private val _state = MutableStateFlow(ProgressState())
+    val state: StateFlow<ProgressState> = _state.asStateFlow()
+
+    private var isViewModelActive = true
 
     init {
+        println("🔧 ProgressViewModel INIT")
         loadProgressData()
     }
 
-    private fun loadProgressData() {
+    // 🔒 ACTIVACIÓN SEGURA
+    fun activate() {
+        println("✅ Activando ProgressViewModel")
+        isViewModelActive = true
+    }
+
+    // 🔒 CARGA DE DATOS CON PROTECCIÓN
+    fun loadProgressData() {
+        if (!isViewModelActive) {
+            println("⚠️ ViewModel no activo, ignorando carga")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoading = true)
+                println("🔄 Cargando datos de progreso...")
 
-                val competences = competenceRepository.getAllCompetences()
+                _state.update { it.copy(isLoading = true, error = null) }
 
-                val progressFlow: Flow<List<LevelProgress>> = progressRepository.getUserProgress()
-                val statsFlow: Flow<UserStats> = userStatsRepository.getUserStats()
+                // Cargar competencias (suspend)
+                val competences = getCompetencesUseCase()
 
-                progressFlow
-                    .combine(statsFlow) { progressList, stats ->
-                        Triple(progressList, stats, competences)
+                // Combinar con estadísticas (Flow)
+                getUserStatsUseCase().collect { userStats ->
+                    if (isViewModelActive) {
+                        println("✅ Datos cargados: ${competences.size} competencias, stats: $userStats")
+
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                userStats = userStats,
+                                competences = competences,
+                                error = null
+                            )
+                        }
                     }
-                    .collect { (progressList, stats, competences) ->
-                        _uiState.value = ProgressUiState(
-                            isLoading = false,
-                            userStats = stats,
-                            progressList = progressList,
-                            competences = competences,
-                            error = null
-                        )
-                    }
+                }
 
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Error al cargar progreso"
-                )
+                if (isViewModelActive) {
+                    println("❌ Error cargando progreso: ${e.message}")
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.message ?: "Error al cargar datos",
+                            competences = emptyList()
+                        )
+                    }
+                }
             }
         }
     }
-}
 
+    // 🔒 FORMATO SEGURO DE TIEMPO
+    fun getFormattedPracticeTime(): String {
+        val totalSeconds = state.value.userStats?.dailyPracticeTime ?: 0
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    // 🔒 LIMPIEZA SEGURA
+    fun cleanup() {
+        println("🧹 Limpiando ProgressViewModel")
+        isViewModelActive = false
+    }
+
+    override fun onCleared() {
+        println("🚮 ProgressViewModel siendo destruido")
+        super.onCleared()
+        isViewModelActive = false
+    }
+}

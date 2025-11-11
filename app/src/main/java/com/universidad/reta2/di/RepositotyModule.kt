@@ -14,6 +14,7 @@ import com.universidad.reta2.data.repositories.UserStatsRepositoriesImp
 import com.universidad.reta2.domain.repositories.ProgressRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
 import com.universidad.reta2.data.local.dao.CompetenceDao
+import com.universidad.reta2.data.local.dao.LevelDao
 import com.universidad.reta2.data.local.mappers.CompetenceMapper
 import com.universidad.reta2.data.local.mappers.UserMapper
 import com.universidad.reta2.data.repositories.CompetenceRepositoryImpl
@@ -38,10 +39,17 @@ object RepositoryModule {
     fun provideProgressRepository(
         progressDao: ProgressDao,
         userStatsDao: UserStatsDao,
+        levelDao: LevelDao,
         @ApplicationContext context: Context,
         sessionManager: SessionManager
     ): ProgressRepository {
-        return ProgressRepositoryImpl(progressDao, userStatsDao, context, sessionManager)
+        return ProgressRepositoryImpl(
+            progressDao = progressDao,
+            userStatsDao = userStatsDao,
+            levelDao = levelDao,
+            context = context,
+            sessionManager = sessionManager
+        )
     }
 
 

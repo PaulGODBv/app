@@ -1,10 +1,13 @@
 package com.universidad.reta2.ui.screens.progress
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,135 +15,262 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.universidad.reta2.domain.models.LevelProgress
 import com.universidad.reta2.domain.models.UserStats
-import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.ui.navigation.Screen
-import androidx.compose.ui.res.painterResource
-
+import com.universidad.reta2.ui.theme.*
+import com.universidad.reta2.domain.models.Competence
 
 @Composable
 fun ProgressScreen(
     navController: NavController,
     viewModel: ProgressViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    // 🔒 ESTADO LOCAL PARA CONTROL ABSOLUTO DEL CICLO DE VIDA
+    var isCompositionActive by remember { mutableStateOf(true) }
+    val state by viewModel.state.collectAsState()
+    val formattedPracticeTime by remember { derivedStateOf { viewModel.getFormattedPracticeTime() } }
 
-    when {
-        uiState.isLoading -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+    // 🔒 EFECTO PARA MANEJAR EL CICLO DE VIDA DE LA COMPOSICIÓN
+    DisposableEffect(Unit) {
+        println("🎬 Iniciando ProgressScreenUltraSafe")
+        isCompositionActive = true
+        viewModel.activate()
+
+        onDispose {
+            println("🧹 ProgressScreen siendo descompuesta")
+            isCompositionActive = false
+            viewModel.cleanup()
         }
+    }
 
-        uiState.error != null -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Error: ${uiState.error}")
-            }
-        }
+    // 🔒 CONTROL DE NAVEGACIÓN SEGURO
+    var navigationCompetenceId by remember { mutableStateOf<Int?>(null) }
 
-        else -> {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Tarjeta principal de estadísticas
-                item {
-                    uiState.userStats?.let { stats ->
-                        UserStatsCard(stats)
-                    }
-                }
-
-                // Lista de progreso
-                item {
-                    Text(
-                        text = "Progreso por competencia",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                items(uiState.progressList) { progress ->
-                    val competence = uiState.competences.find { it.id == progress.competenceId }
-                    competence?.let {
-                        ProgressCard(
-                            progress = progress,
-                            competence = it,
-                            onClick = {
-                                navController.navigate(
-                                    Screen.CompetenceDetail.createRoute(it.id))
-                            }
-                        )
-                    }
+    // Effect para navegación controlada
+    LaunchedEffect(navigationCompetenceId) {
+        navigationCompetenceId?.let { competenceId ->
+            if (isCompositionActive) {
+                println("🚀 Navegando seguro a competence: $competenceId")
+                try {
+                    navController.navigate(Screen.CompetenceDetail.createRoute(competenceId))
+                    navigationCompetenceId = null
+                } catch (e: Exception) {
+                    println("❌ Error en navegación: ${e.message}")
+                    navigationCompetenceId = null
                 }
             }
         }
     }
+
+    // 🔒 NO RENDERIZAR NADA SI NO ESTAMOS ACTIVOS
+    if (!isCompositionActive) {
+        return
+    }
+
+    // 🔒 CONTENIDO PRINCIPAL CON MANEJO SEGURO DE ESTADOS
+    ProgressContentUltraSafe(
+        state = state,
+        formattedPracticeTime = formattedPracticeTime,
+        onCompetencyClick = { competence ->
+            if (isCompositionActive) {
+                println("🖱️ Click en competencia: ${competence.id} - ${competence.name}")
+                navigationCompetenceId = competence.id
+            }
+        },
+        onRetry = {
+            if (isCompositionActive) {
+                viewModel.loadProgressData()
+            }
+        }
+    )
 }
 
-
-// ---------- COMPONENTES ----------
+@Composable
+private fun ProgressContentUltraSafe(
+    state: ProgressState,
+    formattedPracticeTime: String,
+    onCompetencyClick: (Competence) -> Unit,
+    onRetry: () -> Unit
+) {
+    when {
+        state.isLoading -> LoadingIndicatorSafe()
+        state.error != null -> ErrorStateSafe(
+            error = state.error,
+            onRetry = onRetry
+        )
+        state.competences.isEmpty() -> EmptyStateSafe()
+        else -> ProgressSuccessContentSafe(
+            userStats = state.userStats,
+            competences = state.competences,
+            formattedPracticeTime = formattedPracticeTime,
+            onCompetencyClick = onCompetencyClick
+        )
+    }
+}
 
 @Composable
-fun UserStatsCard(stats: UserStats) {
+private fun ProgressSuccessContentSafe(
+    userStats: UserStats?,
+    competences: List<Competence>,
+    formattedPracticeTime: String,
+    onCompetencyClick: (Competence) -> Unit
+) {
+    if (competences.isEmpty()) {
+        EmptyStateSafe()
+        return
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Bg100)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        userStats?.let { stats ->
+            item {
+                MainStatsCardSafe(
+                    practiceTime = formattedPracticeTime,
+                    totalQuestions = stats.totalQuestionsAnswered,
+                    streakDays = stats.currentStreakDays
+                )
+            }
+        }
+
+        item {
+            Text(
+                text = "Progreso por competencia",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Text100,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+
+        items(
+            items = competences,
+            key = { it.id }
+        ) { competence ->
+            CompetenceProgressCardSafe(
+                competence = competence,
+                onClick = {
+                    println("🔗 Disparando click para: ${competence.name}")
+                    onCompetencyClick(competence)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun MainStatsCardSafe(
+    practiceTime: String,
+    totalQuestions: Int,
+    streakDays: Int
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
-        ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = StatsCardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(24.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatItem("Tiempo", "${stats.dailyPracticeTime}s")
-            StatItem("Preguntas", stats.totalQuestionsAnswered.toString())
-            StatItem("Racha", "${stats.currentStreakDays} días")
+            StatItemSafe(
+                label = "Tiempo",
+                value = practiceTime,
+                modifier = Modifier.weight(1f)
+            )
+
+            Divider(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(40.dp),
+                color = Color.White.copy(alpha = 0.3f)
+            )
+
+            StatItemSafe(
+                label = "Preguntas",
+                value = totalQuestions.toString(),
+                modifier = Modifier.weight(1f)
+            )
+
+            Divider(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(40.dp),
+                color = Color.White.copy(alpha = 0.3f)
+            )
+
+            StatItemSafe(
+                label = "Racha",
+                value = "$streakDays días",
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
 
 @Composable
-fun StatItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun StatItemSafe(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimary
+            color = Color.White
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+            color = Color.White.copy(alpha = 0.8f),
+            textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-fun ProgressCard(
-    progress: LevelProgress,
+fun CompetenceProgressCardSafe(
     competence: Competence,
     onClick: () -> Unit
 ) {
+    val nivelesCompletados = competence.levels.count { it.isCompleted }
+    val nivelActual = competence.levels.firstOrNull { !it.isLocked && !it.isCompleted }
+    val progress = competence.totalProgress.coerceIn(0f, 1f)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            // ✅ SOLUCIÓN: Versión explícita de clickable
+            .clickable(
+                onClick = {
+                    println("🎯 Click en card: ${competence.name}")
+                    onClick()
+                },
+                indication = LocalIndication.current,
+                interactionSource = remember { MutableInteractionSource() }
+            ),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -148,37 +278,152 @@ fun ProgressCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(id = competence.iconResId),
-                contentDescription = competence.name,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            ) {
+                if (competence.iconResId != 0) {
+                    Image(
+                        painter = painterResource(id = competence.iconResId),
+                        contentDescription = competence.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Primary100),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = competence.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
 
-            Spacer(Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = competence.name,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontWeight = FontWeight.Medium,
+                    color = Text100
                 )
                 Text(
-                    text = "${progress.questionsCompleted}/${progress.totalQuestions} completadas",
+                    text = "$nivelesCompletados/${competence.levels.size} niveles completados",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Text200
                 )
+                nivelActual?.let { nivel ->
+                    Text(
+                        text = "Nivel actual: ${nivel.name}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Primary100
+                    )
+                }
             }
 
-            CircularProgressIndicator(
-                progress = progress.questionsCompleted.toFloat() / progress.totalQuestions.toFloat(),
-                modifier = Modifier.size(40.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surface
-            )
+            Box(
+                modifier = Modifier.size(50.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    progress = progress,
+                    modifier = Modifier.size(50.dp),
+                    color = Primary100,
+                    strokeWidth = 4.dp,
+                    trackColor = ProgressBackground
+                )
+                Text(
+                    text = "${(progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Text100
+                )
+            }
         }
     }
 }
 
+@Composable
+private fun LoadingIndicatorSafe() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Bg100),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(color = Primary100)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Cargando progreso...", color = Text100)
+        }
+    }
+}
 
+@Composable
+private fun ErrorStateSafe(
+    error: String,
+    onRetry: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Bg100)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Error al cargar el progreso",
+                style = MaterialTheme.typography.titleMedium,
+                color = Text100
+            )
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Text200,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = Primary100)
+            ) {
+                Text("Reintentar")
+            }
+        }
+    }
+}
 
+@Composable
+private fun EmptyStateSafe() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Bg100),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "No hay datos de progreso",
+                style = MaterialTheme.typography.titleMedium,
+                color = Text100
+            )
+            Text(
+                text = "Completa algunos niveles para ver tu progreso aquí",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Text200,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+    }
+}
