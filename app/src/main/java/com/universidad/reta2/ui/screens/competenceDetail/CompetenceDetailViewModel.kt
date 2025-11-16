@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 @HiltViewModel
@@ -20,21 +21,24 @@ class CompetenceDetailViewModel @Inject constructor(
     val uiState: StateFlow<CompetenceDetailUiState> = _uiState.asStateFlow()
 
     fun loadCompetenceDetail(competenceId: Int) {
-        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
             try {
+                println("🔄 Cargando detalle de competencia $competenceId")
                 val competence = competenceRepository.getCompetenceById(competenceId)
-                _uiState.value = _uiState.value.copy(
-                    competence = competence,
-                    isLoading = false,
-                    error = null
-                )
+
+                // 🔥 DIAGNÓSTICO: Ver estado actual de niveles
+                competence?.levels?.forEach { level ->
+                    println("   🔍 Nivel ${level.id}: '${level.name}'")
+                    println("      - Locked: ${level.isLocked}")
+                    println("      - Completed: ${level.isCompleted}")
+                    println("      - Progress: ${level.progress}")
+                }
+
+                _uiState.update { it.copy(competence = competence, isLoading = false) }
+
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Error al cargar la competencia"
-                )
                 println("❌ Error cargando competencia: ${e.message}")
+                _uiState.update { it.copy(error = e.message, isLoading = false) }
             }
         }
     }

@@ -16,18 +16,29 @@ import android.content.Context
 import com.universidad.reta2.data.preferences.SessionManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 
-
 class ProgressRepositoryImpl @Inject constructor(
     private val progressDao: ProgressDao,
     private val userStatsDao: UserStatsDao,
     private val levelDao: LevelDao,
-    @ApplicationContext private val context: Context,
-    private val sessionManager: SessionManager
+    @ApplicationContext private val context: Context
 ) : ProgressRepository {
 
-    private fun getCurrentUserName(): String{
-        return sessionManager.getCurrentUsername(context) ?: "invitado"
+    private fun getCurrentUserName(): String {
+        return try {
+            val username = SessionManager.getCurrentUsername(context)
+            if (username.isNullOrEmpty()) {
+                println("⚠️ No hay usuario logueado, usando usuario por defecto")
+                "usuario_invitado"
+            } else {
+                println("✅ Usuario obtenido de SessionManager: $username")
+                username
+            }
+        } catch (e: Exception) {
+            println("❌ Error obteniendo usuario de SessionManager: ${e.message}")
+            "usuario_invitado" // Fallback seguro
+        }
     }
+
     override suspend fun recordQuestionAttempt(
         questionId: Int,
         isCorrect: Boolean,
@@ -51,7 +62,7 @@ class ProgressRepositoryImpl @Inject constructor(
         competenceId: Int,
         levelId: Int
     ): LevelProgress? {
-        val username = "usuario_actual"
+        val username = getCurrentUserName() // 🔥 CORREGIDO: usar getCurrentUserName() no "usuario_actual"
         return progressDao.getLevelProgress(username, competenceId, levelId)?.let {
             ProgressMapper.toDomain(it)
         }
@@ -62,7 +73,6 @@ class ProgressRepositoryImpl @Inject constructor(
         val entity = ProgressMapper.toEntity(progress, username)
         progressDao.saveLevelProgress(entity)
     }
-
 
     override fun getUserProgress(): Flow<List<LevelProgress>> {
         val username = getCurrentUserName()
@@ -90,9 +100,33 @@ class ProgressRepositoryImpl @Inject constructor(
     ): Boolean {
         return try {
             val username = getCurrentUserName()
-            println("DEBUG - Completando nivel $levelId para usuario $username")
+            println("🎯 DIAGNÓSTICO INICIO - completeLevelAndUnlockNext")
+            println("   📊 Usuario: $username")
+            println("   📊 Competencia: $competenceId")
+            println("   📊 Nivel actual: $levelId")
+            println("   📊 Score: $score/$totalQuestions")
+            println("   📊 Porcentaje: ${if (totalQuestions > 0) (score * 100) / totalQuestions else 0}%")
 
-            // 1. Guardar progreso del nivel actual como completado
+            // 🔥 VERIFICAR SI EL NIVEL ACTUAL EXISTE
+            val levels = levelDao.getLevelsByCompetence(competenceId)
+            println("   🔍 Niveles encontrados en competencia: ${levels.size}")
+            levels.forEach { level ->
+                println("      - Nivel ${level.id}: '${level.name}' (locked: ${level.isLocked}, completed: ${level.isCompleted})")
+            }
+
+            val currentLevelExists = levels.any { it.id == levelId }
+            println("   ✅ Nivel actual existe: $currentLevelExists")
+
+            if (!currentLevelExists) {
+                println("❌ ERROR: El nivel $levelId no existe")
+                return false
+            }
+
+            // 🔥 VERIFICAR PROGRESO ACTUAL ANTES DE ACTUALIZAR
+            val progressBefore = progressDao.getLevelProgress(username, competenceId, levelId)
+            println("   📈 Progreso antes: ${progressBefore?.isCompleted ?: "NO EXISTE"}")
+
+            // 1. Guardar progreso del nivel actual
             val currentProgress = LevelProgress(
                 competenceId = competenceId,
                 levelId = levelId,
@@ -107,24 +141,34 @@ class ProgressRepositoryImpl @Inject constructor(
             )
 
             saveLevelProgress(currentProgress)
+            println("✅ Progreso guardado para nivel $levelId")
 
-            // 2. Actualizar el nivel como completado en la tabla levels (usando Float)
+            // 🔥 VERIFICAR QUE SE GUARDÓ
+            val progressAfter = progressDao.getLevelProgress(username, competenceId, levelId)
+            println("   📈 Progreso después: ${progressAfter?.isCompleted ?: "NO EXISTE"}")
+
+            // 2. Actualizar LevelEntity
             val rowsUpdated = levelDao.updateLevelProgress(
                 competenceId = competenceId,
                 levelId = levelId,
                 isCompleted = true,
-                progress = 1.0f // 100% completado - usando Float
+                progress = 1.0f
             )
-            println("DEBUG - Nivel actualizado en BD: $rowsUpdated filas afectadas")
+            println("✅ LevelEntity actualizado: $rowsUpdated filas afectadas")
 
-            // 3. Desbloquear siguiente nivel automaticamente
+            // 🔥 VERIFICAR QUE LevelEntity SE ACTUALIZÓ
+            val updatedLevel = levelDao.getLevel(competenceId, levelId)
+            println("   🔍 LevelEntity después: locked=${updatedLevel?.isLocked}, completed=${updatedLevel?.isCompleted}")
+
+            // 3. Desbloquear siguiente nivel
             val nextLevelUnlocked = unlockNextLevel(competenceId, levelId)
 
-            println("SUCCESS - Nivel $levelId completado. Siguiente nivel desbloqueado: $nextLevelUnlocked")
+            println("🎯 DIAGNÓSTICO FINAL - Nivel $levelId completado. Siguiente desbloqueado: $nextLevelUnlocked")
             nextLevelUnlocked
 
         } catch (e: Exception) {
-            println("ERROR - Error completando nivel: ${e.message}")
+            println("❌ ERROR CRÍTICO - completeLevelAndUnlockNext: ${e.message}")
+            e.printStackTrace()
             false
         }
     }
@@ -132,60 +176,65 @@ class ProgressRepositoryImpl @Inject constructor(
     // Lógica para desbloquear siguiente nivel
     private suspend fun unlockNextLevel(competenceId: Int, currentLevelId: Int): Boolean {
         return try {
-            // Obtener todos los niveles de la competencia
-            val levels = levelDao.getLevelsByCompetence(competenceId)
-            println("DEBUG - Niveles encontrados en competencia $competenceId: ${levels.size}")
+            println("🔓 DIAGNÓSTICO - unlockNextLevel")
+            println("   📊 Competencia: $competenceId, Nivel actual: $currentLevelId")
 
-            // Encontrar el índice del nivel actual
+            val levels = levelDao.getLevelsByCompetence(competenceId)
+            println("   🔍 Todos los niveles:")
+            levels.forEachIndexed { index, level ->
+                println("      $index. Nivel ${level.id}: '${level.name}' (locked: ${level.isLocked})")
+            }
+
             val currentLevelIndex = levels.indexOfFirst { it.id == currentLevelId }
+            println("   📍 Índice del nivel actual: $currentLevelIndex")
 
             if (currentLevelIndex == -1) {
-                println("ERROR - Nivel actual $currentLevelId no encontrado en competencia $competenceId")
+                println("❌ Nivel actual no encontrado")
                 return false
             }
 
-            // Verificar si hay siguiente nivel
             if (currentLevelIndex < levels.size - 1) {
                 val nextLevel = levels[currentLevelIndex + 1]
-                println("DEBUG - Siguiente nivel encontrado: ${nextLevel.id} - ${nextLevel.name} (locked: ${nextLevel.isLocked})")
+                println("   🔍 Siguiente nivel: ${nextLevel.id} - '${nextLevel.name}'")
+                println("   🔓 Estado actual del siguiente nivel: locked=${nextLevel.isLocked}")
 
-                // Solo desbloquear si está bloqueado
                 if (nextLevel.isLocked) {
-                    try {
-                        // Desbloquear el siguiente nivel en la base de datos
-                        levelDao.updateLevelLockStatus(competenceId, nextLevel.id, false)
+                    println("   🚀 Intentando desbloquear nivel ${nextLevel.id}...")
 
-                        // Verificar si realmente se desbloqueó consultando la BD
-                        val updatedLevel = levelDao.getLevel(competenceId, nextLevel.id)
-                        val wasUnlocked = updatedLevel?.isLocked == false
+                    // Intentar desbloquear
+                    levelDao.updateLevelLockStatus(competenceId, nextLevel.id, false)
 
-                        if (wasUnlocked) {
-                            println("SUCCESS - Nivel ${nextLevel.id} (${nextLevel.name}) desbloqueado automaticamente")
-                            true
-                        } else {
-                            println("WARNING - No se pudo desbloquear el nivel ${nextLevel.id} en la BD")
-                            false
-                        }
-                    } catch (e: Exception) {
-                        println("ERROR - Error al actualizar nivel en BD: ${e.message}")
-                        false
+                    // 🔥 VERIFICAR SI REALMENTE SE DESBLOQUEÓ
+                    val verificationLevel = levelDao.getLevel(competenceId, nextLevel.id)
+                    val wasUnlocked = verificationLevel?.isLocked == false
+
+                    println("   ✅ Verificación después de desbloquear: locked=${verificationLevel?.isLocked}")
+                    println("   🎯 Resultado desbloqueo: $wasUnlocked")
+
+                    if (wasUnlocked) {
+                        println("   🎉 ÉXITO - Nivel ${nextLevel.id} DESBLOQUEADO")
+                    } else {
+                        println("   ❌ FALLO - No se pudo desbloquear nivel ${nextLevel.id}")
                     }
+
+                    return wasUnlocked
                 } else {
-                    println("INFO - Nivel ${nextLevel.id} ya estaba desbloqueado")
-                    false
+                    println("   ℹ️ El nivel ${nextLevel.id} ya estaba desbloqueado")
+                    return false
                 }
             } else {
-                println("INFO - No hay siguiente nivel - $currentLevelId es el ultimo nivel")
-                false
+                println("   ℹ️ No hay siguiente nivel - $currentLevelId es el último")
+                return false
             }
 
         } catch (e: Exception) {
-            println("ERROR - Error desbloqueando siguiente nivel: ${e.message}")
+            println("❌ ERROR - unlockNextLevel: ${e.message}")
+            e.printStackTrace()
             false
         }
     }
 
-    //  Méodo para obtener niveles con estado actualizado
+    // Méodo para obtener niveles con estado actualizado
     override suspend fun getLevelsWithProgress(competenceId: Int): List<Level> {
         val levelEntities = levelDao.getLevelsByCompetence(competenceId)
         val username = getCurrentUserName()
@@ -212,4 +261,18 @@ class ProgressRepositoryImpl @Inject constructor(
             )
         }
     }
+
+    // Méodo temporal
+    suspend fun debugInitialState(competenceId: Int) {
+        val username = getCurrentUserName()
+        println("🔍 DEBUG ESTADO INICIAL - Competencia: $competenceId")
+
+        val levels = levelDao.getLevelsByCompetence(competenceId)
+        println("   Niveles en BD:")
+        levels.forEach { level ->
+            val progress = progressDao.getLevelProgress(username, competenceId, level.id)
+            println("   - Nivel ${level.id}: locked=${level.isLocked}, progress=${progress?.isCompleted ?: "NO"}")
+        }
+    }
+
 }

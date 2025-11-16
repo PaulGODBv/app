@@ -10,8 +10,27 @@ import kotlin.runCatching
  */
 fun NavHostController.safeNavigate(route: String, builder: (NavOptionsBuilder.() -> Unit)? = null): Boolean {
     val current = this.currentBackStackEntry?.destination?.route
-    if (current == route) return false
+    println("🔍 safeNavigate - Current: $current, Target: $route")
+
+    if (current == route) {
+        println("⚠️ safeNavigate - Already on target route, skipping")
+        return false
+    }
+
     return runCatching {
-        if (builder == null) this.navigate(route) else this.navigate(route, builder)
-    }.isSuccess
+        if (builder == null) {
+            this.navigate(route) {
+                // 🔥 AGREGAR OPCIONES DE NAVEGACIÓN BÁSICAS
+                launchSingleTop = true
+                restoreState = true
+            }
+        } else {
+            this.navigate(route, builder)
+        }
+        println("✅ safeNavigate - Navigation successful to: $route")
+        true
+    }.onFailure { e ->
+        println("❌ safeNavigate - Navigation failed: ${e.message}")
+        e.printStackTrace() // 🔥 MOSTRAR STACK TRACE COMPLETO
+    }.getOrElse { false }
 }

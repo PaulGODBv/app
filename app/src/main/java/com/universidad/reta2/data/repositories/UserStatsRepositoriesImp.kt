@@ -5,6 +5,10 @@ import com.universidad.reta2.data.local.mappers.UserStatsMapper
 import com.universidad.reta2.domain.models.DailyProgress
 import com.universidad.reta2.domain.models.UserStats
 import com.universidad.reta2.domain.repositories.UserStatsRepository
+import com.universidad.reta2.data.preferences.SessionManager
+import com.universidad.reta2.domain.services.StatsInitializer
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
@@ -12,88 +16,128 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 class UserStatsRepositoriesImp @Inject constructor(
-    private val userStatsDao: UserStatsDao
+    private val userStatsDao: UserStatsDao,
+    private val statsInitializer: StatsInitializer, // 🔥 INYECTAR StatsInitializer
+    @ApplicationContext private val context: Context
 ) : UserStatsRepository {
 
-        override fun getUserStats(): Flow<UserStats> {
-            val username = getCurrentUsername()
-            return userStatsDao.getUserStats(username).map { entity ->
-                entity?.let { UserStatsMapper.toDomain(it) } ?: UserStats() // Devuelve UserStats vacío si no hay datos
-            }
+    override fun getUserStats(): Flow<UserStats> {
+        val username = getCurrentUsername()
+        return userStatsDao.getUserStats(username).map { entity ->
+            entity?.let { UserStatsMapper.toDomain(it) } ?: UserStats()
         }
+    }
 
     override suspend fun updateUserStats(stats: UserStats) {
         val username = getCurrentUsername()
+        statsInitializer.initializeUserStats(username)
+
         val entity = UserStatsMapper.toEntity(stats, username)
         userStatsDao.updateUserStats(entity)
     }
 
-    override suspend fun updateLevelProgress(competenceId: Int, levelId: Int, progress: Float) {
-        try {
-            val username = getCurrentUsername()
-            val currentStats = userStatsDao.getUserStatsSync(username)
-
-            // Simulamos actualización del progreso global
-            val updatedStats = currentStats.copy(
-                totalQuestionsAnswered = currentStats.totalQuestionsAnswered + (progress * 10).toInt(),
-                totalPracticeTimeSeconds = currentStats.totalPracticeTimeSeconds + 60,
-                dailyPracticeTime = currentStats.dailyPracticeTime + 60
-            )
-
-            userStatsDao.updateUserStats(updatedStats)
-            println("✅ Progreso actualizado: competencia $competenceId, nivel $levelId (${(progress * 100).toInt()}%)")
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-            println("⚠️ Error al actualizar progreso: ${e.message}")
-        }
-    }
-
-
     override suspend fun addQuestionsAnswered(count: Int) {
         val username = getCurrentUsername()
-        val currentStats = userStatsDao.getUserStatsSync(username)
-        val updatedStats = currentStats.copy(
-            totalQuestionsAnswered = currentStats.totalQuestionsAnswered + count
-        )
-        userStatsDao.updateUserStats(updatedStats)
+        try {
+            // 🔥 INICIALIZAR STATS SI NO EXISTEN
+            statsInitializer.initializeUserStats(username)
+
+            val currentStats = userStatsDao.getUserStatsSync(username)
+            val updatedStats = currentStats.copy(
+                totalQuestionsAnswered = currentStats.totalQuestionsAnswered + count
+            )
+            userStatsDao.updateUserStats(updatedStats)
+
+        } catch (e: Exception) {
+            println("❌ Error en addQuestionsAnswered: ${e.message}")
+            // Reintentar inicialización
+            statsInitializer.initializeUserStats(username)
+        }
     }
 
     override suspend fun addPracticeTime(seconds: Int) {
         val username = getCurrentUsername()
-        val currentStats = userStatsDao.getUserStatsSync(username)
-        val updatedStats = currentStats.copy(
-            totalPracticeTimeSeconds = currentStats.totalPracticeTimeSeconds + seconds,
-            dailyPracticeTime = currentStats.dailyPracticeTime + seconds
-        )
-        userStatsDao.updateUserStats(updatedStats)
+        try {
+            // 🔥 INICIALIZAR STATS SI NO EXISTEN
+            statsInitializer.initializeUserStats(username)
+
+            val currentStats = userStatsDao.getUserStatsSync(username)
+            val updatedStats = currentStats.copy(
+                totalPracticeTimeSeconds = currentStats.totalPracticeTimeSeconds + seconds,
+                dailyPracticeTime = currentStats.dailyPracticeTime + seconds
+            )
+            userStatsDao.updateUserStats(updatedStats)
+
+        } catch (e: Exception) {
+            println("❌ Error en addPracticeTime: ${e.message}")
+            statsInitializer.initializeUserStats(username)
+        }
     }
 
     override suspend fun incrementStreak() {
         val username = getCurrentUsername()
-        val currentStats = userStatsDao.getUserStatsSync(username)
-        val today = getCurrentDate()
+        try {
+            // 🔥 INICIALIZAR STATS SI NO EXISTEN
+            statsInitializer.initializeUserStats(username)
 
-        val updatedStats = if (shouldIncrementStreak(currentStats.lastPracticeDate, today)) {
-            currentStats.copy(
-                currentStreakDays = currentStats.currentStreakDays + 1,
-                lastPracticeDate = today
-            )
-        } else {
-            currentStats.copy(lastPracticeDate = today)
+            val currentStats = userStatsDao.getUserStatsSync(username)
+            val today = getCurrentDate()
+
+            val updatedStats = if (shouldIncrementStreak(currentStats.lastPracticeDate, today)) {
+                currentStats.copy(
+                    currentStreakDays = currentStats.currentStreakDays + 1,
+                    lastPracticeDate = today
+                )
+            } else {
+                currentStats.copy(lastPracticeDate = today)
+            }
+
+            userStatsDao.updateUserStats(updatedStats)
+
+        } catch (e: Exception) {
+            println("❌ Error en incrementStreak: ${e.message}")
+            statsInitializer.initializeUserStats(username)
         }
-
-        userStatsDao.updateUserStats(updatedStats)
     }
 
     override suspend fun resetStreak() {
         val username = getCurrentUsername()
-        val currentStats = userStatsDao.getUserStatsSync(username)
-        val updatedStats = currentStats.copy(
-            currentStreakDays = 0,
-            lastPracticeDate = getCurrentDate()
-        )
-        userStatsDao.updateUserStats(updatedStats)
+        try {
+            // 🔥 INICIALIZAR STATS SI NO EXISTEN
+            statsInitializer.initializeUserStats(username)
+
+            val currentStats = userStatsDao.getUserStatsSync(username)
+            val updatedStats = currentStats.copy(
+                currentStreakDays = 0,
+                lastPracticeDate = getCurrentDate()
+            )
+            userStatsDao.updateUserStats(updatedStats)
+
+        } catch (e: Exception) {
+            println("❌ Error en resetStreak: ${e.message}")
+            statsInitializer.initializeUserStats(username)
+        }
+    }
+
+
+    override suspend fun updateLevelProgress(competenceId: Int, levelId: Int, progress: Float) {
+        val username = getCurrentUsername()
+        try {
+            statsInitializer.initializeUserStats(username)
+
+            val currentStats = userStatsDao.getUserStatsSync(username)
+            val updatedStats = currentStats.copy(
+                totalQuestionsAnswered = currentStats.totalQuestionsAnswered + 1,
+                totalPracticeTimeSeconds = currentStats.totalPracticeTimeSeconds + 60,
+                dailyPracticeTime = currentStats.dailyPracticeTime + 60
+            )
+            userStatsDao.updateUserStats(updatedStats)
+            println("✅ Progreso actualizado: competencia $competenceId, nivel $levelId (${(progress * 100).toInt()}%)")
+
+        } catch (e: Exception) {
+            println("❌ Error en updateLevelProgress: ${e.message}")
+            statsInitializer.initializeUserStats(username)
+        }
     }
 
     override suspend fun updateLastPracticeDate(date: String) {
@@ -129,9 +173,19 @@ class UserStatsRepositoriesImp @Inject constructor(
 
     // Métodos auxiliares privados
     private fun getCurrentUsername(): String {
-        // TODO: Implementar lógica para obtener el usuario actual
-        // Por ahora retornamos un valor por defecto
-        return "usuario_actual"
+        return try {
+            val username = SessionManager.getCurrentUsername(context)
+            if (username.isNullOrEmpty()) {
+                println("⚠️ No hay usuario logueado, usando usuario por defecto")
+                "usuario_invitado"
+            } else {
+                println("✅ Usuario obtenido de SessionManager: $username")
+                username
+            }
+        } catch (e: Exception) {
+            println("❌ Error obteniendo usuario de SessionManager: ${e.message}")
+            "usuario_invitado" // Fallback seguro
+        }
     }
 
     private fun getCurrentDate(): String {

@@ -10,6 +10,7 @@ import com.universidad.reta2.data.repositories.UserRepositoryImpl
 import com.universidad.reta2.data.repositories.ProgressRepositoryImpl
 import com.universidad.reta2.data.repositories.SessionRepositoryImpl
 import com.universidad.reta2.domain.repositories.SessionRepository
+import com.universidad.reta2.domain.services.StatsInitializer
 import com.universidad.reta2.data.repositories.UserStatsRepositoriesImp
 import com.universidad.reta2.domain.repositories.ProgressRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
@@ -41,14 +42,12 @@ object RepositoryModule {
         userStatsDao: UserStatsDao,
         levelDao: LevelDao,
         @ApplicationContext context: Context,
-        sessionManager: SessionManager
     ): ProgressRepository {
         return ProgressRepositoryImpl(
             progressDao = progressDao,
             userStatsDao = userStatsDao,
             levelDao = levelDao,
             context = context,
-            sessionManager = sessionManager
         )
     }
 
@@ -56,9 +55,11 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideUserStatsRepository(
-        userStatsDao: UserStatsDao
+        userStatsDao: UserStatsDao,
+        statsInitializer: StatsInitializer,
+        @ApplicationContext context: Context
     ): UserStatsRepository {
-        return UserStatsRepositoriesImp(userStatsDao)
+        return UserStatsRepositoriesImp(userStatsDao, StatsInitializer(userStatsDao), context)
     }
 
     @Provides
@@ -86,11 +87,13 @@ object RepositoryModule {
     @Singleton
     fun provideCompetenceRepository(
         competenceDao: CompetenceDao,
-        competenceMapper: CompetenceMapper
+        competenceMapper: CompetenceMapper,
+        levelDao: LevelDao
     ): CompetenceRepository {
         return CompetenceRepositoryImpl(
             competenceDao = competenceDao,
-            competenceMapper = competenceMapper
+            competenceMapper = competenceMapper,
+            levelDao = levelDao
         )
     }
 

@@ -2,9 +2,26 @@ package com.universidad.reta2.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.ForeignKey
 import androidx.room.ColumnInfo
 
-@Entity(tableName = "level_progress")
+@Entity(
+    tableName = "level_progress",
+    foreignKeys = [
+        ForeignKey(
+            entity = LevelEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["level_id"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = CompetenceEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["competence_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
 data class LevelProgressEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
