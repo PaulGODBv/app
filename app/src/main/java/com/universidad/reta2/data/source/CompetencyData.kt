@@ -18,7 +18,7 @@ object CompetencyData {
     // Lectura Crítica - Nivel 1
     private fun getLecturaCriticaQuestions(levelId: Int): List<Question> {
         return when (levelId) {
-            1 -> listOf(
+            101 -> listOf(
                 Question(
                     id = 101,
                     text = "Según el texto, para que la atención primaria en salud, por parte de la medicina oficial, pueda atender a más del 20 % de la población, sería necesario principalmente:",
@@ -155,7 +155,7 @@ object CompetencyData {
                             "maldita calle, quizás ni siquiera en la ciudad.\""
                 )
             )
-            2 -> listOf(
+            102 -> listOf(
                 Question(
                     id = 201,
                     text = "La promoción de estudios académicos para determinar cuáles de las prácticas usadas por la medicina popular son perjudiciales y cuáles brindan alternativas de salud implica que:",
@@ -326,7 +326,7 @@ object CompetencyData {
                     readingText = "\"Aunque las comodidades de esta vida pueden aumentarse con la ayuda mutua, sin embargo, como eso se puede conseguir dominando a los demás mejor que asociándose con ellos, nadie debe dudar de que los hombres, por su naturaleza, si no existiera el miedo, se verían inclinados más al dominio que a la sociedad.\n\nPor lo tanto, hay que afirmar que el origen de las sociedades grandes y duraderas no se ha debido a la mutua benevolencia de los hombres, sino al miedo mutuo.\"\n\nTomado de: Hobbes, T. (1999). \"Tratado sobre el ciudadano\". Trad. Joaquín Rodríguez Feo, Madrid, Trotta."
                 )
             )
-            3 -> listOf(
+            103 -> listOf(
                 Question(
                     id = 301,
                     text = "Mafalda le da a la tortuga el nombre \"Burocracia\" con el propósito de destacar que la burocracia es:",
@@ -426,7 +426,7 @@ object CompetencyData {
     // Razonamiento Cuantitativo
     private fun getRazonamientoCuantitativoQuestions(levelId: Int): List<Question> {
         return when (levelId) {
-            1 -> listOf(
+            201 -> listOf(
                 Question(
                     id = 401,
                     text = "Un sismólogo afirma que en cualquier año era más probable que hubiese sismos de baja que de alta magnitud. Según el registro histórico, la relación que justifica la opinión del sismólogo es:",
@@ -554,7 +554,7 @@ object CompetencyData {
                     contextImage = "imagen_3" // Tablas de sesiones y horarios de pilates
                 )
             )
-            2 -> listOf(
+            202 -> listOf(
                 Question(
                     id = 410,
                     text = "Durante el período 1996 – 2002, los años en los que se hizo mayor inversión en seguridad vial fueron",
@@ -694,7 +694,7 @@ object CompetencyData {
                     contextImage = "imagen_brujula" // Diagrama de pistas de aterrizaje
                 )
             )
-            3 -> listOf(
+            203 -> listOf(
                 Question(
                     id = 420,
                     text = "Un tanque almacena exactamente la cantidad de jabón líquido necesaria para envasar exactamente 50 unidades de cada tipo de contenido. Teniendo en cuenta que 1 Litro contiene 1.000 mL, ¿cuál es la capacidad del tanque?",
@@ -787,7 +787,7 @@ object CompetencyData {
     // Inglés
     private fun getInglesQuestions(levelId: Int): List<Question> {
         return when (levelId) {
-            1 -> listOf(
+            301 -> listOf(
                 Question(
                     id = 701,
                     text = "People often cry when they feel like this.",
@@ -869,7 +869,7 @@ object CompetencyData {
                     explanation = "After a long day, people feel tired and need to sleep."
                 )
             )
-            2 -> listOf(
+            302 -> listOf(
                 Question(
                     id = 706,
                     text = "Do you prefer cats or dogs?",
@@ -926,7 +926,7 @@ object CompetencyData {
                     explanation = "'Of course' is a polite way to grant permission for a conversation."
                 )
             )
-            3 -> listOf(
+            303 -> listOf(
                 Question(
                     id = 711,
                     text = "Complete: 'Sadly, many people today ___ know the differences between Greeks and Romans.'",
@@ -1032,7 +1032,7 @@ object CompetencyData {
                     contextImage = "geek_and_roman_culture" // Imagen sobre cultura griega y romana
                 )
             )
-            4 -> listOf(
+            304 -> listOf(
                 Question(
                     id = 719,
                     text = "John Humphrey Noyes travelled to New York State",
@@ -1125,7 +1125,7 @@ object CompetencyData {
     // Competencias Ciudadanas
     private fun getCompetenciasCiudadanasQuestions(levelId: Int): List<Question> {
         return when (levelId) {
-            1 -> listOf(
+            401 -> listOf(
                 Question(
                     id = 1001,
                     text = "Teniendo en cuenta lo planteado en la Constitución Política de Colombia, esta respuesta de la ciudadanía refleja:",
@@ -1204,7 +1204,7 @@ object CompetencyData {
                     readingText = "Una colombiana es devota del islam y todos los días cubre su cabeza con una pañoleta.\n\nEn una entrevista, después de aprobar con éxito una convocatoria para un cargo en la alcaldía de su ciudad, el funcionario entrevistador le advierte que no puede tomar el trabajo si no acepta llevar la cabeza descubierta durante las horas laborales."
                 )
             )
-            2 -> listOf(
+            402 -> listOf(
                 Question(
                     id = 1007,
                     text = "Las divergencias entre científicos y activistas radican en que:",
@@ -1284,7 +1284,7 @@ object CompetencyData {
                     readingText = "Entre 2007 y 2008, la Corte Constitucional extendió a parejas homosexuales los beneficios del régimen contributivo de salud y del derecho a la pensión de sobrevivientes."
                 )
             )
-            3 -> listOf(
+            403 -> listOf(
                 Question(
                     id = 1013,
                     text = "¿Cuál de los siguientes es un argumento válido para contradecir la postura expuesta?",

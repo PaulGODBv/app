@@ -1,6 +1,6 @@
 package com.universidad.reta2.domain.models
 
-data class UserStats(
+data class  UserStats(
     val totalQuestionsAnswered: Int = 0,
     val totalPracticeTimeSeconds: Int = 0, // Tiempo total en segundos
     val currentStreakDays: Int = 0,

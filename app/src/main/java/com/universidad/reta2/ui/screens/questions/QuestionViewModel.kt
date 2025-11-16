@@ -31,6 +31,9 @@ class QuestionViewModel @Inject constructor(
     private var timerJob: Job? = null
     private var isViewModelActive = true
 
+    private var _origin = MutableStateFlow("competencies") // Valor por defecto
+    val origin: StateFlow<String> = _origin.asStateFlow()
+
     //  CONTROL DE NAVEGACIÓN SEGURO
     private var currentCompetenceId: Int = 0
     private var currentLevelId: Int = 0
@@ -39,6 +42,10 @@ class QuestionViewModel @Inject constructor(
         println("🔧 QuestionViewModel INIT con UpdateProgressUseCase y GetQuestionsUseCase")
     }
 
+    fun setOrigin(origin: String) {
+        println("🎯 QuestionViewModel - Origin set to: $origin")
+        _origin.value = origin
+    }
     //  CARGAR PREGUNTAS CON PROTECCIÓN
     fun loadQuestions(competenceId: Int, levelId: Int) {
         if (!isViewModelActive) {
@@ -130,45 +137,52 @@ class QuestionViewModel @Inject constructor(
         // Validación extra de seguridad
         if (currentState.questions.isEmpty() ||
             currentState.currentQuestionIndex >= currentState.questions.size) {
-            println("No se puede avanzar: estado inválido")
+            println("❌ No se puede avanzar: estado inválido")
             return
         }
 
         val currentQuestion = currentState.questions[currentState.currentQuestionIndex]
         val isCorrect = currentState.selectedOptionId == currentQuestion.correctOptionId
 
-        // Calcular nuevo estado CON STREAK
+        // Calcular nuevo estado ANTES DE ACTUALIZAR
         val newScore = if (isCorrect) currentState.score + 1 else currentState.score
         val newStreak = if (isCorrect) currentState.streak + 1 else 0
 
-        println("Avanzando a siguiente pregunta. Score: $newScore, Streak: $newStreak")
+        // DETERMINAR SI ES LA ÚLTIMA PREGUNTA ANTES DE INCREMENTAR
+        val isLastQuestion = currentState.currentQuestionIndex == currentState.questions.size - 1
 
-        // Verificar si es la última pregunta
-        val isLastQuestion = currentState.currentQuestionIndex >= currentState.questions.size - 1
+        println("🔄 QuestionViewModel.nextQuestion:")
+        println("   - Pregunta actual: ${currentState.currentQuestionIndex + 1}/${currentState.questions.size}")
+        println("   - isLastQuestion: $isLastQuestion")
+        println("   - currentCompetenceId: $currentCompetenceId")
+        println("   - currentLevelId: $currentLevelId")
+        println("   - newScore: $newScore")
+        println("   - totalQuestions: ${currentState.questions.size}")
 
-        // ACTUALIZAR PROGRESO EN BACKGROUND - PARA TODAS LAS PREGUNTAS
+        // ACTUALIZAR PROGRESO - INCLUYENDO LA ÚLTIMA PREGUNTA
         viewModelScope.launch {
             try {
                 if (isViewModelActive) {
+                    println("📤 LLAMANDO a UpdateProgressUseCase...")
+
                     updateProgressUseCase(
                         questionId = currentQuestion.id,
                         isCorrect = isCorrect,
                         timeSpent = 1,
                         levelId = currentLevelId,
                         competenceId = currentCompetenceId,
-                        isLevelCompleted = isLastQuestion,
+                        isLevelCompleted = isLastQuestion, // 🔥 ESTE DEBE SER TRUE PARA LA ÚLTIMA PREGUNTA
                         levelScore = if (isLastQuestion) newScore else 0,
                         totalQuestions = if (isLastQuestion) currentState.questions.size else 0
                     )
 
                     if (isLastQuestion) {
-                        println("Proceso de completado de nivel $currentLevelId finalizado")
-                    } else {
-                        println("Progreso actualizado para pregunta ${currentQuestion.id}")
+                        println("🏁 Proceso de completado de nivel $currentLevelId finalizado")
+                        println("📈 Score final: $newScore/${currentState.questions.size}")
                     }
                 }
             } catch (e: Exception) {
-                println("Error actualizando progreso: ${e.message}")
+                println("❌ Error actualizando progreso: ${e.message}")
             }
         }
 
@@ -182,7 +196,6 @@ class QuestionViewModel @Inject constructor(
             )
         }
 
-        // Si es la última pregunta, completar el quiz
         if (isLastQuestion) {
             completeQuiz()
         }
@@ -192,18 +205,20 @@ class QuestionViewModel @Inject constructor(
     private fun completeQuiz() {
         if (!isViewModelActive) return
 
-        println("🏁 Quiz completado! Score final: ${_uiState.value.score}, Streak final: ${_uiState.value.streak}")
+        val currentState = _uiState.value
+        val finalScore = currentState.score
+
+        println("🎉 QUIZ COMPLETADO!")
+        println("📊 Score final: $finalScore/${currentState.questions.size}")
+        println("⏱️ Tiempo total: ${currentState.timeElapsed} segundos")
+        println("🔥 Racha final: ${currentState.streak}")
+        println("📍 Origin: ${_origin.value}")
 
         // Detener timer
         timerJob?.cancel()
 
-        // Podrías agregar aquí una actualización final del progreso del nivel
-        viewModelScope.launch {
-            if (isViewModelActive) {
-                // Aquí podrías llamar a otro use case para marcar el nivel como completado
-                // updateLevelProgressUseCase(currentCompetenceId, currentLevelId, _uiState.value.score)
-            }
-        }
+        // 🔥 ACTUALIZAR ESTADO PARA INDICAR QUE ESTÁ LISTO PARA NAVEGAR
+        _uiState.update { it.copy(isQuizCompleted = true) }
     }
 
     // 🔒 MÉTODOS DE UTILIDAD SEGUROS

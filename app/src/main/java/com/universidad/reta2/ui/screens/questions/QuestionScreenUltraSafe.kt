@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.OutlinedButton
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.delay
 import com.universidad.reta2.ui.navigation.Screen
 import com.universidad.reta2.domain.models.QuestionOption
 import androidx.compose.foundation.clickable
@@ -44,17 +45,22 @@ fun QuestionScreenUltraSafe(
     navController: NavHostController,
     competencyId: Int,
     levelId: Int,
+    origin: String,
     viewModel: QuestionViewModel = hiltViewModel()
 ) {
     // Estado local para control absoluto del ciclo de vida
     var isCompositionActive by remember { mutableStateOf(true) }
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(origin) {
+        viewModel.setOrigin(origin)
+    }
+
     // 🔥 ESTADOS PARA MODALES
     var showTextModal by remember { mutableStateOf(false) }
     var showImageModal by remember { mutableStateOf(false) }
     var currentImageResource by remember { mutableStateOf("") }
-    var currentReadingText by remember { mutableStateOf("") } // 🔥 NUEVO: Guardar texto para modal
+    var currentReadingText by remember { mutableStateOf("") }
 
     // Estados para zoom de imagen
     var scale by remember { mutableStateOf(1f) }
@@ -93,6 +99,32 @@ fun QuestionScreenUltraSafe(
         }
     }
 
+    // 🔥 LAUNCHED EFFECT PARA NAVEGACIÓN A RESULTS
+    LaunchedEffect(uiState.isQuizCompleted) {
+        if (uiState.isQuizCompleted && isCompositionActive) {
+            println("🎯 Navegando a Results desde QuestionScreenUltraSafe")
+            println("📊 Score final: ${uiState.score}/${uiState.questions.size}")
+            println("⏱️ Tiempo total: ${uiState.timeElapsed}s")
+            println("📍 Origin: $origin")
+
+            // Pequeño delay para asegurar procesamiento completo
+            delay(100)
+
+            navController.navigate(
+                Screen.Results.createRoute(
+                    competenceId = competencyId,
+                    levelId = levelId,
+                    score = uiState.score,
+                    totalQuestions = uiState.questions.size,
+                    timeSpent = uiState.timeElapsed,
+                    origin = origin
+                )
+            ) {
+                popUpTo(Screen.Questions.route) { inclusive = true }
+            }
+        }
+    }
+
     // Scaffold seguro con modales
     Box(modifier = Modifier.fillMaxSize()) {
         SafeScaffold(
@@ -102,8 +134,8 @@ fun QuestionScreenUltraSafe(
             uiState = uiState,
             viewModel = viewModel,
             isCompositionActive = isCompositionActive,
+            origin = origin,
             onShowTextModal = {
-                // 🔥 GUARDAR EL TEXTO ACTUAL ANTES DE ABRIR EL MODAL
                 uiState.currentQuestion?.readingText?.let { text ->
                     if (text.isNotEmpty()) {
                         currentReadingText = text
@@ -115,17 +147,17 @@ fun QuestionScreenUltraSafe(
                 currentImageResource = imageName
                 showImageModal = true
             }
+            // 🔥 ELIMINADO: onQuizCompleted callback
         )
 
-        // 🔥 MODAL PARA TEXTO COMPLETO (usar currentReadingText en lugar de uiState.currentQuestion)
+        // 🔥 MODALES
         if (showTextModal && currentReadingText.isNotEmpty()) {
             TextContextModal(
-                readingText = currentReadingText, // 🔥 USAR EL TEXTO GUARDADO
+                readingText = currentReadingText,
                 onDismiss = { showTextModal = false }
             )
         }
 
-        // 🔥 MODAL PARA IMAGEN CON ZOOM
         if (showImageModal && currentImageResource.isNotEmpty()) {
             ImageContextModal(
                 imageName = currentImageResource,
@@ -151,9 +183,11 @@ private fun SafeScaffold(
     uiState: QuestionViewModel.QuestionUiState,
     viewModel: QuestionViewModel,
     isCompositionActive: Boolean,
-    onShowTextModal: () -> Unit, // 🔥 NUEVO: Callback para abrir modal de texto
-    onShowImageModal: (String) -> Unit // 🔥 NUEVO: Callback para abrir modal de imagen
+    origin: String,
+    onShowTextModal: () -> Unit,
+    onShowImageModal: (String) -> Unit,
 ) {
+
     Scaffold(
         topBar = {
             SafeTopBar(
@@ -182,23 +216,13 @@ private fun SafeScaffold(
                 if (!isCompositionActive) return@SafeContent
 
                 if (viewModel.isLastQuestion()) {
-                    navController.navigate(
-                        Screen.Results.createRoute(
-                            competenceId = competencyId,
-                            levelId = levelId,
-                            score = uiState.score,
-                            totalQuestions = uiState.questions.size,
-                            timeSpent = uiState.timeElapsed
-                        )
-                    ) {
-                        popUpTo(Screen.Questions.route) { inclusive = true }
-                    }
+                    viewModel.nextQuestion() // Esto activará isQuizCompleted
                 } else {
                     viewModel.nextQuestion()
                 }
             },
-            onShowTextModal = onShowTextModal, // 🔥 PASAR CALLBACKS
-            onShowImageModal = onShowImageModal // 🔥 PASAR CALLBACKS
+            onShowTextModal = onShowTextModal,
+            onShowImageModal = onShowImageModal
         )
     }
 }

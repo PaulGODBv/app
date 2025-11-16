@@ -8,6 +8,7 @@ import com.universidad.reta2.domain.repositories.CompetenceRepository
 import com.universidad.reta2.domain.repositories.ProgressRepository
 import com.universidad.reta2.domain.usecases.GetUserStatsUseCase
 import com.universidad.reta2.domain.models.UserStats
+import com.universidad.reta2.domain.models.LevelProgress
 import com.universidad.reta2.data.preferences.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,11 +20,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val competenceRepository: CompetenceRepository,
     private val getUserStatsUseCase: GetUserStatsUseCase,
-    private val progressRepository: ProgressRepository, // 🔥 AGREGAR ESTO
+    private val progressRepository: ProgressRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -58,7 +60,10 @@ class HomeViewModel @Inject constructor(
             try {
                 _isLoading.value = true
                 val loadedCompetences = competenceRepository.getAllCompetences()
-                _competences.value = updateCompetencesWithProgress(loadedCompetences)
+
+                val competencesWithProgress = updateCompetencesWithRealProgress(loadedCompetences)
+
+                _competences.value = competencesWithProgress
             } catch (e: Exception) {
                 _competences.value = emptyList()
             } finally {
@@ -86,7 +91,7 @@ class HomeViewModel @Inject constructor(
                 // Actualizar competencias con progreso actualizado
                 val currentCompetences = _competences.value
                 if (currentCompetences.isNotEmpty()) {
-                    _competences.value = updateCompetencesWithProgress(currentCompetences)
+                    _competences.value = updateCompetencesWithRealProgress(currentCompetences)
                 }
 
                 // Actualizar estadísticas si es necesario
@@ -96,21 +101,51 @@ class HomeViewModel @Inject constructor(
     }
 
     // 🔥 NUEVO: ACTUALIZAR COMPETENCIAS CON PROGRESO
-    private suspend fun updateCompetencesWithProgress(competences: List<Competence>): List<Competence> {
-        val progressList = progressRepository.getUserProgress().first()
+    private suspend fun updateCompetencesWithRealProgress(competences: List<Competence>): List<Competence> {
+        return try {
+            val progressList = progressRepository.getUserProgress().first()
 
-        return competences.map { competence ->
-            val competenceProgress = progressList.filter { it.competenceId == competence.id }
-            val totalProgress = if (competenceProgress.isNotEmpty()) {
-                val totalCompleted = competenceProgress.sumOf { it.questionsCompleted }
-                val totalQuestions = competenceProgress.sumOf { it.totalQuestions }
-                if (totalQuestions > 0) totalCompleted.toFloat() / totalQuestions.toFloat() else 0f
-            } else {
-                0f
+            competences.map { competence ->
+                val competenceProgress = progressList.filter { it.competenceId == competence.id }
+
+                val totalProgress = calculateTotalProgress(competence, competenceProgress)
+
+                println("🏠 Competencia ${competence.id} - Progreso: ${(totalProgress * 100).toInt()}%")
+
+                competence.copy(
+                    totalProgress = totalProgress.coerceIn(0f, 1f)
+                )
             }
-
-            competence.copy(totalProgress = totalProgress.coerceIn(0f, 1f))
+        } catch (e: Exception) {
+            println("❌ Home - Error calculando progreso: ${e.message}")
+            competences.map { it.copy(totalProgress = 0f) }
         }
+    }
+
+    private fun calculateTotalProgress(competence: Competence, progress: List<LevelProgress>): Float {
+        if (progress.isEmpty()) return 0f
+
+        var totalProgress = 0f
+        var levelsWithProgress = 0
+
+        competence.levels.forEach { level ->
+            val levelProgress = progress.find { it.levelId == level.id }
+            if (levelProgress != null) {
+                val levelCompletion = if (levelProgress.isCompleted) {
+                    1f
+                } else {
+                    if (levelProgress.totalQuestions > 0) {
+                        levelProgress.questionsCompleted.toFloat() / levelProgress.totalQuestions.toFloat()
+                    } else {
+                        0f
+                    }
+                }
+                totalProgress += levelCompletion
+                levelsWithProgress++
+            }
+        }
+
+        return if (levelsWithProgress > 0) totalProgress / competence.levels.size else 0f
     }
 
     fun getCompetencesWithProgress(): List<Competence> {

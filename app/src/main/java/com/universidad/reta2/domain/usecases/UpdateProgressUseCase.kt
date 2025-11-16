@@ -21,13 +21,23 @@ class UpdateProgressUseCase @Inject constructor(
         totalQuestions: Int = 0
     ) {
         try {
+            // 🔥 DIAGNÓSTICO CRÍTICO - VER QUÉ PARÁMETROS LLEGAN
+            println("🎯 UpdateProgressUseCase INVOCADO")
+            println("   - questionId: $questionId")
+            println("   - isCorrect: $isCorrect")
+            println("   - levelId: $levelId")
+            println("   - competenceId: $competenceId")
+            println("   - isLevelCompleted: $isLevelCompleted")
+            println("   - levelScore: $levelScore")
+            println("   - totalQuestions: $totalQuestions")
+
             // 1. Registrar la respuesta individual
-            progressRepository.recordQuestionAttempt(
-                questionId = questionId,
-                isCorrect = isCorrect,
-                timeSpentSeconds = timeSpent,
-                levelId = levelId
-            )
+//            progressRepository.recordQuestionAttempt(
+//                questionId = questionId,
+//                isCorrect = isCorrect,
+//                timeSpentSeconds = timeSpent,
+//                levelId = levelId
+//            )
 
             // 2. Actualizar estadísticas del usuario
             val currentStats = userStatsRepository.getUserStats().first()
@@ -45,9 +55,18 @@ class UpdateProgressUseCase @Inject constructor(
                 userStatsRepository.resetStreak()
             }
 
-            // Desbloquear siguiente nivel si se completó
+            // 🔥 DIAGNÓSTICO ANTES DE COMPLETAR NIVEL
+            println("🔍 ANTES de completeLevelAndUnlockNext:")
+            println("   - isLevelCompleted: $isLevelCompleted")
+            println("   - competenceId: $competenceId")
+            println("   - Condición: ${isLevelCompleted && competenceId != null}")
+
+            // USAR ProgressRepository PARA COMPLETAR NIVEL Y DESBLOQUEAR SIGUIENTE
             if (isLevelCompleted && competenceId != null) {
-                val nextLevelUnlocked = progressRepository.completeLevelAndUnlockNext(
+                println("🚀 EJECUTANDO completeLevelAndUnlockNext...")
+                println("🎯 Completando nivel $levelId con score: $levelScore/$totalQuestions")
+
+                val success = progressRepository.completeLevelAndUnlockNext(
                     competenceId = competenceId,
                     levelId = levelId,
                     score = levelScore,
@@ -55,17 +74,22 @@ class UpdateProgressUseCase @Inject constructor(
                     timeSpent = timeSpent
                 )
 
-                if (nextLevelUnlocked) {
-                    println("SUCCESS - Siguiente nivel desbloqueado automaticamente")
+                if (success) {
+                    println("🎉 Nivel completado y siguiente nivel desbloqueado exitosamente")
                 } else {
-                    println("INFO - No habia siguiente nivel para desbloquear")
+                    println("⚠️ Nivel completado pero no se pudo desbloquear siguiente nivel")
                 }
+            } else {
+                println("❌ NO se ejecutó completeLevelAndUnlockNext porque:")
+                println("   - isLevelCompleted es: $isLevelCompleted")
+                println("   - competenceId es: $competenceId")
             }
 
             println("SUCCESS - UpdateProgressUseCase ejecutado correctamente")
 
         } catch (e: Exception) {
             println("ERROR - Error en UpdateProgressUseCase: ${e.message}")
+            e.printStackTrace()
         }
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import kotlinx.coroutines.delay
 import com.universidad.reta2.ui.navigation.Screen
 
 @Composable
@@ -18,6 +19,12 @@ fun SplashScreen(
 ) {
     val isUserLoggedIn by viewModel.isUserLoggedIn.collectAsState()
 
+    LaunchedEffect(Unit) {
+        println("🚀 Iniciando app...")
+        viewModel.initializeAppData()
+        delay(2000)
+        navController.navigate(Screen.Home.route)
+    }
     // Navegación según sesión
     LaunchedEffect(isUserLoggedIn) {
         when (isUserLoggedIn) {

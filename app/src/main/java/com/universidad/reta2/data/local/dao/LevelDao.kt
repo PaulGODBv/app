@@ -4,9 +4,14 @@ import com.universidad.reta2.data.local.entities.LevelEntity
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 
 @Dao
 interface LevelDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLevel(level: LevelEntity)
 
     @Query("SELECT * FROM levels WHERE competence_id = :competenceId ORDER BY id")
     suspend fun getLevelsByCompetence(competenceId: Int): List<LevelEntity>

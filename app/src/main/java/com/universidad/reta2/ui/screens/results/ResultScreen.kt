@@ -8,8 +8,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -19,6 +22,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
+import kotlinx.coroutines.delay
 import com.universidad.reta2.ui.navigation.Screen
 
 @Composable
@@ -29,6 +36,7 @@ fun ResultsScreen(
     score: Int,
     totalQuestions: Int,
     timeSpent: Int,
+    origin: String,
     viewModel: ResultsViewModel = hiltViewModel()
 ) {
     // Usar el ViewModel para obtener datos de la competencia
@@ -38,10 +46,32 @@ fun ResultsScreen(
     val percentage = if (totalQuestions > 0) (score * 100) / totalQuestions else 0
 
     // Actualiza el progreso una sola vez al mostrar la pantalla
-    LaunchedEffect(competencyId, levelId, score, totalQuestions) {
-        viewModel.updateUserProgress(competencyId, levelId, score, totalQuestions)
+    val hasUpdatedProgress = remember { mutableStateOf(false) }
+    val previousRoute by remember {
+        derivedStateOf {
+            navController.previousBackStackEntry?.destination?.route ?: ""
+        }
     }
-    
+    var isNavigating by remember { mutableStateOf(false) }
+
+    LaunchedEffect(competencyId, levelId) {
+        if (!hasUpdatedProgress.value) {
+            viewModel.updateUserProgress(competencyId, levelId, score, totalQuestions)
+            hasUpdatedProgress.value = true
+        }
+    }
+
+    // Resetear después de un tiempo
+    LaunchedEffect(Unit) {
+        delay(1000)
+        isNavigating = false
+    }
+
+    val buttonText = when(origin){
+        "progress" -> "Volver a progreso"
+        else -> "Volver a competencias"
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -231,28 +261,65 @@ fun ResultsScreen(
             ) {
                 Button(
                     onClick = {
-                        // Navegar de vuelta a la lista de competencias
-                        navController.navigate(Screen.Competencies.route) {
-                            popUpTo(Screen.Competencies.route) { inclusive = true }
+                        if (isNavigating) return@Button
+                        isNavigating = true
+
+                        try {
+                            when (origin) {
+                                "progress" -> {
+                                    println("🔄 Returning to Progress (origin: $origin)")
+                                    navController.navigate(Screen.Progress.route) {
+                                        popUpTo(Screen.Home.route) { saveState = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                                else -> {
+                                    println("🔄 Returning to Competencies (origin: $origin)")
+                                    navController.navigate(Screen.Competencies.route) {
+                                        popUpTo(Screen.Home.route) { saveState = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            println("❌ Navigation failed: ${e.message}")
+                            navController.popBackStack(Screen.Home.route, false)
                         }
+
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    enabled = !isNavigating // 🔥 Deshabilitar durante navegación
                 ) {
-                    Text(
-                        text = "Volver a Competencias",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (isNavigating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = buttonText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
+
 
                 OutlinedButton(
                     onClick = {
-                        // Reintentar el mismo nivel
+                        println("🔄 Retrying level: $levelId")
                         navController.navigate(Screen.Questions.createRoute(competencyId, levelId)) {
-                            popUpTo(Screen.Results.route) { inclusive = true }
+                            // Limpiar stack apropiadamente según procedencia
+                            when {
+                                previousRoute.startsWith("progress") -> popUpTo(Screen.Progress.route)
+                                previousRoute.contains("competence") -> popUpTo(Screen.CompetenceDetail.route)
+                                else -> popUpTo(Screen.Competencies.route)
+                            }
+                            launchSingleTop = true
                         }
                     },
                     modifier = Modifier.fillMaxWidth()

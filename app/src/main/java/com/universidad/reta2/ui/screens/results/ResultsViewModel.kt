@@ -20,26 +20,42 @@ class ResultsViewModel @Inject constructor(
     private val competenceRepository: CompetenceRepository
 ) : ViewModel() {
 
+    private var hasUpdatedProgress = false
+    private var lastUpdateKey=""
     /**
      * Actualiza el progreso del usuario en un nivel específico.
      */
     fun updateUserProgress(competenceId: Int, levelId: Int, score: Int, totalQuestions: Int) {
+        val updateKey = "$competenceId-$levelId-$score-$totalQuestions"
+
+
+        if (hasUpdatedProgress && lastUpdateKey == updateKey) {
+            return
+        }
         viewModelScope.launch {
             try {
+
                 // Calcular porcentaje de progreso
                 val progress = if (totalQuestions > 0) score.toFloat() / totalQuestions else 0f
 
-                // Incrementar estadísticas globales
                 userStatsRepository.addQuestionsAnswered(totalQuestions)
                 userStatsRepository.addPracticeTime(60) // Simulamos 60s de práctica
-                userStatsRepository.incrementStreak()
+
+                // Solo incrementar racha si es una respuesta correcta
+                if (score > 0) {
+                    userStatsRepository.incrementStreak()
+                }
 
                 // Actualizar progreso del nivel
                 userStatsRepository.updateLevelProgress(competenceId, levelId, progress)
 
+
+                hasUpdatedProgress = true
+                lastUpdateKey = updateKey
+
+
             } catch (e: Exception) {
-                e.printStackTrace()
-                println("⚠️ Error al actualizar progreso del usuario: ${e.message}")
+                println("❌ Error updating user progress: ${e.message}")
             }
         }
     }
