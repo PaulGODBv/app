@@ -93,9 +93,30 @@ class ProgressViewModel @Inject constructor(
     // 🔒 FORMATO SEGURO DE TIEMPO
     fun getFormattedPracticeTime(): String {
         val totalSeconds = state.value.userStats?.dailyPracticeTime ?: 0
-        val minutes = totalSeconds / 60
-        val seconds = totalSeconds % 60
-        return String.format("%02d:%02d", minutes, seconds)
+        return when {
+            // Caso 3: 1 hora o más (>= 3600 segundos)
+            totalSeconds >= 3600 -> {
+                val hours = totalSeconds / 3600
+                val minutes = (totalSeconds % 3600) / 60
+                val seconds = totalSeconds % 60
+                // Formato: "1 hr 2 min 30 seg"
+                "$hours hr $minutes min $seconds seg"
+            }
+
+            // Caso 2: 1 minuto o más (pero menos de 1 hora)
+            totalSeconds >= 60 -> {
+                val minutes = totalSeconds / 60
+                val seconds = totalSeconds % 60
+                // Formato: "2 min 30 seg"
+                "$minutes min $seconds seg"
+            }
+
+            // Caso 1: Menos de 1 minuto
+            else -> {
+                // Formato: "45 seg"
+                "$totalSeconds seg"
+            }
+        }
     }
 
     // 🔒 LIMPIEZA SEGURA
