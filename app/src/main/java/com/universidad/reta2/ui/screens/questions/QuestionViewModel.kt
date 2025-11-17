@@ -80,6 +80,7 @@ class QuestionViewModel @Inject constructor(
                             // ... (resetear score, tiempo, etc. SÍ está bien aquí)
                             score = 0,
                             timeElapsed = 0,
+                            timeAtQuestionStart = 0,
                             selectedOptionId = null,
                             streak = 0,
                             isQuizCompleted = false
@@ -137,13 +138,18 @@ class QuestionViewModel @Inject constructor(
         val currentQuestion = currentState.questions[currentState.currentQuestionIndex]
         val isCorrect = currentState.selectedOptionId == currentQuestion.correctOptionId
 
+        val timeSpentOnThisQuestion= currentState.timeElapsed - currentState.timeAtQuestionStart
+        val nextQuestionStartTime=currentState.timeElapsed
+
         // Calcular nuevo estado
         val newScore = if (isCorrect) currentState.score + 1 else currentState.score
         val newStreak = if (isCorrect) currentState.streak + 1 else 0
 
-        // 🔥 DETERMINAR SI ES LA ÚLTIMA PREGUNTA CORRECTAMENTE
+        //  DETERMINAR SI ES LA ÚLTIMA PREGUNTA
         val isLastQuestion = currentState.currentQuestionIndex == currentState.questions.size - 1
         val isActuallyLastQuestion = isLastQuestion // Para claridad
+
+
 
         println("🔄 QuestionViewModel.nextQuestion:")
         println("   - Pregunta actual: ${currentState.currentQuestionIndex + 1}/${currentState.questions.size}")
@@ -160,7 +166,7 @@ class QuestionViewModel @Inject constructor(
                     updateProgressUseCase(
                         questionId = currentQuestion.id,
                         isCorrect = isCorrect,
-                        timeSpent = 1,
+                        timeSpent = timeSpentOnThisQuestion,
                         levelId = currentLevelId,
                         competenceId = currentCompetenceId,
                         isLevelCompleted = true, // 🔥 SOLO PARA LA ÚLTIMA PREGUNTA
@@ -179,10 +185,10 @@ class QuestionViewModel @Inject constructor(
                     updateProgressUseCase(
                         questionId = currentQuestion.id,
                         isCorrect = isCorrect,
-                        timeSpent = 1,
+                        timeSpent = timeSpentOnThisQuestion,
                         levelId = currentLevelId,
                         competenceId = currentCompetenceId,
-                        isLevelCompleted = false, // 🔥 IMPORTANTE: false para preguntas no finales
+                        isLevelCompleted = false, //  IMPORTANTE: false para preguntas no finales
                         levelScore = 0,
                         totalQuestions = 0
                     )
@@ -199,7 +205,8 @@ class QuestionViewModel @Inject constructor(
                 selectedOptionId = null,
                 score = newScore,
                 streak = newStreak,
-                isQuizCompleted = isActuallyLastQuestion
+                isQuizCompleted = isActuallyLastQuestion,
+                timeAtQuestionStart = nextQuestionStartTime
             )
         }
 
@@ -234,25 +241,6 @@ class QuestionViewModel @Inject constructor(
         return state.currentQuestionIndex >= state.questions.size - 1
     }
 
-    fun getCurrentQuestion(): Question? {
-        val state = _uiState.value
-        return state.questions.getOrNull(state.currentQuestionIndex)
-    }
-
-    fun getTotalQuestions(): Int {
-        return _uiState.value.questions.size
-    }
-
-    fun getProgress(): Float {
-        val state = _uiState.value
-        val total = state.questions.size
-        return if (total > 0) {
-            (state.currentQuestionIndex + 1).toFloat() / total
-        } else 0f
-    }
-
-    // 🔒 ACTIVACIÓN/DESACTIVACIÓN SEGURA
-
 
     override fun onCleared() {
         println("🧹 ViewModel siendo destruido")
@@ -269,6 +257,7 @@ class QuestionViewModel @Inject constructor(
         val score: Int = 0,
         val streak: Int = 0, // ✅ STREAK AGREGADO
         val timeElapsed: Int = 0,
+        val timeAtQuestionStart: Int = 0,
         val isLoading: Boolean = false,
         val error: String? = null,
         val isQuizCompleted: Boolean = false,
