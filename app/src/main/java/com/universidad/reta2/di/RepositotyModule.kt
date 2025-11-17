@@ -4,6 +4,7 @@ import android.content.Context
 import com.universidad.reta2.data.local.dao.ProgressDao
 import com.universidad.reta2.data.local.dao.UserDao
 import com.universidad.reta2.data.local.dao.UserStatsDao
+import com.universidad.reta2.data.local.dao.QuestionDao
 import com.universidad.reta2.data.preferences.SessionManager
 import com.universidad.reta2.domain.repositories.UserRepository
 import com.universidad.reta2.data.repositories.UserRepositoryImpl
@@ -88,12 +89,20 @@ object RepositoryModule {
     fun provideCompetenceRepository(
         competenceDao: CompetenceDao,
         competenceMapper: CompetenceMapper,
-        levelDao: LevelDao
+        levelDao: LevelDao,
+        questionDao: QuestionDao,
+        progressDao: ProgressDao,
+        @ApplicationContext context: Context,
+        questionRepository: QuestionRepository
     ): CompetenceRepository {
         return CompetenceRepositoryImpl(
             competenceDao = competenceDao,
             competenceMapper = competenceMapper,
-            levelDao = levelDao
+            levelDao = levelDao,
+            questionDao = questionDao,
+            progressDao = progressDao,
+            context = context,
+            questionRepository = questionRepository
         )
     }
 

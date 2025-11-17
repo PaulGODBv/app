@@ -62,7 +62,7 @@ class ProgressRepositoryImpl @Inject constructor(
         competenceId: Int,
         levelId: Int
     ): LevelProgress? {
-        val username = getCurrentUserName() // 🔥 CORREGIDO: usar getCurrentUserName() no "usuario_actual"
+        val username = getCurrentUserName()
         return progressDao.getLevelProgress(username, competenceId, levelId)?.let {
             ProgressMapper.toDomain(it)
         }
@@ -101,11 +101,19 @@ class ProgressRepositoryImpl @Inject constructor(
         return try {
             val username = getCurrentUserName()
             println("🎯 DIAGNÓSTICO INICIO - completeLevelAndUnlockNext")
-            println("   📊 Usuario: $username")
-            println("   📊 Competencia: $competenceId")
-            println("   📊 Nivel actual: $levelId")
             println("   📊 Score: $score/$totalQuestions")
-            println("   📊 Porcentaje: ${if (totalQuestions > 0) (score * 100) / totalQuestions else 0}%")
+
+            // 🔥 VERIFICAR PROGRESO MÍNIMO PARA COMPLETAR (80%)
+            val progress = score.toFloat() / totalQuestions
+            val minProgressRequired = 0.8f // 80% mínimo para completar
+
+            println("   📈 Progreso: ${(progress * 100).toInt()}%")
+            println("   🎯 Mínimo requerido: ${(minProgressRequired * 100).toInt()}%")
+
+            if (progress < minProgressRequired) {
+                println("❌ Progreso insuficiente para completar nivel")
+                return false
+            }
 
             // 🔥 VERIFICAR SI EL NIVEL ACTUAL EXISTE
             val levels = levelDao.getLevelsByCompetence(competenceId)

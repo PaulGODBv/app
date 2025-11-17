@@ -21,7 +21,7 @@ interface ProgressDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveLevelProgress(progress: LevelProgressEntity)
 
-    // Obtener todo el progreso del usuario
+    // Obtener tdo el progreso del usuario
     @Query("SELECT * FROM level_progress WHERE username = :username ORDER BY last_updated DESC")
     fun getUserProgress(username: String): Flow<List<LevelProgressEntity>>
 
@@ -50,4 +50,13 @@ interface ProgressDao {
         GROUP BY question_id
     """)
     suspend fun getIncorrectQuestions(username: String, levelId: Int): List<Int>
+
+    @Query("""
+        SELECT COUNT(DISTINCT question_id) 
+        FROM question_attempts 
+        WHERE username = :username 
+        AND is_correct = 1 
+        AND level_id IN (:levelIds)
+    """)
+    suspend fun getUniqueCorrectQuestionCountForLevels(username: String, levelIds: List<Int>): Int
 }

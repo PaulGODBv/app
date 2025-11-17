@@ -1,38 +1,91 @@
 package com.universidad.reta2.data.repositories
 
+import android.content.Context
 import com.universidad.reta2.data.local.dao.CompetenceDao
 import com.universidad.reta2.data.local.dao.LevelDao
+import com.universidad.reta2.data.local.dao.ProgressDao
+import com.universidad.reta2.data.local.dao.QuestionDao
 import com.universidad.reta2.data.local.mappers.CompetenceMapper
 import com.universidad.reta2.data.local.entities.LevelEntity
 import com.universidad.reta2.data.local.entities.CompetenceEntity
 import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.models.Level
 import com.universidad.reta2.domain.repositories.CompetenceRepository
+import com.universidad.reta2.domain.repositories.QuestionRepository
 import com.universidad.reta2.R
+import com.universidad.reta2.data.preferences.SessionManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 class CompetenceRepositoryImpl @Inject constructor(
     private val competenceDao: CompetenceDao,
     private val levelDao: LevelDao,
-    private val competenceMapper: CompetenceMapper
+    private val competenceMapper: CompetenceMapper,
+    private val progressDao: ProgressDao,
+    private val questionDao: QuestionDao,
+    @ApplicationContext private val context: Context,
+    private val questionRepository: QuestionRepository
 ) : CompetenceRepository {
 
+    private fun getCurrentUserName(): String {
+        return try {
+            val username = SessionManager.getCurrentUsername(context)
+            if (username.isNullOrEmpty()) {
+                println("⚠️ CompetenceRepo: No hay usuario logueado, usando 'usuario_invitado'")
+                "usuario_invitado"
+            } else {
+                username
+            }
+        } catch (e: Exception) {
+            println("❌ CompetenceRepo: Error obteniendo usuario: ${e.message}")
+            "usuario_invitado" // Fallback seguro
+        }
+    }
     override suspend fun getAllCompetences(): List<Competence> {
         return try {
-            // Obtener las entidades de la base de datos
             val competenceEntities = competenceDao.getAllCompetences()
 
-            // Si no hay datos en la BD, usar los datos hardcodeados
             if (competenceEntities.isEmpty()) {
                 val hardcodedCompetences = getHardcodedCompetences()
-                // 🔥 GUARDAR LOS DATOS HARCODEADOS EN LA BD
                 saveCompetencesToDatabase(hardcodedCompetences)
-                hardcodedCompetences
+                hardcodedCompetences // Devuelve 0% de progreso la primera vez, se recalculará al volver a cargar
             } else {
-                // Convertir entidades a modelos de dominio
+                // 🔥 --- LÓGICA DE CÁLCULO DE PROGRESO MODIFICADA ---
+                val username = getCurrentUserName()
+
+                // Usamos map (en lugar de un bucle for) para transformar la lista
                 competenceEntities.map { entity ->
                     val levels = getLevelsFromDatabase(entity.id)
-                    competenceMapper.toDomain(entity, levels)
+
+                    // 1. Mapear la entidad a dominio (progreso aún es 0f)
+                    val competence = competenceMapper.toDomain(entity, levels)
+
+                    // 2. Calcular el progreso real
+                    val levelIds = levels.map { it.id } // Obtener IDs de nivel (ej. [101, 102, 103])
+                    var calculatedProgress = 0f
+
+                    if (levelIds.isNotEmpty()) {
+
+                        // 1. DENOMINADOR: Calcular usando QuestionRepository
+                        var totalQuestions = 0
+                        val competenceId = entity.id
+
+                        // Usamos un bucle for tradicional porque getQuestions... es 'suspend'
+                        for (levelId in levelIds) {
+                            totalQuestions += questionRepository.getQuestionsByCompetenceAndLevel(competenceId, levelId).size
+                        }
+
+                        // 2. NUMERADOR: Obtener de la BD (esto está bien)
+                        val correctQuestions = progressDao.getUniqueCorrectQuestionCountForLevels(username, levelIds)
+
+                        if (totalQuestions > 0) {
+                            calculatedProgress = correctQuestions.toFloat() / totalQuestions.toFloat()
+                        }
+
+                        println("📊 Progreso para ${competence.name}: $correctQuestions / $totalQuestions = $calculatedProgress")
+                    }
+
+                    competence.copy(totalProgress = calculatedProgress)
                 }
             }
         } catch (e: Exception) {
@@ -45,12 +98,34 @@ class CompetenceRepositoryImpl @Inject constructor(
         return try {
             val entity = competenceDao.getCompetenceById(id)
             if (entity != null) {
+
                 val levels = getLevelsFromDatabase(entity.id)
-                competenceMapper.toDomain(entity, levels)
+                val username = getCurrentUserName()
+
+                // 1. Mapear
+                val competence = competenceMapper.toDomain(entity, levels)
+
+                // 2. Calcular
+                val levelIds = levels.map { it.id }
+                var calculatedProgress = 0f
+                if (levelIds.isNotEmpty()) {
+
+
+                    var totalQuestions = 0
+                    for (levelId in levelIds) {
+                        totalQuestions += questionRepository.getQuestionsByCompetenceAndLevel(entity.id, levelId).size
+                    }
+
+                    val correctQuestions = progressDao.getUniqueCorrectQuestionCountForLevels(username, levelIds)
+
+                    if (totalQuestions > 0) {
+                        calculatedProgress = correctQuestions.toFloat() / totalQuestions.toFloat()
+                    }
+                }
+
+                competence.copy(totalProgress = calculatedProgress)
             } else {
-                // Buscar en datos hardcodeados
                 getHardcodedCompetences().find { it.id == id }?.also { competence ->
-                    // 🔥 GUARDAR EN BD SI SE ENCUENTRA EN HARCODEADOS
                     saveCompetenceToDatabase(competence)
                 }
             }
@@ -60,7 +135,6 @@ class CompetenceRepositoryImpl @Inject constructor(
         }
     }
 
-    // 🔥 NUEVO MÉTDO: Obtener niveles desde la base de datos
     private suspend fun getLevelsFromDatabase(competenceId: Int): List<Level> {
         return try {
             val levelEntities = levelDao.getLevelsByCompetence(competenceId)
@@ -71,18 +145,43 @@ class CompetenceRepositoryImpl @Inject constructor(
                 println("⚠️ No hay niveles en BD para competencia $competenceId, creándolos...")
                 createAndSaveLevelsForCompetence(competenceId)
             } else {
-                // Convertir entidades a modelos de dominio
-                levelEntities.map { entity ->
-                    Level(
-                        id = entity.id,
-                        name = entity.name,
-                        description = entity.description,
-                        questions = emptyList(),
-                        isLocked = entity.isLocked,
-                        isCompleted = entity.isCompleted,
-                        progress = entity.progress
+                // 🔥 --- LÓGICA DE CÁLCULO DE PROGRESO POR NIVEL ---
+                val username = getCurrentUserName()
+
+                // Mapea las entidades a Dominio, calculando su progreso real
+                // Usamos map suspendido (con bucle for) porque los DAOs son suspend
+                val levelsWithRealProgress = mutableListOf<Level>()
+
+                for (entity in levelEntities) {
+                    val levelId = entity.id
+
+                    // 1. DENOMINADOR (Total de preguntas en este nivel)
+                    val totalQuestionsInLevel = questionRepository.getQuestionsByCompetenceAndLevel(competenceId, levelId).size
+
+                    // 2. NUMERADOR (Correctas únicas en este nivel)
+                    val correctQuestionsInLevel = progressDao.getUniqueCorrectQuestionCountForLevels(username, listOf(levelId))
+
+                    // 3. CALCULAR
+                    val calculatedProgress = if (totalQuestionsInLevel > 0) {
+                        correctQuestionsInLevel.toFloat() / totalQuestionsInLevel.toFloat()
+                    } else {
+                        0f
+                    }
+
+                    // 4. CREAR EL MODELO DE DOMINIO CON DATOS REALES
+                    levelsWithRealProgress.add(
+                        Level(
+                            id = entity.id,
+                            name = entity.name,
+                            description = entity.description,
+                            questions = emptyList(),
+                            isLocked = entity.isLocked,
+                            isCompleted = (calculatedProgress == 1f), // Se considera completo si es 100%
+                            progress = calculatedProgress // Usamos el progreso real
+                        )
                     )
                 }
+                levelsWithRealProgress // Devolver la lista con progreso real
             }
         } catch (e: Exception) {
             println("❌ Error obteniendo niveles de BD: ${e.message}")
@@ -90,7 +189,6 @@ class CompetenceRepositoryImpl @Inject constructor(
         }
     }
 
-    // 🔥 NUEVO MÉTDO: Crear y guardar niveles en BD
     private suspend fun createAndSaveLevelsForCompetence(competenceId: Int): List<Level> {
         return try {
             // Obtener nombre de la competencia para nombres de niveles

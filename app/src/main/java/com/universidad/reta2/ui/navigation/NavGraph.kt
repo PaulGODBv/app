@@ -133,7 +133,7 @@ fun NavGraph(
             val origin = backStackEntry.arguments?.getString("origin") ?: "competencies"
 
             // Key única para forzar recomposición limpia
-            key("questions_safe_${competenceId}_${levelId}_${System.currentTimeMillis()}") {
+            key("questions_safe_${competenceId}_${levelId}") {
                 QuestionScreenUltraSafe(
                     navController = navController,
                     competencyId = competenceId,
@@ -173,7 +173,7 @@ fun NavGraph(
             val origin = backStackEntry.arguments?.getString("origin") ?: "competencies"
 
 
-            key("results_${competenceId}_${levelId}_${score}_${System.currentTimeMillis()}") {
+            key("results_${competenceId}_${levelId}_${score}") {
                 ResultsScreen(
                     navController = navController,
                     competencyId = competenceId,

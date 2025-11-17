@@ -11,7 +11,9 @@ import com.universidad.reta2.domain.repositories.UserStatsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
@@ -30,6 +32,14 @@ class ProfileViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState = _uiState.asStateFlow()
+
+    private val _eventChannel= MutableSharedFlow<ProfileEvent>()
+    val eventChannel = _eventChannel.asSharedFlow()
+
+    sealed class ProfileEvent{
+        data class LaunchIntent(val intent: Intent): ProfileEvent()
+    }
+
 
     init {
         val username = sessionManager.getCurrentUsername(context) ?: ""
@@ -107,7 +117,6 @@ class ProfileViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(errorMessage = "", successMessage = "")
     }
 
-    // 🔥 CORREO FIJO PARA REPORTES
     private companion object {
         const val ADMIN_EMAIL = "appreta2@gmail.com"
     }
@@ -205,8 +214,11 @@ class ProfileViewModel @Inject constructor(
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        // Launch email intent
-        context.startActivity(Intent.createChooser(intent, "Enviar reporte a administración"))
+        val chooser=Intent.createChooser(intent, "Enviar reporte a administración")
+        viewModelScope.launch {
+            _eventChannel.emit(ProfileEvent.LaunchIntent(chooser))
+        }
+
     }
 
     // 🔥 CREAR ARCHIVO TEMPORAL CSV CON NOMBRE PERSONALIZADO

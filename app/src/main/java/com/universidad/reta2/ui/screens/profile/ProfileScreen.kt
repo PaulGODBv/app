@@ -34,6 +34,16 @@ fun ProfileScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
+    LaunchedEffect(Unit) {
+        viewModel.eventChannel.collect{ event ->
+            when(event){
+                is ProfileViewModel.ProfileEvent.LaunchIntent -> {
+                    context.startActivity(event.intent)
+                }
+            }
+        }
+    }
+
     // Auto-limpiar mensajes
     LaunchedEffect(state.errorMessage) {
         if (state.errorMessage.isNotEmpty()) {

@@ -3,19 +3,9 @@ package com.universidad.reta2.data.local.entities
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.ColumnInfo
-import androidx.room.ForeignKey
 
-@Entity(
-    tableName = "question_attempts",
-    foreignKeys = [
-        ForeignKey(
-            entity = QuestionEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["question_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
-)
+
+@Entity(tableName = "question_attempts")
 data class QuestionAttemptEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

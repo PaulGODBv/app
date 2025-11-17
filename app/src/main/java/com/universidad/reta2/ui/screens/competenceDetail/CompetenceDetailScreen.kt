@@ -5,6 +5,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
@@ -15,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.universidad.reta2.domain.models.Level
@@ -109,14 +115,48 @@ fun CompetenceDetailScreen(
                             Row(
                                 modifier = Modifier.padding(20.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                Text(
-                                    text = getCompetenceIcon(competence.name),
-                                    style = MaterialTheme.typography.displayMedium
-                                )
+                                // --- CONTENEDOR DE IMAGEN MEJORADO ---
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(MaterialTheme.shapes.medium)
+                                        .background(MaterialTheme.colorScheme.surface),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (competence.iconResId != 0) {
+                                        Image(
+                                            painter = painterResource(id = competence.iconResId),
+                                            contentDescription = competence.name,
+                                            modifier = Modifier
+                                                .size(70.dp)
+                                                .clip(MaterialTheme.shapes.small),
+                                            contentScale = ContentScale.Fit
+                                        )
+                                    } else {
+                                        // Fallback elegante
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = competence.name.take(1).uppercase(),
+                                                style = MaterialTheme.typography.headlineMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
 
-                                Column {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
                                     Text(
                                         text = competence.name,
                                         style = MaterialTheme.typography.titleLarge,
@@ -126,7 +166,7 @@ fun CompetenceDetailScreen(
                                     Text(
                                         text = competence.description,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                     )
                                 }
                             }
@@ -173,9 +213,12 @@ fun LevelCard(level: Level, onLevelClick: () -> Unit) {
             ),
         colors = CardDefaults.cardColors(
             containerColor = if (level.isLocked)
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             else
                 MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (level.isLocked) 1.dp else 4.dp
         )
     ) {
         Row(
@@ -187,19 +230,36 @@ fun LevelCard(level: Level, onLevelClick: () -> Unit) {
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(
-                    imageVector = if (level.isLocked) Icons.Filled.Lock else Icons.Filled.Star,
-                    contentDescription = null,
-                    tint = if (level.isLocked)
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    else
-                        MaterialTheme.colorScheme.primary
-                )
+                // Icono del nivel
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(
+                            if (level.isLocked)
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                            else
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (level.isLocked) Icons.Filled.Lock else Icons.Filled.Star,
+                        contentDescription = if (level.isLocked) "Nivel bloqueado" else "Nivel disponible",
+                        tint = if (level.isLocked)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
 
-                Column {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = level.name,
                         style = MaterialTheme.typography.titleMedium,
@@ -212,37 +272,38 @@ fun LevelCard(level: Level, onLevelClick: () -> Unit) {
                     Text(
                         text = level.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
+            // Progreso del nivel
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 LinearProgressIndicator(
-                    progress = level.progress,
-                    modifier = Modifier.width(100.dp)
+                    progress = level.progress.coerceIn(0f, 1f),
+                    modifier = Modifier.width(80.dp),
+                    color = if (level.isLocked)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                 )
                 Text(
                     text = "${(level.progress * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (level.isLocked)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.onSurface
                 )
             }
         }
-    }
-}
-
-fun getCompetenceIcon(name: String): String {
-    return when {
-        "Lectura" in name -> "📖"
-        "Razonamiento" in name -> "🧮"
-        "Inglés" in name -> "🇬🇧"
-        "Ciudadanas" in name -> "🤝"
-        else -> "🎯"
     }
 }
 

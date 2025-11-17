@@ -12,4 +12,7 @@ interface QuestionDao {
 
     @Query("SELECT * FROM question_options WHERE question_id = :questionId ORDER BY original_order")
     suspend fun getOptionsForQuestion(questionId: Int): List<QuestionOptionEntity>
+
+    @Query("SELECT COUNT(id) FROM questions WHERE level_id IN (:levelIds)")
+    suspend fun getQuestionCountForLevels(levelIds: List<Int>): Int
 }
