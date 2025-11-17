@@ -39,32 +39,24 @@ fun ResultsScreen(
     origin: String,
     viewModel: ResultsViewModel = hiltViewModel()
 ) {
+
     // Usar el ViewModel para obtener datos de la competencia
-    val competency by viewModel.getCompetency(competencyId).collectAsState(initial = null)
-    val level by viewModel.getLevel(competencyId, levelId).collectAsState(initial = null)
+    val competency by viewModel.competenceState.collectAsState()
+    val level by viewModel.levelState.collectAsState()
+
 
     val percentage = if (totalQuestions > 0) (score * 100) / totalQuestions else 0
 
     // Actualiza el progreso una sola vez al mostrar la pantalla
-    val hasUpdatedProgress = remember { mutableStateOf(false) }
     val previousRoute by remember {
         derivedStateOf {
             navController.previousBackStackEntry?.destination?.route ?: ""
         }
     }
-    var isNavigating by remember { mutableStateOf(false) }
 
     LaunchedEffect(competencyId, levelId) {
-        if (!hasUpdatedProgress.value) {
-            viewModel.updateUserProgress(competencyId, levelId, score, totalQuestions)
-            hasUpdatedProgress.value = true
-        }
-    }
-
-    // Resetear después de un tiempo
-    LaunchedEffect(Unit) {
-        delay(1000)
-        isNavigating = false
+        viewModel.loadData(competencyId, levelId)
+        viewModel.updateUserProgress(competencyId, levelId, score, totalQuestions)
     }
 
     val buttonText = when(origin){
@@ -261,9 +253,6 @@ fun ResultsScreen(
             ) {
                 Button(
                     onClick = {
-                        if (isNavigating) return@Button
-                        isNavigating = true
-
                         try {
                             when (origin) {
                                 "progress" -> {
@@ -291,23 +280,15 @@ fun ResultsScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     ),
-                    enabled = !isNavigating // 🔥 Deshabilitar durante navegación
-                ) {
-                    if (isNavigating) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = buttonText,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
 
+                ) {
+                    Text(
+                        text = buttonText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                }
 
                 OutlinedButton(
                     onClick = {

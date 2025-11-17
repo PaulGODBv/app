@@ -8,7 +8,10 @@ import com.universidad.reta2.domain.repositories.CompetenceRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
@@ -20,69 +23,49 @@ class ResultsViewModel @Inject constructor(
     private val competenceRepository: CompetenceRepository
 ) : ViewModel() {
 
+    private val _competenceState = MutableStateFlow<Competence?>(null)
+    val competenceState: StateFlow<Competence?> = _competenceState.asStateFlow()
+
+    private val _levelState = MutableStateFlow<Level?>(null)
+    val levelState: StateFlow<Level?> = _levelState.asStateFlow()
     private var hasUpdatedProgress = false
     private var lastUpdateKey=""
     /**
      * Actualiza el progreso del usuario en un nivel específico.
      */
-    fun updateUserProgress(competenceId: Int, levelId: Int, score: Int, totalQuestions: Int) {
-        val updateKey = "$competenceId-$levelId-$score-$totalQuestions"
 
+    fun loadData(competenceId: Int, levelId: Int) {
+        // Evitar recargar si ya los tenemos
+        if (_competenceState.value != null && _levelState.value != null) return
 
-        if (hasUpdatedProgress && lastUpdateKey == updateKey) {
-            return
-        }
         viewModelScope.launch {
             try {
-
-                // Calcular porcentaje de progreso
-                val progress = if (totalQuestions > 0) score.toFloat() / totalQuestions else 0f
-
-                userStatsRepository.addQuestionsAnswered(totalQuestions)
-                userStatsRepository.addPracticeTime(60) // Simulamos 60s de práctica
-
-                // Solo incrementar racha si es una respuesta correcta
-                if (score > 0) {
-                    userStatsRepository.incrementStreak()
-                }
-
-                // Actualizar progreso del nivel
-                userStatsRepository.updateLevelProgress(competenceId, levelId, progress)
-
-
-                hasUpdatedProgress = true
-                lastUpdateKey = updateKey
-
-
+                val competence = competenceRepository.getCompetenceById(competenceId)
+                val level = competence?.levels?.firstOrNull { it.id == levelId }
+                _competenceState.update { competence }
+                _levelState.update { level }
             } catch (e: Exception) {
-                println("❌ Error updating user progress: ${e.message}")
+                _competenceState.update { null }
+                _levelState.update { null }
             }
         }
     }
+    fun updateUserProgress(competenceId: Int, levelId: Int, score: Int, totalQuestions: Int) {
+        val updateKey = "$competenceId-$levelId-$score-$totalQuestions"
 
-
-    /**
-     * Devuelve la competencia con todos sus niveles.
-     */
-    fun getCompetency(competenceId: Int): Flow<Competence?> = flow {
-        try {
-            val competence = competenceRepository.getCompetenceById(competenceId)
-            emit(competence)
-        } catch (e: Exception) {
-            emit(null)
+        // La lógica de 'hasUpdatedProgress' útil para
+        // evitar cualquier lógica futura que se ejecute varias veces.
+        if (hasUpdatedProgress && lastUpdateKey == updateKey) {
+            println("ResultViewModel: updateUserProgress ya ejecutado, omitiendo.")
+            return
         }
+
+        println("ResultViewModel: updateUserProgress ejecutado (no hace nada).")
+
+
+        hasUpdatedProgress = true
+        lastUpdateKey = updateKey
     }
 
-    /**
-     * Devuelve un nivel específico de una competencia.
-     */
-    fun getLevel(competenceId: Int, levelId: Int): Flow<Level?> = flow {
-        try {
-            val competence = competenceRepository.getCompetenceById(competenceId)
-            val level = competence?.levels?.firstOrNull { it.id == levelId }
-            emit(level)
-        } catch (e: Exception) {
-            emit(null)
-        }
-    }
+
 }

@@ -29,7 +29,7 @@ class QuestionViewModel @Inject constructor(
     val uiState: StateFlow<QuestionUiState> = _uiState.asStateFlow()
 
     private var timerJob: Job? = null
-    private var isViewModelActive = true
+    //private var isViewModelActive = true
 
     private var _origin = MutableStateFlow("competencies") // Valor por defecto
     val origin: StateFlow<String> = _origin.asStateFlow()
@@ -48,25 +48,27 @@ class QuestionViewModel @Inject constructor(
     }
     //  CARGAR PREGUNTAS CON PROTECCIÓN
     fun loadQuestions(competenceId: Int, levelId: Int) {
-        if (!isViewModelActive) {
-            println("ViewModel no activo, ignorando carga")
+        if (_uiState.value.isLoading ||
+            (_uiState.value.questions.isNotEmpty() &&
+                    currentCompetenceId == competenceId &&
+                    currentLevelId == levelId)) {
+
+            println("Ignorando carga: isLoading=${_uiState.value.isLoading} o preguntas ya cargadas.")
             return
         }
 
         viewModelScope.launch {
             try {
                 println(" Cargando preguntas para competence: $competenceId, level: $levelId")
-
                 _uiState.update { it.copy(isLoading = true, error = null) }
 
-                // Cargar competencia y preguntas USANDO EL USE CASE ✅
                 val competence = competenceRepository.getCompetenceById(competenceId)
-                val questions = getQuestionsUseCase(competenceId, levelId) // ✅ USAR USE CASE
+                val questions = getQuestionsUseCase(competenceId, levelId)
 
-                if (isViewModelActive && questions.isNotEmpty()) {
+                if (questions.isNotEmpty()) {
                     println(" ${questions.size} preguntas cargadas exitosamente")
 
-                    currentCompetenceId = competenceId
+                    currentCompetenceId = competenceId // Guardar los IDs actuales
                     currentLevelId = levelId
 
                     _uiState.update {
@@ -75,10 +77,11 @@ class QuestionViewModel @Inject constructor(
                             currentCompetence = competence,
                             isLoading = false,
                             currentQuestionIndex = 0,
+                            // ... (resetear score, tiempo, etc. SÍ está bien aquí)
                             score = 0,
                             timeElapsed = 0,
                             selectedOptionId = null,
-                            streak = 0, // STREAK INICIALIZADO EN 0
+                            streak = 0,
                             isQuizCompleted = false
                         )
                     }
@@ -95,14 +98,6 @@ class QuestionViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 println(" Error cargando preguntas: ${e.message}")
-                if (isViewModelActive) {
-                    _uiState.update {
-                        it.copy(
-                            error = e.message ?: "Error desconocido al cargar preguntas",
-                            isLoading = false
-                        )
-                    }
-                }
             }
         }
     }
@@ -111,18 +106,16 @@ class QuestionViewModel @Inject constructor(
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            while (isViewModelActive && !_uiState.value.isQuizCompleted) {
+            while (!_uiState.value.isQuizCompleted) {
                 delay(1000)
-                if (isViewModelActive) {
-                    _uiState.update { it.copy(timeElapsed = it.timeElapsed + 1) }
-                }
+                _uiState.update { it.copy(timeElapsed = it.timeElapsed + 1) }
             }
         }
     }
 
     // SELECCIONAR OPCIÓN CON PROTECCIÓN
     fun selectOption(optionId: Int) {
-        if (!isViewModelActive) return
+        //if (!isViewModelActive) return
 
         println("🎯 Opción seleccionada: $optionId")
         _uiState.update { it.copy(selectedOptionId = optionId) }
@@ -130,11 +123,11 @@ class QuestionViewModel @Inject constructor(
 
     //  SIGUIENTE PREGUNTA CON ACTUALIZACIÓN DE PROGRESO
     fun nextQuestion() {
-        if (!isViewModelActive) return
+        //if (!isViewModelActive) return
 
         val currentState = _uiState.value
 
-        // Validación extra de seguridad
+        // Validación de seguridad
         if (currentState.questions.isEmpty() ||
             currentState.currentQuestionIndex >= currentState.questions.size) {
             println("❌ No se puede avanzar: estado inválido")
@@ -144,26 +137,25 @@ class QuestionViewModel @Inject constructor(
         val currentQuestion = currentState.questions[currentState.currentQuestionIndex]
         val isCorrect = currentState.selectedOptionId == currentQuestion.correctOptionId
 
-        // Calcular nuevo estado ANTES DE ACTUALIZAR
+        // Calcular nuevo estado
         val newScore = if (isCorrect) currentState.score + 1 else currentState.score
         val newStreak = if (isCorrect) currentState.streak + 1 else 0
 
-        // DETERMINAR SI ES LA ÚLTIMA PREGUNTA ANTES DE INCREMENTAR
+        // 🔥 DETERMINAR SI ES LA ÚLTIMA PREGUNTA CORRECTAMENTE
         val isLastQuestion = currentState.currentQuestionIndex == currentState.questions.size - 1
+        val isActuallyLastQuestion = isLastQuestion // Para claridad
 
         println("🔄 QuestionViewModel.nextQuestion:")
         println("   - Pregunta actual: ${currentState.currentQuestionIndex + 1}/${currentState.questions.size}")
-        println("   - isLastQuestion: $isLastQuestion")
-        println("   - currentCompetenceId: $currentCompetenceId")
-        println("   - currentLevelId: $currentLevelId")
-        println("   - newScore: $newScore")
-        println("   - totalQuestions: ${currentState.questions.size}")
+        println("   - isLastQuestion: $isActuallyLastQuestion")
+        println("   - Score actual: $newScore/${currentState.questions.size}")
+        println("   - Porcentaje: ${(newScore.toFloat() / currentState.questions.size * 100).toInt()}%")
 
-        // ACTUALIZAR PROGRESO - INCLUYENDO LA ÚLTIMA PREGUNTA
+        // 🔥 ACTUALIZAR PROGRESO SOLO PARA LA ÚLTIMA PREGUNTA
         viewModelScope.launch {
             try {
-                if (isViewModelActive) {
-                    println("📤 LLAMANDO a UpdateProgressUseCase...")
+                if (isActuallyLastQuestion) {
+                    println("📤 LLAMANDO a UpdateProgressUseCase para COMPLETAR NIVEL...")
 
                     updateProgressUseCase(
                         questionId = currentQuestion.id,
@@ -171,39 +163,54 @@ class QuestionViewModel @Inject constructor(
                         timeSpent = 1,
                         levelId = currentLevelId,
                         competenceId = currentCompetenceId,
-                        isLevelCompleted = isLastQuestion, // 🔥 ESTE DEBE SER TRUE PARA LA ÚLTIMA PREGUNTA
-                        levelScore = if (isLastQuestion) newScore else 0,
-                        totalQuestions = if (isLastQuestion) currentState.questions.size else 0
+                        isLevelCompleted = true, // 🔥 SOLO PARA LA ÚLTIMA PREGUNTA
+                        levelScore = newScore,
+                        totalQuestions = currentState.questions.size
                     )
 
-                    if (isLastQuestion) {
-                        println("🏁 Proceso de completado de nivel $currentLevelId finalizado")
-                        println("📈 Score final: $newScore/${currentState.questions.size}")
-                    }
+                    println("🏁 Proceso de completado de nivel $currentLevelId finalizado")
+                    println("📈 Score final: $newScore/${currentState.questions.size}")
+                        // 🔥 VERIFICAR SI SE DEBE DESBLOQUEAR (mínimo 80%
+                    val progressPercentage = newScore.toFloat() / currentState.questions.size
+                    val shouldUnlock = progressPercentage >= 0.8f
+                    println("🔓 Condición desbloqueo: $progressPercentage >= 0.8 → $shouldUnlock")
+                } else {
+                    // Para preguntas que NO son la última, solo registrar el intento
+                    updateProgressUseCase(
+                        questionId = currentQuestion.id,
+                        isCorrect = isCorrect,
+                        timeSpent = 1,
+                        levelId = currentLevelId,
+                        competenceId = currentCompetenceId,
+                        isLevelCompleted = false, // 🔥 IMPORTANTE: false para preguntas no finales
+                        levelScore = 0,
+                        totalQuestions = 0
+                    )
                 }
             } catch (e: Exception) {
                 println("❌ Error actualizando progreso: ${e.message}")
             }
         }
 
+        // Actualizar estado de la UI
         _uiState.update {
             it.copy(
                 currentQuestionIndex = it.currentQuestionIndex + 1,
                 selectedOptionId = null,
                 score = newScore,
                 streak = newStreak,
-                isQuizCompleted = isLastQuestion
+                isQuizCompleted = isActuallyLastQuestion
             )
         }
 
-        if (isLastQuestion) {
+        if (isActuallyLastQuestion) {
             completeQuiz()
         }
     }
 
     // 🔒 COMPLETAR QUIZ CON PROTECCIÓN
     private fun completeQuiz() {
-        if (!isViewModelActive) return
+        //if (!isViewModelActive) return
 
         val currentState = _uiState.value
         val finalScore = currentState.score
@@ -245,22 +252,12 @@ class QuestionViewModel @Inject constructor(
     }
 
     // 🔒 ACTIVACIÓN/DESACTIVACIÓN SEGURA
-    fun activate() {
-        println("✅ Activando ViewModel")
-        isViewModelActive = true
-    }
 
-    fun resetState() {
-        println("🔄 Reseteando estado del ViewModel")
-        isViewModelActive = false
-        timerJob?.cancel()
-        _uiState.value = QuestionUiState()
-    }
 
     override fun onCleared() {
         println("🧹 ViewModel siendo destruido")
         super.onCleared()
-        isViewModelActive = false
+        //isViewModelActive = false
         timerJob?.cancel()
     }
 

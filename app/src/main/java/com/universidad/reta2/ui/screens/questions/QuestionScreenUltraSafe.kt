@@ -49,7 +49,7 @@ fun QuestionScreenUltraSafe(
     viewModel: QuestionViewModel = hiltViewModel()
 ) {
     // Estado local para control absoluto del ciclo de vida
-    var isCompositionActive by remember { mutableStateOf(true) }
+    //var isCompositionActive by remember { mutableStateOf(true) }
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(origin) {
@@ -67,29 +67,18 @@ fun QuestionScreenUltraSafe(
     var offset by remember { mutableStateOf(Offset.Zero) }
 
     // Efecto para manejar el ciclo de vida de la composición
-    DisposableEffect(competencyId, levelId) {
-        println("🎬 Iniciando QuestionScreen para competency: $competencyId, level: $levelId")
-        isCompositionActive = true
-        viewModel.activate()
 
-        onDispose {
-            println("🧹 QuestionScreen siendo descompuesta")
-            isCompositionActive = false
-            viewModel.resetState()
-        }
-    }
 
     // Cargar preguntas de forma segura
     LaunchedEffect(competencyId, levelId) {
-        if (isCompositionActive && uiState.questions.isEmpty() && !uiState.isLoading) {
-            viewModel.loadQuestions(competencyId, levelId)
-        }
+        // Simplemente llama a loadQuestions.
+        // El ViewModel (que ahora es más inteligente)
+        // decidirá si necesita cargar los datos o no.
+        viewModel.loadQuestions(competencyId, levelId)
     }
 
     // No renderizar nada si no estamos activos
-    if (!isCompositionActive) {
-        return
-    }
+
 
     // 🔥 ACTUALIZAR TEXTO PARA MODAL CUANDO CAMBIA LA PREGUNTA
     LaunchedEffect(uiState.currentQuestionIndex) {
@@ -101,7 +90,7 @@ fun QuestionScreenUltraSafe(
 
     // 🔥 LAUNCHED EFFECT PARA NAVEGACIÓN A RESULTS
     LaunchedEffect(uiState.isQuizCompleted) {
-        if (uiState.isQuizCompleted && isCompositionActive) {
+        if (uiState.isQuizCompleted) {
             println("🎯 Navegando a Results desde QuestionScreenUltraSafe")
             println("📊 Score final: ${uiState.score}/${uiState.questions.size}")
             println("⏱️ Tiempo total: ${uiState.timeElapsed}s")
@@ -129,12 +118,9 @@ fun QuestionScreenUltraSafe(
     Box(modifier = Modifier.fillMaxSize()) {
         SafeScaffold(
             navController = navController,
-            competencyId = competencyId,
-            levelId = levelId,
             uiState = uiState,
             viewModel = viewModel,
-            isCompositionActive = isCompositionActive,
-            origin = origin,
+            //isCompositionActive = isCompositionActive,
             onShowTextModal = {
                 uiState.currentQuestion?.readingText?.let { text ->
                     if (text.isNotEmpty()) {
@@ -178,12 +164,8 @@ fun QuestionScreenUltraSafe(
 @Composable
 private fun SafeScaffold(
     navController: NavHostController,
-    competencyId: Int,
-    levelId: Int,
     uiState: QuestionViewModel.QuestionUiState,
     viewModel: QuestionViewModel,
-    isCompositionActive: Boolean,
-    origin: String,
     onShowTextModal: () -> Unit,
     onShowImageModal: (String) -> Unit,
 ) {
@@ -197,9 +179,7 @@ private fun SafeScaffold(
                 isLoading = uiState.isLoading,
                 streak = uiState.streak,
                 onBackClick = {
-                    if (isCompositionActive) {
                         navController.popBackStack()
-                    }
                 }
             )
         }
@@ -208,18 +188,11 @@ private fun SafeScaffold(
             uiState = uiState,
             paddingValues = paddingValues,
             onOptionSelected = { optionId ->
-                if (isCompositionActive) {
                     viewModel.selectOption(optionId)
-                }
+
             },
             onNextClicked = {
-                if (!isCompositionActive) return@SafeContent
-
-                if (viewModel.isLastQuestion()) {
-                    viewModel.nextQuestion() // Esto activará isQuizCompleted
-                } else {
                     viewModel.nextQuestion()
-                }
             },
             onShowTextModal = onShowTextModal,
             onShowImageModal = onShowImageModal
@@ -253,12 +226,12 @@ private fun SafeTopBar(
             }
         },
         actions = {
-            // ✅ CONTENEDOR PARA RACHA Y TIEMPO
+            // CONTENEDOR PARA RACHA Y TIEMPO
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 🔥 INDICADOR DE RACHA
+                //  INDICADOR DE RACHA
                 if (streak > 0) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -317,8 +290,8 @@ private fun SafeContent(
                     uiState = uiState,
                     onOptionSelected = onOptionSelected,
                     onNextClicked = onNextClicked,
-                    onShowTextModal = onShowTextModal, // 🔥 PASAR CALLBACKS
-                    onShowImageModal = onShowImageModal // 🔥 PASAR CALLBACKS
+                    onShowTextModal = onShowTextModal,
+                    onShowImageModal = onShowImageModal
                 )
             }
         }
@@ -349,7 +322,7 @@ private fun SafeQuestionContent(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // 🔥 RACHA Y BARRA DE PROGRESO
+            //  RACHA Y BARRA DE PROGRESO
             key("progress_${uiState.currentQuestionIndex}") {
                 ProgressSection(
                     currentIndex = uiState.currentQuestionIndex,
@@ -358,7 +331,7 @@ private fun SafeQuestionContent(
                 )
             }
 
-            // ✅ CONTEXTO DE LA PREGUNTA CON PREVIEW
+            //  CONTEXTO DE LA PREGUNTA CON PREVIEW
             if (currentQuestion.readingText.isNotEmpty() || currentQuestion.contextImage != null) {
                 key("context_${currentQuestion.id}_${uiState.currentQuestionIndex}") {
                     QuestionContextCard(
@@ -471,7 +444,7 @@ private fun ProgressSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 🔥 RACHA (solo mostrar si es mayor a 0)
+
             if (streak > 0) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -533,8 +506,8 @@ private fun ProgressSection(
 private fun QuestionContextCard(
     readingText: String,
     contextImage: String?,
-    onShowTextModal: () -> Unit, // 🔥 NUEVO
-    onShowImageModal: (String) -> Unit // 🔥 NUEVO
+    onShowTextModal: () -> Unit,
+    onShowImageModal: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -568,10 +541,10 @@ private fun QuestionContextCard(
 
             // CONTENIDO DEL CONTEXTO CON PREVIEW
             when {
-                // ✅ CASO 1: SOLO TEXTO - CON PREVIEW Y BOTÓN
+
                 readingText.isNotEmpty() && contextImage == null -> {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // PREVIEW DEL TEXTO (primeras 2 líneas o 150 caracteres)
+
                         val textPreview = getTextPreview(readingText, maxLines = 2)
                         Text(
                             text = textPreview,
@@ -716,7 +689,7 @@ private fun QuestionContextCard(
                     }
                 }
 
-                // ✅ CASO 4: SIN CONTEXTO
+                //  CASO 4: SIN CONTEXTO
                 else -> {
                     // No mostrar nada si no hay contexto
                 }
@@ -736,7 +709,7 @@ private fun getTextPreview(fullText: String, maxLines: Int = 2): String {
     }
 }
 
-// 🔥 MODAL PARA TEXTO COMPLETO
+
 @Composable
 private fun TextContextModal(
     readingText: String,
@@ -840,7 +813,7 @@ private fun TextContextModal(
     }
 }
 
-// 🔥 MODAL PARA IMAGEN CON ZOOM
+
 @Composable
 private fun ImageContextModal(
     imageName: String,
@@ -988,7 +961,7 @@ private fun ImageContextModal(
     }
 }
 
-// ✅ COMPONENTE PARA CARGAR IMÁGENES DESDE DRAWABLE
+
 @Composable
 private fun LoadContextImage(
     imageName: String,
@@ -1073,7 +1046,6 @@ private fun LoadContextImage(
     }
 }
 
-// ✅ FUNCIÓN PARA OBTENER EL RESOURCE ID DE LA IMAGEN
 private fun getImageResourceId(context: android.content.Context, imageName: String): Int {
     return try {
         // Buscar el resource ID por nombre
@@ -1101,7 +1073,7 @@ private fun SafeOptionItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    // ✅ MANTENER LA ESTRUCTURA SEGURA, SOLO MEJORAR EL DISEÑO
+
     Card(
         modifier = Modifier
             .fillMaxWidth()

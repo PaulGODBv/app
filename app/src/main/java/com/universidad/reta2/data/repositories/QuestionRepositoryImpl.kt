@@ -8,6 +8,18 @@ import javax.inject.Inject
 class QuestionRepositoryImpl @Inject constructor() : QuestionRepository {
 
     override suspend fun getQuestionsByCompetenceAndLevel(competenceId: Int, levelId: Int): List<Question> {
-        return CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId)
+        println("🔍 QuestionRepositoryImpl.getQuestionsByCompetenceAndLevel:")
+        println("   - competenceId: $competenceId")
+        println("   - levelId: $levelId")
+
+        val questions = CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId)
+
+        println("📊 QuestionRepositoryImpl RESULTADO:")
+        println("   - Preguntas desde CompetencyData: ${questions.size}")
+        questions.forEachIndexed { index, question ->
+            println("   ${index + 1}. ID: ${question.id}, Texto: '${question.text.take(30)}...'")
+        }
+
+        return questions
     }
 }

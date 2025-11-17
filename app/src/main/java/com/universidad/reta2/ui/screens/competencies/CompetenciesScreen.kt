@@ -114,31 +114,31 @@ fun CompetenceCard(
                     modifier = Modifier
                         .size(72.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
+                        //.background(MaterialTheme.colorScheme.surfaceVariant),
+                    //contentAlignment = Alignment.Center
                 ) {
                     if (competence.iconResId != 0) {
                         Image(
                             painter = painterResource(id = competence.iconResId),
                             contentDescription = competence.name,
                             modifier = Modifier
-                                .size(56.dp)
-                                .clip(RoundedCornerShape(8.dp)),
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(50.dp)),
                             contentScale = ContentScale.Crop
                         )
                     } else {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.primary,
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        )
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
+//                                .background(
+//                                    brush = Brush.verticalGradient(
+//                                        colors = listOf(
+//                                            MaterialTheme.colorScheme.primary,
+//                                            MaterialTheme.colorScheme.primaryContainer
+//                                        )
+//                                    )
+//                                ),
+                            //contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = competence.name.take(1).uppercase(),

@@ -31,18 +31,20 @@ class UpdateProgressUseCase @Inject constructor(
             println("   - levelScore: $levelScore")
             println("   - totalQuestions: $totalQuestions")
 
-            // 1. Registrar la respuesta individual
-//            progressRepository.recordQuestionAttempt(
-//                questionId = questionId,
-//                isCorrect = isCorrect,
-//                timeSpentSeconds = timeSpent,
-//                levelId = levelId
-//            )
+             //1. Registrar la respuesta individual
+            progressRepository.recordQuestionAttempt(
+                questionId = questionId,
+                isCorrect = isCorrect,
+                timeSpentSeconds = timeSpent,
+                levelId = levelId
+            )
 
             // 2. Actualizar estadísticas del usuario
             val currentStats = userStatsRepository.getUserStats().first()
+
+            val questionsToAdd= if (isCorrect) 1 else 0
             val updatedStats = currentStats.copy(
-                totalQuestionsAnswered = currentStats.totalQuestionsAnswered + 1,
+                totalQuestionsAnswered = currentStats.totalQuestionsAnswered + questionsToAdd,
                 totalPracticeTimeSeconds = currentStats.totalPracticeTimeSeconds + timeSpent,
                 dailyPracticeTime = currentStats.dailyPracticeTime + timeSpent
             )

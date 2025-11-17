@@ -34,7 +34,7 @@ import androidx.room.Room
         QuestionAttemptEntity::class,
         LevelProgressEntity::class
     ],
-    version = 5
+    version = 6
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao

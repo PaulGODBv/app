@@ -14,11 +14,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.ui.navigation.Screen
 import com.universidad.reta2.ui.theme.*
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun HomeScreen(
@@ -36,6 +42,20 @@ fun HomeScreen(
 
     val completedCompetencesCount by remember {
         derivedStateOf { viewModel.getCompletedCompetencesCount() }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if(event==Lifecycle.Event.ON_RESUME){
+                viewModel.loadCompetences()
+                viewModel.loadUserStats()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     if (isLoading) {
@@ -250,17 +270,29 @@ fun CompetencePracticeCard(
             // Icono de la competencia
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(70.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Primary100),
+                    .background(MaterialTheme.colorScheme.surfaceVariant), // Un fondo neutral
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = competence.name.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                if (competence.iconResId != 0) {
+                    Image(
+                        painter = painterResource(id = competence.iconResId),
+                        contentDescription = competence.name,
+                        modifier = Modifier
+                            .size(60.dp) // Un poco más pequeño que el box
+                            .clip(RoundedCornerShape(20.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Fallback si no hay icono (tu lógica anterior)
+                    Text(
+                        text = competence.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary100 // Usar el color primario
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))

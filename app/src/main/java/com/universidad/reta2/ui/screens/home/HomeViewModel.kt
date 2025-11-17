@@ -5,10 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.repositories.CompetenceRepository
-import com.universidad.reta2.domain.repositories.ProgressRepository
 import com.universidad.reta2.domain.usecases.GetUserStatsUseCase
 import com.universidad.reta2.domain.models.UserStats
-import com.universidad.reta2.domain.models.LevelProgress
 import com.universidad.reta2.data.preferences.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,7 +23,6 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val competenceRepository: CompetenceRepository,
     private val getUserStatsUseCase: GetUserStatsUseCase,
-    private val progressRepository: ProgressRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -43,10 +40,8 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadUserData()
-        loadCompetences()
-        loadUserStats()
-        // 🔥 OBSERVAR CAMBIOS EN PROGRESO
-        observeProgressUpdates()
+//        loadCompetences()
+//        loadUserStats()
     }
 
     private fun loadUserData() {
@@ -55,15 +50,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun loadCompetences() {
+    fun loadCompetences() {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
                 val loadedCompetences = competenceRepository.getAllCompetences()
 
-                val competencesWithProgress = updateCompetencesWithRealProgress(loadedCompetences)
 
-                _competences.value = competencesWithProgress
+                _competences.value = loadedCompetences
             } catch (e: Exception) {
                 _competences.value = emptyList()
             } finally {
@@ -72,9 +66,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun loadUserStats() {
+    fun loadUserStats() {
         viewModelScope.launch {
             try {
+                // Usamos collectLatest para asegurar que solo procesamos el último valor
                 getUserStatsUseCase().collectLatest { stats ->
                     _userStats.value = stats
                 }
@@ -84,79 +79,16 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // 🔥 NUEVO: OBSERVAR ACTUALIZACIONES DE PROGRESO
-    private fun observeProgressUpdates() {
-        viewModelScope.launch {
-            progressRepository.getUserProgress().collect { progressList ->
-                // Actualizar competencias con progreso actualizado
-                val currentCompetences = _competences.value
-                if (currentCompetences.isNotEmpty()) {
-                    _competences.value = updateCompetencesWithRealProgress(currentCompetences)
-                }
-
-                // Actualizar estadísticas si es necesario
-                loadUserStats()
-            }
-        }
-    }
-
-    // 🔥 NUEVO: ACTUALIZAR COMPETENCIAS CON PROGRESO
-    private suspend fun updateCompetencesWithRealProgress(competences: List<Competence>): List<Competence> {
-        return try {
-            val progressList = progressRepository.getUserProgress().first()
-
-            competences.map { competence ->
-                val competenceProgress = progressList.filter { it.competenceId == competence.id }
-
-                val totalProgress = calculateTotalProgress(competence, competenceProgress)
-
-                println("🏠 Competencia ${competence.id} - Progreso: ${(totalProgress * 100).toInt()}%")
-
-                competence.copy(
-                    totalProgress = totalProgress.coerceIn(0f, 1f)
-                )
-            }
-        } catch (e: Exception) {
-            println("❌ Home - Error calculando progreso: ${e.message}")
-            competences.map { it.copy(totalProgress = 0f) }
-        }
-    }
-
-    private fun calculateTotalProgress(competence: Competence, progress: List<LevelProgress>): Float {
-        if (progress.isEmpty()) return 0f
-
-        var totalProgress = 0f
-        var levelsWithProgress = 0
-
-        competence.levels.forEach { level ->
-            val levelProgress = progress.find { it.levelId == level.id }
-            if (levelProgress != null) {
-                val levelCompletion = if (levelProgress.isCompleted) {
-                    1f
-                } else {
-                    if (levelProgress.totalQuestions > 0) {
-                        levelProgress.questionsCompleted.toFloat() / levelProgress.totalQuestions.toFloat()
-                    } else {
-                        0f
-                    }
-                }
-                totalProgress += levelCompletion
-                levelsWithProgress++
-            }
-        }
-
-        return if (levelsWithProgress > 0) totalProgress / competence.levels.size else 0f
-    }
-
     fun getCompetencesWithProgress(): List<Competence> {
+        // Filtra las competencias que se han empezado (progreso > 0)
+        // pero que aún no se han completado (progreso < 1).
         return _competences.value.filter { competence ->
-            competence.levels.any { level ->
-                !level.isLocked && (level.isCompleted || level.progress > 0f)
-            }
+            competence.totalProgress > 0f && competence.totalProgress < 1f
         }
     }
 
     fun getCompletedCompetencesCount(): Int {
+        // Esta lógica ya usa 'totalProgress', así que está bien.
         return _competences.value.count { it.totalProgress >= 1f }
     }
 }
