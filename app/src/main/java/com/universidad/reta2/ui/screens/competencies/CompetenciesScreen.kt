@@ -41,15 +41,15 @@ fun CompetenciesScreen(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
                 }
+//                navigationIcon = {
+//                    IconButton(onClick = onBackClick) {
+//                        Icon(
+//                            imageVector = Icons.Filled.ArrowBack,
+//                            contentDescription = "Volver"
+//                        )
+//                    }
+//                }
             )
         }
     ) { paddingValues ->
