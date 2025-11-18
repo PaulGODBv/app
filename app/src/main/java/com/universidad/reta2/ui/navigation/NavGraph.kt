@@ -18,7 +18,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import com.universidad.reta2.ui.screens.login.LoginScreen
 import com.universidad.reta2.ui.screens.competencies.CompetenciesScreen
 import com.universidad.reta2.ui.screens.competenceDetail.CompetenceDetailScreen
-import com.universidad.reta2.ui.screens.questions.QuestionScreen
 import com.universidad.reta2.ui.screens.profile.ProfileScreen
 import com.universidad.reta2.ui.screens.registration.RegistrationScreen
 import com.universidad.reta2.ui.screens.progress.ProgressScreen

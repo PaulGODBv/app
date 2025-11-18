@@ -44,6 +44,17 @@ fun ResultsScreen(
     val competency by viewModel.competenceState.collectAsState()
     val level by viewModel.levelState.collectAsState()
 
+    val nextLevelId=remember(competency, levelId){
+        competency?.levels?.let { levels ->
+            val currentIndex = levels.indexOfFirst { it.id == levelId }
+
+            if (currentIndex >= 0 && currentIndex < levels.size - 1) {
+                levels[currentIndex + 1].id
+            } else {
+                null
+            }
+        }
+    }
 
     val percentage = if (totalQuestions > 0) (score * 100) / totalQuestions else 0
 
@@ -290,23 +301,40 @@ fun ResultsScreen(
 
                 }
 
+                val canGoToNext = percentage >= 70 && nextLevelId != null
                 OutlinedButton(
                     onClick = {
-                        println("🔄 Retrying level: $levelId")
-                        navController.navigate(Screen.Questions.createRoute(competencyId, levelId)) {
-                            // Limpiar stack apropiadamente según procedencia
-                            when {
-                                previousRoute.startsWith("progress") -> popUpTo(Screen.Progress.route)
-                                previousRoute.contains("competence") -> popUpTo(Screen.CompetenceDetail.route)
-                                else -> popUpTo(Screen.Competencies.route)
+                        if (canGoToNext) {
+                            println("🚀 Avanzando al siguiente nivel: $nextLevelId")
+
+                            val targetRoute = Screen.Questions.createRoute(competencyId, nextLevelId!!)
+
+                            navController.navigate(targetRoute) {
+                                // 🔥 CLAVE: Eliminar ResultsScreen y la pregunta anterior de la pila
+                                // Pop hasta Competencies (o la pantalla origen) para limpiar el stack
+                                popUpTo(Screen.Competencies.route) {
+                                    inclusive = false // Mantenemos Competencies en el stack
+                                }
+                                launchSingleTop = true
                             }
-                            launchSingleTop = true
+                        } else {
+                            println("🔄 Reintentando nivel: $levelId")
+
+                            val targetRoute = Screen.Questions.createRoute(competencyId, levelId)
+
+                            navController.navigate(targetRoute) {
+                                // 🔥 CLAVE: Limpiar stack al reintentar también
+                                popUpTo(Screen.Competencies.route) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
-                ) {
+                ){
                     Text(
-                        text = if (percentage >= 70) "Siguiente Nivel" else "Reintentar",
+                        text = if (canGoToNext) "Siguiente Nivel" else "Reintentar",
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
