@@ -3,12 +3,15 @@ package com.universidad.reta2.ui.screens.registration
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -26,6 +29,9 @@ fun RegistrationScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    val focusManager = LocalFocusManager.current
+
 
     // Auto-dismiss para mensajes
     LaunchedEffect(uiState.errorMessage) {
@@ -48,6 +54,7 @@ fun RegistrationScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -63,7 +70,9 @@ fun RegistrationScreen(
             value = uiState.username,
             onValueChange = { viewModel.onUsernameChange(it) },
             label = { Text("Nombre de usuario") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Next,
+                keyboardType = KeyboardType.Text),
             isError = uiState.errorMessage.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )
@@ -73,7 +82,10 @@ fun RegistrationScreen(
             value = uiState.email,
             onValueChange = { viewModel.onEmailChange(it) },
             label = { Text("Correo electrónico") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
             isError = uiState.errorMessage.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )
@@ -84,7 +96,10 @@ fun RegistrationScreen(
             onValueChange = { viewModel.onPasswordChange(it) },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Next
+            ),
             isError = uiState.errorMessage.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )
@@ -95,7 +110,14 @@ fun RegistrationScreen(
             onValueChange = { viewModel.onConfirmPasswordChange(it) },
             label = { Text("Confirmar contraseña") },
             visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus()}
+            ),
             isError = uiState.errorMessage.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )
