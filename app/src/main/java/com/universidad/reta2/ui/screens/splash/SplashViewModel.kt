@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.domain.repositories.SessionRepository
 import com.universidad.reta2.domain.repositories.CompetenceRepository
+import com.universidad.reta2.domain.repositories.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
-    private val competenceRepository: CompetenceRepository
+    private val competenceRepository: CompetenceRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     suspend fun initializeAppData() {
@@ -35,14 +37,40 @@ class SplashViewModel @Inject constructor(
     val isUserLoggedIn = _isUserLoggedIn.asStateFlow()
 
     init {
-        checkUserSession()
+        // Inicializar datos y verificar sesión en paralelo
+        viewModelScope.launch {
+            initializeAppData() // Aseguramos que los datos base existan
+            checkUserSession()
+        }
     }
 
     private fun checkUserSession() {
         viewModelScope.launch {
-            delay(2000) // Simular carga
-            val user = sessionRepository.getCurrentUser()
-            _isUserLoggedIn.value = user != null
+            delay(2000) // Simular carga (branding)
+
+            // 1. Preguntar a la sesión (SharedPreferences)
+            val sessionUser = sessionRepository.getCurrentUser()
+
+            if (sessionUser != null) {
+                // 2. 🔥 VALIDACIÓN DE SEGURIDAD (Anti-Fantasmas)
+                // La sesión dice que estamos logueados, pero... ¿existe en la BD real?
+                val dbUser = userRepository.getUserByUsername(sessionUser.username)
+
+                if (dbUser != null) {
+                    // ✅ Tdo correcto: Sesión válida y usuario en BD
+                    println("✅ Sesión válida verificada para: ${sessionUser.username}")
+                    _isUserLoggedIn.value = true
+                } else {
+                    //  CASO FANTASMA DETECTADO
+                    // Hay sesión en caché, pero la BD está vacía (ej. reinstalación)
+                    println("👻 Sesión fantasma detectada. Forzando logout...")
+                    sessionRepository.clearSession()
+                    _isUserLoggedIn.value = false
+                }
+            } else {
+                // No hay sesión
+                _isUserLoggedIn.value = false
+            }
         }
     }
 }
