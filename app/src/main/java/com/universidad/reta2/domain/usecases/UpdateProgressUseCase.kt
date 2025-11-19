@@ -21,8 +21,7 @@ class UpdateProgressUseCase @Inject constructor(
         totalQuestions: Int = 0
     ) {
         try {
-            // 🔥 DIAGNÓSTICO CRÍTICO - VER QUÉ PARÁMETROS LLEGAN
-            println("🎯 UpdateProgressUseCase INVOCADO")
+            println(" UpdateProgressUseCase INVOCADO")
             println("   - questionId: $questionId")
             println("   - isCorrect: $isCorrect")
             println("   - levelId: $levelId")
@@ -57,13 +56,13 @@ class UpdateProgressUseCase @Inject constructor(
                 userStatsRepository.resetStreak()
             }
 
-            // 🔥 DIAGNÓSTICO ANTES DE COMPLETAR NIVEL
+
             println("🔍 ANTES de completeLevelAndUnlockNext:")
             println("   - isLevelCompleted: $isLevelCompleted")
             println("   - competenceId: $competenceId")
             println("   - Condición: ${isLevelCompleted && competenceId != null}")
 
-            // USAR ProgressRepository PARA COMPLETAR NIVEL Y DESBLOQUEAR SIGUIENTE
+
             if (isLevelCompleted && competenceId != null) {
                 println("🚀 EJECUTANDO completeLevelAndUnlockNext...")
                 println("🎯 Completando nivel $levelId con score: $levelScore/$totalQuestions")

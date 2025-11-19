@@ -32,12 +32,12 @@ fun ProgressScreen(
     navController: NavController,
     viewModel: ProgressViewModel = hiltViewModel()
 ) {
-    // 🔒 ESTADO LOCAL PARA CONTROL ABSOLUTO DEL CICLO DE VIDA
+    //  ESTADO LOCAL PARA CONTROL ABSOLUTO DEL CICLO DE VIDA
     var isCompositionActive by remember { mutableStateOf(true) }
     val state by viewModel.state.collectAsState()
     val formattedPracticeTime by remember { derivedStateOf { viewModel.getFormattedPracticeTime() } }
 
-    // 🔒 EFECTO PARA MANEJAR EL CICLO DE VIDA DE LA COMPOSICIÓN
+    //  EFECTO PARA MANEJAR EL CICLO DE VIDA DE LA COMPOSICIÓN
     DisposableEffect(Unit) {
         println("🎬 Iniciando ProgressScreenUltraSafe")
         isCompositionActive = true
@@ -50,7 +50,7 @@ fun ProgressScreen(
         }
     }
 
-    // 🔒 CONTROL DE NAVEGACIÓN SEGURO
+    //  CONTROL DE NAVEGACIÓN SEGURO
     var navigationCompetenceId by remember { mutableStateOf<Int?>(null) }
 
     // Effect para navegación controlada
@@ -69,12 +69,12 @@ fun ProgressScreen(
         }
     }
 
-    // 🔒 NO RENDERIZAR NADA SI NO ESTAMOS ACTIVOS
+    //  NO RENDERIZAR NADA SI NO ESTAMOS ACTIVOS
     if (!isCompositionActive) {
         return
     }
 
-    // 🔒 CONTENIDO PRINCIPAL CON MANEJO SEGURO DE ESTADOS
+    // CONTENIDO PRINCIPAL CON MANEJO SEGURO DE ESTADOS
     ProgressContentUltraSafe(
         state = state,
         formattedPracticeTime = formattedPracticeTime,
@@ -259,7 +259,6 @@ fun CompetenceProgressCardSafe(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            // ✅ SOLUCIÓN: Versión explícita de clickable
             .clickable(
                 onClick = {
                     println("🎯 Click en card: ${competence.name}")

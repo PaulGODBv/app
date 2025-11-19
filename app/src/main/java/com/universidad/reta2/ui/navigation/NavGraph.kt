@@ -32,10 +32,10 @@ fun NavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
-    // 🔒 PROTECCIÓN GLOBAL CONTRA MÚLTIPLES NAVEGACIONES
+    //  PROTECCIÓN GLOBAL CONTRA MÚLTIPLES NAVEGACIONES
     var isNavigating by remember { mutableStateOf(false) }
 
-    // 🔒 EFFECT PARA RESETEAR EL ESTADO DE NAVEGACIÓN
+    //  EFFECT PARA RESETEAR EL ESTADO DE NAVEGACIÓN
     LaunchedEffect(isNavigating) {
         if (isNavigating) {
             delay(500) // Esperar 500ms después de navegar
