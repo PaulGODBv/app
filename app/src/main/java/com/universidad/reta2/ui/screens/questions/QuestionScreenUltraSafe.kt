@@ -80,7 +80,7 @@ fun QuestionScreenUltraSafe(
     // No renderizar nada si no estamos activos
 
 
-    // 🔥 ACTUALIZAR TEXTO PARA MODAL CUANDO CAMBIA LA PREGUNTA
+    // ACTUALIZAR TEXTO PARA MODAL CUANDO CAMBIA LA PREGUNTA
     LaunchedEffect(uiState.currentQuestionIndex) {
         val currentQuestion = uiState.currentQuestion
         if (currentQuestion != null && currentQuestion.readingText.isNotEmpty()) {
@@ -88,7 +88,7 @@ fun QuestionScreenUltraSafe(
         }
     }
 
-    // 🔥 LAUNCHED EFFECT PARA NAVEGACIÓN A RESULTS
+    //  LAUNCHED EFFECT PARA NAVEGACIÓN A RESULTS
     LaunchedEffect(uiState.isQuizCompleted) {
         if (uiState.isQuizCompleted) {
             println("🎯 Navegando a Results desde QuestionScreenUltraSafe")
@@ -133,10 +133,10 @@ fun QuestionScreenUltraSafe(
                 currentImageResource = imageName
                 showImageModal = true
             }
-            // 🔥 ELIMINADO: onQuizCompleted callback
+
         )
 
-        // 🔥 MODALES
+        //  MODALES
         if (showTextModal && currentReadingText.isNotEmpty()) {
             TextContextModal(
                 readingText = currentReadingText,

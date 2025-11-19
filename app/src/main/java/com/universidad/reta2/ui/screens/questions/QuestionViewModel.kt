@@ -157,7 +157,7 @@ class QuestionViewModel @Inject constructor(
         println("   - Score actual: $newScore/${currentState.questions.size}")
         println("   - Porcentaje: ${(newScore.toFloat() / currentState.questions.size * 100).toInt()}%")
 
-        // 🔥 ACTUALIZAR PROGRESO SOLO PARA LA ÚLTIMA PREGUNTA
+        //  ACTUALIZAR PROGRESO SOLO PARA LA ÚLTIMA PREGUNTA
         viewModelScope.launch {
             try {
                 if (isActuallyLastQuestion) {
@@ -215,7 +215,7 @@ class QuestionViewModel @Inject constructor(
         }
     }
 
-    // 🔒 COMPLETAR QUIZ CON PROTECCIÓN
+    //  COMPLETAR QUIZ CON PROTECCIÓN
     private fun completeQuiz() {
         //if (!isViewModelActive) return
 
@@ -235,7 +235,7 @@ class QuestionViewModel @Inject constructor(
         _uiState.update { it.copy(isQuizCompleted = true) }
     }
 
-    // 🔒 MÉTODOS DE UTILIDAD SEGUROS
+    //  MÉTODOS DE UTILIDAD SEGUROS
     fun isLastQuestion(): Boolean {
         val state = _uiState.value
         return state.currentQuestionIndex >= state.questions.size - 1
@@ -249,7 +249,7 @@ class QuestionViewModel @Inject constructor(
         timerJob?.cancel()
     }
 
-    // 🔒 DATA CLASS DEL ESTADO CON STREAK ✅
+    //  DATA CLASS DEL ESTADO CON STREAK ✅
     data class QuestionUiState(
         val questions: List<Question> = emptyList(),
         val currentQuestionIndex: Int = 0,
@@ -270,7 +270,7 @@ class QuestionViewModel @Inject constructor(
             get() = questions.getOrNull(currentQuestionIndex)
     }
 
-    // 🔒 EVENTOS DE NAVEGACIÓN (opcional - si los necesitas)
+    //  EVENTOS DE NAVEGACIÓN (opcional - si los necesitas)
     sealed class NavigationEvent {
         data class NavigateToResults(
             val competenceId: Int,

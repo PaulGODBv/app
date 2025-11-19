@@ -52,12 +52,11 @@ class SplashViewModel @Inject constructor(
             val sessionUser = sessionRepository.getCurrentUser()
 
             if (sessionUser != null) {
-                // 2. 🔥 VALIDACIÓN DE SEGURIDAD (Anti-Fantasmas)
                 // La sesión dice que estamos logueados, pero... ¿existe en la BD real?
                 val dbUser = userRepository.getUserByUsername(sessionUser.username)
 
                 if (dbUser != null) {
-                    // ✅ Tdo correcto: Sesión válida y usuario en BD
+                    //  Tdo correcto: Sesión válida y usuario en BD
                     println("✅ Sesión válida verificada para: ${sessionUser.username}")
                     _isUserLoggedIn.value = true
                 } else {
