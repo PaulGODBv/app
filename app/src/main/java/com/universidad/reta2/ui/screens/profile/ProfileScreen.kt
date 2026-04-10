@@ -282,7 +282,7 @@ fun ProfileScreen(
                     onClick = {
                         viewModel.logout()
                         navController.navigate(Screen.Login.route) {
-                            popUpTo(Screen.Login.route) { inclusive = true }
+                            popUpTo(0) { inclusive = true }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(

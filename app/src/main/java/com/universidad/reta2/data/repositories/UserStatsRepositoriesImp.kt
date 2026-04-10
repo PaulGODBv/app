@@ -17,7 +17,7 @@ import javax.inject.Inject
 
 class UserStatsRepositoriesImp @Inject constructor(
     private val userStatsDao: UserStatsDao,
-    private val statsInitializer: StatsInitializer, // 🔥 INYECTAR StatsInitializer
+    private val statsInitializer: StatsInitializer,
     @ApplicationContext private val context: Context
 ) : UserStatsRepository {
 
@@ -39,7 +39,6 @@ class UserStatsRepositoriesImp @Inject constructor(
     override suspend fun addQuestionsAnswered(count: Int) {
         val username = getCurrentUsername()
         try {
-            // 🔥 INICIALIZAR STATS SI NO EXISTEN
             statsInitializer.initializeUserStats(username)
 
             val currentStats = userStatsDao.getUserStatsSync(username)
@@ -50,7 +49,6 @@ class UserStatsRepositoriesImp @Inject constructor(
 
         } catch (e: Exception) {
             println("❌ Error en addQuestionsAnswered: ${e.message}")
-            // Reintentar inicialización
             statsInitializer.initializeUserStats(username)
         }
     }
@@ -58,7 +56,6 @@ class UserStatsRepositoriesImp @Inject constructor(
     override suspend fun addPracticeTime(seconds: Int) {
         val username = getCurrentUsername()
         try {
-            // 🔥 INICIALIZAR STATS SI NO EXISTEN
             statsInitializer.initializeUserStats(username)
 
             val currentStats = userStatsDao.getUserStatsSync(username)

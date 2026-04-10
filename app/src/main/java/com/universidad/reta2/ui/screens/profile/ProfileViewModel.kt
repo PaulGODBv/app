@@ -121,7 +121,6 @@ class ProfileViewModel @Inject constructor(
         const val ADMIN_EMAIL = "appreta2@gmail.com"
     }
 
-    // 🔥 NUEVA FUNCIÓN para exportar estadísticas
     fun exportStatisticsToAdmin() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "", successMessage = "")
@@ -143,7 +142,7 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    // 🔥 GENERAR CSV CON ESTADÍSTICAS
+
     private suspend fun generateStatisticsCSV(): String {
         val username = sessionManager.getCurrentUsername(context) ?: "Usuario"
         val userEmail = sessionManager.getCurrentEmail(context) ?: "No especificado"
@@ -180,7 +179,6 @@ class ProfileViewModel @Inject constructor(
         return csvBuilder.toString()
     }
 
-    // 🔥 ENVIAR CORREO A ADMINISTRACIÓN
     private fun sendEmailWithCSV(csvContent: String) {
         val username = sessionManager.getCurrentUsername(context) ?: "Usuario"
         val userEmail = sessionManager.getCurrentEmail(context) ?: "No especificado"
@@ -221,7 +219,6 @@ class ProfileViewModel @Inject constructor(
 
     }
 
-    // 🔥 CREAR ARCHIVO TEMPORAL CSV CON NOMBRE PERSONALIZADO
     private fun createTempCSVFile(csvContent: String, username: String): File {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val safeUsername = username.replace("[^a-zA-Z0-9]".toRegex(), "_")

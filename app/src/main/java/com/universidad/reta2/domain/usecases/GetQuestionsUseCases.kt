@@ -8,15 +8,10 @@ class GetQuestionsUseCase @Inject constructor(
     private val questionRepository: QuestionRepository
 ) {
     suspend operator fun invoke(competenceId: Int, levelId: Int): List<Question> {
-        println("🎯 GetQuestionsUseCase INVOCADO:")
-        println("   - competenceId: $competenceId")
-        println("   - levelId: $levelId")
+
 
         val questions = questionRepository.getQuestionsByCompetenceAndLevel(competenceId, levelId)
 
-        println("📊 GetQuestionsUseCase RESULTADO:")
-        println("   - Preguntas retornadas: ${questions.size}")
-        println("   - IDs: ${questions.map { it.id }}")
 
         return questions
     }

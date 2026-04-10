@@ -323,7 +323,7 @@ fun ResultsScreen(
                             val targetRoute = Screen.Questions.createRoute(competencyId, levelId)
 
                             navController.navigate(targetRoute) {
-                                // 🔥 CLAVE: Limpiar stack al reintentar también
+                                //  CLAVE: Limpiar stack al reintentar también
                                 popUpTo(Screen.Competencies.route) {
                                     inclusive = false
                                 }
