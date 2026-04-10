@@ -7,7 +7,6 @@ import com.universidad.reta2.data.local.entities.CompetenceEntity
 import com.universidad.reta2.data.local.entities.LevelEntity
 import com.universidad.reta2.data.local.entities.QuestionEntity
 import com.universidad.reta2.data.local.entities.QuestionOptionEntity
-import com.universidad.reta2.data.local.entities.ProgressEntity
 import com.universidad.reta2.data.local.entities.QuestionAttemptEntity
 import com.universidad.reta2.data.local.entities.LevelProgressEntity
 import androidx.room.RoomDatabase
@@ -30,11 +29,10 @@ import androidx.room.Room
         LevelEntity::class,
         QuestionEntity::class,
         QuestionOptionEntity::class,
-        ProgressEntity::class,
         QuestionAttemptEntity::class,
         LevelProgressEntity::class
     ],
-    version = 6
+    version = 7
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao

@@ -243,19 +243,17 @@ class QuestionViewModel @Inject constructor(
 
 
     override fun onCleared() {
-        println("🧹 ViewModel siendo destruido")
         super.onCleared()
         //isViewModelActive = false
         timerJob?.cancel()
     }
 
-    //  DATA CLASS DEL ESTADO CON STREAK ✅
     data class QuestionUiState(
         val questions: List<Question> = emptyList(),
         val currentQuestionIndex: Int = 0,
         val selectedOptionId: Int? = null,
         val score: Int = 0,
-        val streak: Int = 0, // ✅ STREAK AGREGADO
+        val streak: Int = 0,
         val timeElapsed: Int = 0,
         val timeAtQuestionStart: Int = 0,
         val isLoading: Boolean = false,
@@ -270,16 +268,5 @@ class QuestionViewModel @Inject constructor(
             get() = questions.getOrNull(currentQuestionIndex)
     }
 
-    //  EVENTOS DE NAVEGACIÓN (opcional - si los necesitas)
-    sealed class NavigationEvent {
-        data class NavigateToResults(
-            val competenceId: Int,
-            val levelId: Int,
-            val score: Int,
-            val totalQuestions: Int,
-            val timeSpent: Int
-        ) : NavigationEvent()
 
-        object NavigateBack : NavigationEvent()
-    }
 }
