@@ -264,28 +264,15 @@ fun ResultsScreen(
             ) {
                 Button(
                     onClick = {
-                        try {
-                            when (origin) {
-                                "progress" -> {
-                                    println("🔄 Returning to Progress (origin: $origin)")
-                                    navController.navigate(Screen.Progress.route) {
-                                        popUpTo(Screen.Home.route) { saveState = true }
-                                        launchSingleTop = true
-                                    }
-                                }
-                                else -> {
-                                    println("🔄 Returning to Competencies (origin: $origin)")
-                                    navController.navigate(Screen.Competencies.route) {
-                                        popUpTo(Screen.Home.route) { saveState = true }
-                                        launchSingleTop = true
-                                    }
-                                }
+                        val targetRoute = if (origin == "home") Screen.Home.route else Screen.Competencies.route
+                        
+                        navController.navigate(targetRoute) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = false 
                             }
-                        } catch (e: Exception) {
-                            println("❌ Navigation failed: ${e.message}")
-                            navController.popBackStack(Screen.Home.route, false)
+                            launchSingleTop = true
+                            restoreState = true // Recupera el estado limpio del tab
                         }
-
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
@@ -302,37 +289,25 @@ fun ResultsScreen(
                 }
 
                 val canGoToNext = percentage >= 70 && nextLevelId != null
-                OutlinedButton(
+                Button(
                     onClick = {
-                        if (canGoToNext) {
-                            println("🚀 Avanzando al siguiente nivel: $nextLevelId")
-
-                            val targetRoute = Screen.Questions.createRoute(competencyId, nextLevelId!!)
-
-                            navController.navigate(targetRoute) {
-                                // 🔥 CLAVE: Eliminar ResultsScreen y la pregunta anterior de la pila
-                                // Pop hasta Competencies (o la pantalla origen) para limpiar el stack
-                                popUpTo(Screen.Competencies.route) {
-                                    inclusive = false // Mantenemos Competencies en el stack
-                                }
-                                launchSingleTop = true
-                            }
+                        val targetRoute = if (canGoToNext) {
+                            println("▶️ Avanzando al siguiente nivel: ${levelId + 1}")
+                            Screen.Questions.createRoute(competencyId, levelId + 1, origin)
                         } else {
                             println("🔄 Reintentando nivel: $levelId")
+                            Screen.Questions.createRoute(competencyId, levelId, origin)
+                        }
 
-                            val targetRoute = Screen.Questions.createRoute(competencyId, levelId)
-
-                            navController.navigate(targetRoute) {
-                                //  CLAVE: Limpiar stack al reintentar también
-                                popUpTo(Screen.Competencies.route) {
-                                    inclusive = false
-                                }
-                                launchSingleTop = true
+                        navController.navigate(targetRoute) {
+                            popUpTo(Screen.Results.route) {
+                                inclusive = true 
                             }
+                            launchSingleTop = true
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
-                ){
+                ) {
                     Text(
                         text = if (canGoToNext) "Siguiente Nivel" else "Reintentar",
                         style = MaterialTheme.typography.bodyLarge
