@@ -91,6 +91,32 @@ fun RegistrationScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Campo nuevo: Código estudiantil
+        OutlinedTextField(
+            value = uiState.studentCode,
+            onValueChange = { viewModel.onStudentCodeChange(it) },
+            label = { Text("Código estudiantil") },
+            placeholder = { Text("Ej: 01220371027") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Next
+            ),
+            isError = uiState.errorMessage.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth(),
+            supportingText = {
+                Text(
+                    text = "${uiState.studentCode.length}/11",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (uiState.studentCode.length == 11)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         OutlinedTextField(
             value = uiState.password,
             onValueChange = { viewModel.onPasswordChange(it) },

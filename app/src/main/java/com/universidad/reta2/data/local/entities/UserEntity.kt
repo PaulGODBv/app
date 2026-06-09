@@ -14,6 +14,9 @@ data class UserEntity(
     
     @ColumnInfo(name = "password")
     val password: String,
+
+    @ColumnInfo(name = "student_code")
+    val studentCode: String = "",
     
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis()
