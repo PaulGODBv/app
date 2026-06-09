@@ -47,6 +47,16 @@ class RegistrationViewModel @Inject constructor(
         )
     }
 
+    fun onStudentCodeChange(studentCode: String) {
+        // Solo permitir dígitos y máximo 11 caracteres
+        if (studentCode.length <= 11 && studentCode.all { it.isDigit() }) {
+            _uiState.value = _uiState.value.copy(
+                studentCode = studentCode,
+                errorMessage = ""
+            )
+        }
+    }
+
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(
             errorMessage = "",
@@ -94,6 +104,18 @@ class RegistrationViewModel @Inject constructor(
                 )
                 RegistrationResult.PasswordsNotMatch
             }
+            state.studentCode.isEmpty() -> {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "El código estudiantil no puede estar vacío"
+                )
+                RegistrationResult.EmptyStudentCode
+            }
+            state.studentCode.length != 11 -> {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "El código estudiantil debe tener 11 dígitos"
+                )
+                RegistrationResult.InvalidStudentCode
+            }
             else -> {
                 try {
                     // Verificar si el usuario ya existe
@@ -108,7 +130,8 @@ class RegistrationViewModel @Inject constructor(
                         val user = User(
                             username = state.username,
                             email = state.email,
-                            password = state.password
+                            password = state.password,
+                            studentCode = state.studentCode
                         )
 
                         val success = userRepository.createUser(user)
@@ -145,6 +168,7 @@ data class RegistrationUiState(
     val email: String = "",
     val password: String = "",
     val confirmPassword: String = "",
+    val studentCode: String = "", // Nuevo
     val errorMessage: String = "",
     val successMessage: String = "",
     val isLoading: Boolean = false
@@ -160,5 +184,7 @@ sealed class RegistrationResult {
     object PasswordsNotMatch : RegistrationResult()
     object UserExists : RegistrationResult()
     object RegistrationError : RegistrationResult()
+    object EmptyStudentCode : RegistrationResult()    // Nuevo
+    object InvalidStudentCode : RegistrationResult()  // Nuevo
     data class Error(val message: String) : RegistrationResult()
 }
