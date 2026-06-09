@@ -282,7 +282,10 @@ fun ProfileScreen(
                     onClick = {
                         viewModel.logout()
                         navController.navigate(Screen.Login.route) {
+                            // Limpiar el back stack completamente para destruir ViewModels
                             popUpTo(0) { inclusive = true }
+                            // Evitar múltiples instancias de la pantalla de login
+                            launchSingleTop = true
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
