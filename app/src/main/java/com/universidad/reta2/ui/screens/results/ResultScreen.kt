@@ -292,8 +292,8 @@ fun ResultsScreen(
                 Button(
                     onClick = {
                         val targetRoute = if (canGoToNext) {
-                            println("▶️ Avanzando al siguiente nivel: ${levelId + 1}")
-                            Screen.Questions.createRoute(competencyId, levelId + 1, origin)
+                            println("▶️ Avanzando al siguiente nivel: $nextLevelId")
+                            Screen.Questions.createRoute(competencyId, nextLevelId!!, origin)
                         } else {
                             println("🔄 Reintentando nivel: $levelId")
                             Screen.Questions.createRoute(competencyId, levelId, origin)

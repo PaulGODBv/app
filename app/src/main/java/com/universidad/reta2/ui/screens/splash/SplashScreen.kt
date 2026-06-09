@@ -19,23 +19,17 @@ fun SplashScreen(
 ) {
     val isUserLoggedIn by viewModel.isUserLoggedIn.collectAsState()
 
-    LaunchedEffect(Unit) {
-        println("🚀 Iniciando app...")
-        viewModel.initializeAppData()
-        delay(2000)
-        navController.navigate(Screen.Home.route)
-    }
-    // Navegación según sesión
+    // Navegación reactiva según estado de sesión
     LaunchedEffect(isUserLoggedIn) {
         when (isUserLoggedIn) {
             true -> {
                 navController.navigate(Screen.Home.route) {
-                    popUpTo(Screen.Login.route) { inclusive = true }
+                    popUpTo(Screen.Splash.route) { inclusive = true }
                 }
             }
             false -> {
                 navController.navigate(Screen.Login.route) {
-                    popUpTo(0) { inclusive = true }
+                    popUpTo(Screen.Splash.route) { inclusive = true }
                 }
             }
             null -> Unit // Todavía cargando

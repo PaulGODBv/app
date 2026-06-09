@@ -42,7 +42,7 @@ fun AppContent() {
             Screen.Competencies.route,
             Screen.Progress.route,
             Screen.Profile.route
-        )
+        ) && currentRoute != null // Asegurar que no se muestre durante la carga/splash
 
         Surface(
             modifier = Modifier.fillMaxSize(),
