@@ -52,6 +52,18 @@ interface ProgressDao {
     suspend fun getIncorrectQuestions(username: String, levelId: Int): List<Int>
 
     @Query("""
+        SELECT DISTINCT question_id 
+        FROM question_attempts 
+        WHERE username = :username 
+        AND is_correct = 1 
+        AND level_id = :levelId
+    """)
+    suspend fun getCorrectlyAnsweredQuestionIds(
+        username: String,
+        levelId: Int
+    ): List<Int>
+
+    @Query("""
         SELECT COUNT(DISTINCT question_id) 
         FROM question_attempts 
         WHERE username = :username 

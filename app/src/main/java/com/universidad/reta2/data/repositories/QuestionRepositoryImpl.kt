@@ -8,18 +8,46 @@ import javax.inject.Inject
 class QuestionRepositoryImpl @Inject constructor() : QuestionRepository {
 
     override suspend fun getQuestionsByCompetenceAndLevel(competenceId: Int, levelId: Int): List<Question> {
-        println("🔍 QuestionRepositoryImpl.getQuestionsByCompetenceAndLevel:")
-        println("   - competenceId: $competenceId")
-        println("   - levelId: $levelId")
+        return CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId)
+    }
 
-        val questions = CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId)
+    override suspend fun getQuestionCount(competenceId: Int, levelId: Int): Int {
+        return CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId).size
+    }
 
-        println("📊 QuestionRepositoryImpl RESULTADO:")
-        println("   - Preguntas desde CompetencyData: ${questions.size}")
-        questions.forEachIndexed { index, question ->
-            println("   ${index + 1}. ID: ${question.id}, Texto: '${question.text.take(30)}...'")
+    override suspend fun getRandomQuestions(
+        competenceId: Int,
+        levelId: Int,
+        username: String,
+        correctlyAnsweredIds: List<Int>
+    ): List<Question> {
+        val allQuestions = CompetencyData.getQuestionsByCompetenceAndLevel(competenceId, levelId)
+
+        val count = calculateQuestionCount(allQuestions.size).coerceAtMost(allQuestions.size)
+
+        val priorityPool = allQuestions.filter { it.id !in correctlyAnsweredIds }
+        val secondaryPool = allQuestions.filter { it.id in correctlyAnsweredIds }
+
+        val selected = mutableListOf<Question>()
+
+        if (priorityPool.size >= count) {
+            selected.addAll(priorityPool.shuffled().take(count))
+        } else {
+            selected.addAll(priorityPool)
+            val remaining = count - priorityPool.size
+            selected.addAll(secondaryPool.shuffled().take(remaining))
         }
 
-        return questions
+        return selected.shuffled()
+    }
+
+    private fun calculateQuestionCount(total: Int): Int {
+        return when {
+            total <= 15 -> 5
+            total <= 30 -> 8
+            total <= 60 -> 10
+            total <= 100 -> 12
+            else -> 15
+        }
     }
 }
