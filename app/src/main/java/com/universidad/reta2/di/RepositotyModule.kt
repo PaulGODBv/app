@@ -126,8 +126,16 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideGetQuestionsUseCase(questionRepository: QuestionRepository): GetQuestionsUseCase {
-        return GetQuestionsUseCase(questionRepository)
+    fun provideGetQuestionsUseCase(
+        questionRepository: QuestionRepository,
+        progressDao: ProgressDao,
+        @ApplicationContext context: Context
+    ): com.universidad.reta2.domain.usecases.GetQuestionsUseCase {
+        return com.universidad.reta2.domain.usecases.GetQuestionsUseCase(
+            questionRepository,
+            progressDao,
+            context
+        )
     }
 
     @Module
