@@ -11,6 +11,7 @@ sealed class Screen(val route: String) {
     object Progress : Screen("progress")
     object Splash:Screen("splash")
     object Home:Screen("home")
+    object TimedMode : Screen("timed_mode") // NUEVO
 
 
     object CompetenceDetail : Screen("competence_detail/{competenceId}") {
