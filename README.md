@@ -150,10 +150,3 @@ Inyección de dependencias
   - di/RepositotyModule.kt
   - di/UseCaseModule.kt
 
-Notas finales
-------------
-Si quieres que incluya ejemplos de comandos para ejecutar un test específico (por clase o método) o un pequeño script/batch para automatizar la ejecución en Windows, puedo agregarlo como archivo `scripts/run_tests.sh` y `scripts/run_tests.bat` en el repositorio.
-
-Contacto
---------
-Paul Mateo Contreras Arias - 01220371027
