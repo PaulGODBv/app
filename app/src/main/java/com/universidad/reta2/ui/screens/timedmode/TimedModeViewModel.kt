@@ -157,6 +157,16 @@ class TimedModeViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingQuestions = true) }
 
             try {
+                // Preparar timer; si no hay minutos válidos, abortar
+                val totalSeconds = _uiState.value.selectedMinutes * 60
+                if (totalSeconds <= 0) {
+                    _uiState.update { it.copy(isLoadingQuestions = false, error = "Tiempo no válido") }
+                    return@launch
+                }
+
+                // Guardar el tiempo restante antes de cargar preguntas para evitar carreras
+                _uiState.update { it.copy(timeRemainingSeconds = totalSeconds) }
+
                 val questions = loadQuestions()
 
                 if (questions.isEmpty()) {
@@ -307,8 +317,16 @@ class TimedModeViewModel @Inject constructor(
 
         if (state.currentQuestionIndex >= state.questions.size - 1) {
             viewModelScope.launch {
+                // Evitar cargar más preguntas si el tiempo ya terminó
+                if (_uiState.value.timeRemainingSeconds <= 0) {
+                    finishMode()
+                    return@launch
+                }
+
                 val moreQuestions = loadQuestions()
-                if (moreQuestions.isEmpty()) {
+
+                // Si no hay nuevas preguntas o el tiempo se agotó durante la carga, terminar
+                if (moreQuestions.isEmpty() || _uiState.value.timeRemainingSeconds <= 0) {
                     finishMode()
                 } else {
                     _uiState.update {

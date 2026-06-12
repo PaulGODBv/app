@@ -282,6 +282,10 @@ private fun SafeContent(
             uiState.error != null -> {
                 SafeErrorState(error = uiState.error)
             }
+            uiState.isQuizCompleted -> {
+                // Evitar mostrar el estado vacío momentáneamente antes de la navegación
+                SafeLoadingState()
+            }
             !uiState.hasValidCurrentQuestion -> {
                 SafeEmptyState()
             }

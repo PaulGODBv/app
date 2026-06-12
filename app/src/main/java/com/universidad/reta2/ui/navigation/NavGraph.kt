@@ -23,6 +23,7 @@ import com.universidad.reta2.ui.screens.registration.RegistrationScreen
 import com.universidad.reta2.ui.screens.progress.ProgressScreen
 import com.universidad.reta2.ui.screens.splash.SplashScreen
 import com.universidad.reta2.ui.screens.home.HomeScreen
+import com.universidad.reta2.ui.screens.timedmode.TimedModeScreen
 import com.universidad.reta2.ui.screens.results.ResultsScreen
 import com.universidad.reta2.ui.screens.questions.QuestionScreenUltraSafe
 import kotlinx.coroutines.delay
@@ -66,6 +67,11 @@ fun NavGraph(
         // ---------- Home ----------
         composable(route = Screen.Home.route) {
             HomeScreen(navController = navController)
+        }
+
+        // ---------- Timed Mode ----------
+        composable(route = Screen.TimedMode.route) {
+            TimedModeScreen(navController = navController)
         }
 
         // ---------- Competencias ----------

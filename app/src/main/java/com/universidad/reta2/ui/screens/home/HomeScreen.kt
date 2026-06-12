@@ -91,6 +91,26 @@ fun HomeScreen(
             )
         }
 
+        // Sección "Modos de práctica"
+        item {
+            Text(
+                text = "Modos de práctica",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Text100,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+
+        item {
+            PracticeModeCard(
+                emoji = "⏱",
+                title = "Contrarreloj",
+                description = "Responde el mayor número de preguntas antes de que se acabe el tiempo",
+                onClick = { navController.navigate(Screen.TimedMode.route) }
+            )
+        }
+
         // Sección "Continuar practicando"
         if (competencesWithProgress.isNotEmpty()) {
             item {
@@ -114,6 +134,60 @@ fun HomeScreen(
         } else {
             item {
                 EmptyProgressCard(navController = navController)
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PracticeModeCard(
+    emoji: String,
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Primary100
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = emoji,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
             }
         }
     }
