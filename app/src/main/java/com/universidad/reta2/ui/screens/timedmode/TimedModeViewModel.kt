@@ -179,8 +179,6 @@ class TimedModeViewModel @Inject constructor(
                     return@launch
                 }
 
-                val totalSeconds = _uiState.value.selectedMinutes * 60
-
                 _uiState.update {
                     it.copy(
                         step = TimedModeStep.PLAYING,

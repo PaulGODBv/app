@@ -19,6 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.verticalScroll
+import com.universidad.reta2.ui.components.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -483,12 +488,12 @@ private fun SetupTimeStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Slider de 1 a 6
+        // Slider de 3 a 9 minutos (requerimiento v2)
         Slider(
             value = selectedMinutes.toFloat(),
             onValueChange = { onMinutesChange(it.toInt()) },
-            valueRange = 1f..6f,
-            steps = 4, // 1,2,3,4,5,6 → 4 pasos intermedios
+            valueRange = 3f..9f,
+            steps = 5, // 3,4,5,6,7,8,9 → 5 pasos intermedios
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -497,12 +502,12 @@ private fun SetupTimeStep(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "1 min",
+                text = "3 min",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "6 min",
+                text = "9 min",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -561,6 +566,14 @@ private fun PlayingStep(
 ) {
     val currentQuestion = uiState.currentQuestion
 
+    // Modales y estados de contexto (texto / imagen)
+    var showTextModal by remember { mutableStateOf(false) }
+    var showImageModal by remember { mutableStateOf(false) }
+    var currentImageResource by remember { mutableStateOf("") }
+    var currentReadingText by remember { mutableStateOf("") }
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         // Timer bar
         TimerBar(
@@ -598,6 +611,24 @@ private fun PlayingStep(
                     CircularProgressIndicator()
                 }
             } else {
+                // CONTEXTO (preview) si existe
+                if (currentQuestion.readingText.isNotEmpty() || currentQuestion.contextImage != null) {
+                    QuestionContextCard(
+                        readingText = currentQuestion.readingText,
+                        contextImage = currentQuestion.contextImage,
+                        onShowTextModal = {
+                            if (currentQuestion.readingText.isNotEmpty()) {
+                                currentReadingText = currentQuestion.readingText
+                                showTextModal = true
+                            }
+                        },
+                        onShowImageModal = { imageName ->
+                            currentImageResource = imageName
+                            showImageModal = true
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
                 // Pregunta
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -630,11 +661,35 @@ private fun PlayingStep(
                         isSelected = uiState.selectedOptionId == option.id,
                         showFeedback = uiState.showFeedback,
                         isCorrect = option.id == currentQuestion.correctOptionId,
+                        // evitar doble selección: se protege en onClick interno
                         onSelect = { if (!uiState.showFeedback) onSelectOption(option.id) }
                     )
                 }
             }
         }
+    }
+
+    // Modales fuera del content scroll
+    if (showTextModal && currentReadingText.isNotEmpty()) {
+        TextContextModal(
+            readingText = currentReadingText,
+            onDismiss = { showTextModal = false }
+        )
+    }
+
+    if (showImageModal && currentImageResource.isNotEmpty()) {
+        ImageContextModal(
+            imageName = currentImageResource,
+            scale = scale,
+            offset = offset,
+            onScaleChange = { newScale -> scale = newScale },
+            onOffsetChange = { newOffset -> offset = newOffset },
+            onDismiss = {
+                showImageModal = false
+                scale = 1f
+                offset = Offset.Zero
+            }
+        )
     }
 }
 
