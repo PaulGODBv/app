@@ -49,13 +49,8 @@ class UpdateProgressUseCase @Inject constructor(
             )
             userStatsRepository.updateUserStats(updatedStats)
 
-            // 3. Actualizar racha
-            if (isCorrect) {
-                userStatsRepository.incrementStreak()
-            } else {
-                userStatsRepository.resetStreak()
-            }
-
+            // 3. Registrar actividad diaria (racha)
+            userStatsRepository.registerActivityToday()
 
             println("🔍 ANTES de completeLevelAndUnlockNext:")
             println("   - isLevelCompleted: $isLevelCompleted")
