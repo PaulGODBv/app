@@ -71,6 +71,40 @@ class UserStatsRepositoriesImp @Inject constructor(
         }
     }
 
+    override suspend fun registerActivityToday() {
+        val username = getCurrentUsername()
+        try {
+            statsInitializer.initializeUserStats(username)
+
+            val currentStats = userStatsDao.getUserStatsSync(username)
+            val today = getCurrentDate()
+
+            if (currentStats.lastPracticeDate == today) {
+                println("ℹ️ Actividad de hoy ya registrada, racha sin cambios")
+                return
+            }
+
+            val updatedStats = if (shouldIncrementStreak(currentStats.lastPracticeDate, today)) {
+                currentStats.copy(
+                    currentStreakDays = currentStats.currentStreakDays + 1,
+                    lastPracticeDate = today
+                )
+            } else {
+                currentStats.copy(
+                    currentStreakDays = 1,
+                    lastPracticeDate = today
+                )
+            }
+
+            userStatsDao.updateUserStats(updatedStats)
+            println("✅ Racha actualizada: ${updatedStats.currentStreakDays} días")
+
+        } catch (e: Exception) {
+            println("❌ Error en registerActivityToday: ${e.message}")
+            statsInitializer.initializeUserStats(username)
+        }
+    }
+
     override suspend fun incrementStreak() {
         val username = getCurrentUsername()
         try {

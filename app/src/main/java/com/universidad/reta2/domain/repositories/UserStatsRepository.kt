@@ -18,8 +18,9 @@ interface UserStatsRepository {
     // Incrementar contadores específicos
     suspend fun addQuestionsAnswered(count: Int = 1)
     suspend fun addPracticeTime(seconds: Int)
-    suspend fun incrementStreak()
-    suspend fun resetStreak()
+    suspend fun registerActivityToday() // Reemplaza incrementStreak/resetStreak en el flujo normal
+    suspend fun incrementStreak() // Se mantiene por compatibilidad
+    suspend fun resetStreak()     // Se mantiene, pero ya no se llama automáticamente
 
     // Actualizar fecha de última práctica
     suspend fun updateLastPracticeDate(date: String)
