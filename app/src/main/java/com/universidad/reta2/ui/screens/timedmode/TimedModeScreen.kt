@@ -33,6 +33,9 @@ import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.models.Level
 import com.universidad.reta2.domain.models.Question
 import com.universidad.reta2.domain.models.QuestionOption
+import com.universidad.reta2.ui.theme.Error100
+import com.universidad.reta2.ui.theme.Success100
+import com.universidad.reta2.ui.theme.Success200
 import com.universidad.reta2.ui.navigation.Screen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -789,15 +792,15 @@ private fun TimedOptionItem(
     onSelect: () -> Unit
 ) {
     val backgroundColor = when {
-        showFeedback && isCorrect  -> MaterialTheme.colorScheme.primaryContainer
-        showFeedback && isSelected -> MaterialTheme.colorScheme.errorContainer
+        showFeedback && isCorrect  -> Success200
+        showFeedback && isSelected -> Error100
         isSelected                 -> MaterialTheme.colorScheme.primaryContainer
         else                       -> MaterialTheme.colorScheme.surfaceVariant
     }
 
     val borderColor = when {
-        showFeedback && isCorrect  -> MaterialTheme.colorScheme.primary
-        showFeedback && isSelected -> MaterialTheme.colorScheme.error
+        showFeedback && isCorrect  -> Success100
+        showFeedback && isSelected -> Error100
         isSelected                 -> MaterialTheme.colorScheme.primary
         else                       -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
     }
@@ -838,13 +841,12 @@ private fun TimedOptionItem(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            // Feedback visual
             if (showFeedback && isCorrect) {
                 Text("✓", style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary)
+                    color = Success100)
             } else if (showFeedback && isSelected && !isCorrect) {
                 Text("✗", style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.error)
+                    color = Error100)
             }
         }
     }
