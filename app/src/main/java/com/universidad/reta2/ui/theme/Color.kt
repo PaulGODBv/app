@@ -21,6 +21,11 @@ val StatsCardBackground = Color(0xFF005B99) // Fondo de tarjeta de estadísticas
 val ProgressBackground = Color(0xFFE9ECEF)  // Fondo de círculos de progreso
 val BorderColor = Color(0xFF005B99)         // Color de bordes y separadores
 
+// Colores para feedback de respuestas
+val Success100 = Color(0xFF2E7D32)   // Verde para respuestas correctas
+val Success200 = Color(0xFF1B5E20)   // Verde oscuro para fondos
+val Error100 = Color(0xFFD32F2F)     // Rojo para respuestas incorrectas
+
 // Colores legacy para compatibilidad
 val AzulPrincipal = Primary100
 val AzulClaro = Primary200
