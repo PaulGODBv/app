@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.domain.models.UserStats
 import com.universidad.reta2.domain.models.Competence
+import com.universidad.reta2.domain.models.DailyProgress
 import com.universidad.reta2.domain.usecases.GetUserStatsUseCase
 import com.universidad.reta2.domain.usecases.GetCompetencesUseCase
+import com.universidad.reta2.domain.repositories.UserStatsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -15,6 +17,7 @@ data class ProgressState(
     val isLoading: Boolean = true,
     val userStats: UserStats? = null,
     val competences: List<Competence> = emptyList(),
+    val weeklyProgress: List<DailyProgress> = emptyList(),
     val error: String? = null
 )
 
@@ -22,52 +25,56 @@ data class ProgressState(
 class ProgressViewModel @Inject constructor(
     private val getUserStatsUseCase: GetUserStatsUseCase,
     private val getCompetencesUseCase: GetCompetencesUseCase,
+    private val userStatsRepository: UserStatsRepository
 ) : ViewModel() {
 
-    // 🔒 ESTADO SEGURO CON PROTECCIONES
+    // ESTADO SEGURO CON PROTECCIONES
     private val _state = MutableStateFlow(ProgressState())
     val state: StateFlow<ProgressState> = _state.asStateFlow()
 
     private var isViewModelActive = true
 
     init {
-        println("🔧 ProgressViewModel INIT")
+        println(" ProgressViewModel INIT")
         loadProgressData()
     }
 
-    // 🔒 ACTIVACIÓN SEGURA
+    // ACTIVACIÓN SEGURA
     fun activate() {
-        println("✅ Activando ProgressViewModel")
+        println(" Activando ProgressViewModel")
         isViewModelActive = true
     }
 
-    // 🔒 CARGA DE DATOS CON PROTECCIÓN
+    // CARGA DE DATOS CON PROTECCIÓN
     fun loadProgressData() {
         if (!isViewModelActive) {
-            println("⚠️ ViewModel no activo, ignorando carga")
+            println(" ViewModel no activo, ignorando carga")
             return
         }
 
         viewModelScope.launch {
             try {
-                println("🔄 Cargando datos de progreso...")
+                println(" Cargando datos de progreso...")
 
                 _state.update { it.copy(isLoading = true, error = null) }
 
                 // Cargar competencias (suspend)
                 val competences = getCompetencesUseCase()
 
+                // Cargar actividad semanal (suspend) - NUEVO
+                val weeklyProgress = userStatsRepository.getWeeklyProgress()
 
                 // Combinar con estadísticas (Flow)
                 getUserStatsUseCase().collect { userStats ->
                     if (isViewModelActive) {
-                        println("✅ Datos cargados: ${competences.size} competencias, stats: $userStats")
+                        println(" Datos cargados: ${competences.size} competencias, stats: $userStats, weeklyProgress: ${weeklyProgress.size} días")
 
                         _state.update {
                             it.copy(
                                 isLoading = false,
                                 userStats = userStats,
                                 competences = competences,
+                                weeklyProgress = weeklyProgress,
                                 error = null
                             )
                         }
@@ -76,7 +83,7 @@ class ProgressViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 if (isViewModelActive) {
-                    println("❌ Error cargando progreso: ${e.message}")
+                    println(" Error cargando progreso: ${e.message}")
                     _state.update {
                         it.copy(
                             isLoading = false,
@@ -89,44 +96,33 @@ class ProgressViewModel @Inject constructor(
         }
     }
 
-
-    // 🔒 FORMATO SEGURO DE TIEMPO
+    // FORMATO SEGURO DE TIEMPO
     fun getFormattedPracticeTime(): String {
         val totalSeconds = state.value.userStats?.dailyPracticeTime ?: 0
         return when {
-            // Caso 3: 1 hora o más (>= 3600 segundos)
             totalSeconds >= 3600 -> {
                 val hours = totalSeconds / 3600
                 val minutes = (totalSeconds % 3600) / 60
                 val seconds = totalSeconds % 60
-                // Formato: "1 hr 2 min 30 seg"
                 "$hours hr $minutes min $seconds seg"
             }
-
-            // Caso 2: 1 minuto o más (pero menos de 1 hora)
             totalSeconds >= 60 -> {
                 val minutes = totalSeconds / 60
                 val seconds = totalSeconds % 60
-                // Formato: "2 min 30 seg"
                 "$minutes min $seconds seg"
             }
-
-            // Caso 1: Menos de 1 minuto
-            else -> {
-                // Formato: "45 seg"
-                "$totalSeconds seg"
-            }
+            else -> "$totalSeconds seg"
         }
     }
 
-    // 🔒 LIMPIEZA SEGURA
+    // LIMPIEZA SEGURA
     fun cleanup() {
-        println("🧹 Limpiando ProgressViewModel")
+        println(" Limpiando ProgressViewModel")
         isViewModelActive = false
     }
 
     override fun onCleared() {
-        println("🚮 ProgressViewModel siendo destruido")
+        println(" ProgressViewModel siendo destruido")
         super.onCleared()
         isViewModelActive = false
     }
