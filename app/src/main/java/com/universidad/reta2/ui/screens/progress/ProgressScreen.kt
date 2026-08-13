@@ -20,12 +20,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.universidad.reta2.domain.models.UserStats
+import com.universidad.reta2.domain.models.DailyProgress
 import com.universidad.reta2.ui.navigation.Screen
 import com.universidad.reta2.ui.theme.*
 import com.universidad.reta2.domain.models.Competence
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
+
 
 @Composable
 fun ProgressScreen(
@@ -109,6 +116,7 @@ private fun ProgressContentUltraSafe(
         else -> ProgressSuccessContentSafe(
             userStats = state.userStats,
             competences = state.competences,
+            weeklyProgress = state.weeklyProgress,
             formattedPracticeTime = formattedPracticeTime,
             onCompetencyClick = onCompetencyClick
         )
@@ -119,6 +127,7 @@ private fun ProgressContentUltraSafe(
 private fun ProgressSuccessContentSafe(
     userStats: UserStats?,
     competences: List<Competence>,
+    weeklyProgress: List<DailyProgress>,
     formattedPracticeTime: String,
     onCompetencyClick: (Competence) -> Unit
 ) {
@@ -142,6 +151,13 @@ private fun ProgressSuccessContentSafe(
                     streakDays = stats.currentStreakDays
                 )
             }
+        }
+
+        // NUEVO: Calendario semanal de actividad
+        item {
+            WeeklyActivityCard(
+                weeklyProgress = weeklyProgress
+            )
         }
 
         item {
@@ -346,6 +362,136 @@ fun CompetenceProgressCardSafe(
                     fontWeight = FontWeight.Bold,
                     color = Text100
                 )
+            }
+        }
+    }
+}
+
+// NUEVO: Tarjeta de actividad semanal con gráfica de barras (7 días)
+@Composable
+fun WeeklyActivityCard(weeklyProgress: List<DailyProgress>) {
+    // Construir los últimos 7 días con actividad o 0
+    val today = LocalDate.now()
+    val last7Days = (6 downTo 0).map { daysAgo ->
+        val date = today.minusDays(daysAgo.toLong())
+        val dateStr = date.format(DateTimeFormatter.ISO_DATE)
+        val dayName = date.dayOfWeek
+            .getDisplayName(TextStyle.SHORT, Locale("es", "CO"))
+            .replaceFirstChar { it.uppercase() }
+            .take(2)
+        val activity = weeklyProgress.firstOrNull { it.date == dateStr }
+        Triple(dateStr, dayName, activity?.questionsAnswered ?: 0)
+    }
+
+    val maxQuestions = last7Days.maxOfOrNull { it.third } ?: 1
+    val barColor = Primary100
+    val emptyBarColor = Bg300
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            // Gráfica de barras
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                last7Days.forEach { (_, dayName, questions) ->
+                    val fraction = if (maxQuestions > 0)
+                        questions.toFloat() / maxQuestions.toFloat()
+                    else 0f
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        // Número encima de la barra (solo si > 0)
+                        if (questions > 0) {
+                            Text(
+                                text = "$questions",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Primary100,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Barra
+                        val barHeight = (fraction * 80f).coerceAtLeast(4f)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .height(barHeight.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(if (questions > 0) barColor else emptyBarColor)
+                                .align(Alignment.CenterHorizontally)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Día
+                        Text(
+                            text = dayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (questions > 0) Text100 else Text200,
+                            fontWeight = if (questions > 0) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Divider(color = Bg300)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Resumen textual de la semana
+            val totalWeekQuestions = last7Days.sumOf { it.third }
+            val activeDays = last7Days.count { it.third > 0 }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "$totalWeekQuestions",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary100
+                    )
+                    Text(
+                        text = "preguntas esta semana",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Text200
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "$activeDays/7",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary100
+                    )
+                    Text(
+                        text = "días activos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Text200
+                    )
+                }
             }
         }
     }
