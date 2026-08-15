@@ -70,6 +70,11 @@ fun ResultsScreen(
         viewModel.updateUserProgress(competencyId, levelId, score, totalQuestions)
     }
 
+    // Sincronizar con el servidor al mostrar resultados
+    LaunchedEffect(Unit) {
+        viewModel.syncProgress()
+    }
+
     val buttonText = when(origin){
         "progress" -> "Volver a progreso"
         else -> "Volver a competencias"

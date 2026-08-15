@@ -13,6 +13,8 @@ import com.universidad.reta2.data.repositories.SessionRepositoryImpl
 import com.universidad.reta2.domain.repositories.SessionRepository
 import com.universidad.reta2.domain.services.StatsInitializer
 import com.universidad.reta2.data.repositories.UserStatsRepositoriesImp
+import com.universidad.reta2.data.repositories.SyncRepository
+import com.universidad.reta2.data.remote.Reta2ApiService
 import com.universidad.reta2.domain.repositories.ProgressRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
 import com.universidad.reta2.data.local.dao.CompetenceDao
@@ -124,7 +126,7 @@ object RepositoryModule {
         return QuestionRepositoryImpl()
     }
 
-    @Provides
+@Provides
     @Singleton
     fun provideGetQuestionsUseCase(
         questionRepository: QuestionRepository,
@@ -135,6 +137,24 @@ object RepositoryModule {
             questionRepository,
             progressDao,
             context
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncRepository(
+        apiService: Reta2ApiService,
+        userStatsRepository: UserStatsRepository,
+        competenceRepository: CompetenceRepository,
+        progressDao: ProgressDao,
+        @ApplicationContext context: Context
+    ): SyncRepository {
+        return SyncRepository(
+            apiService = apiService,
+            userStatsRepository = userStatsRepository,
+            competenceRepository = competenceRepository,
+            progressDao = progressDao,
+            context = context
         )
     }
 
