@@ -36,7 +36,7 @@ interface ProgressDao {
     WHERE username = :username AND level_id = :levelId
     GROUP BY level_id
 """)
-    suspend fun getLevelStats(username: String, levelId: Int): LevelStats
+    suspend fun getLevelStats(username: String, levelId: Int): LevelStats?
 
     // Eliminar progreso de un nivel
     @Query("DELETE FROM level_progress WHERE username = :username AND competence_id = :competenceId AND level_id = :levelId")

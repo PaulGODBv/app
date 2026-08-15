@@ -84,6 +84,7 @@ class ProgressRepositoryImpl @Inject constructor(
     override suspend fun getLevelStats(levelId: Int): LevelStats {
         val username = getCurrentUserName()
         return progressDao.getLevelStats(username, levelId)
+            ?: LevelStats(levelId = levelId, totalAttempts = 0, correctAttempts = 0, averageTime = 0.0)
     }
 
     override suspend fun resetLevelProgress(competenceId: Int, levelId: Int) {
