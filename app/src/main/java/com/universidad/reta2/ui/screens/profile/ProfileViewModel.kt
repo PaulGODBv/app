@@ -33,18 +33,30 @@ class ProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState = _uiState.asStateFlow()
 
+    val themeMode = SessionManager.themeModeFlow
+
     private val _eventChannel= MutableSharedFlow<ProfileEvent>()
     val eventChannel = _eventChannel.asSharedFlow()
 
     sealed class ProfileEvent{
         data class LaunchIntent(val intent: Intent): ProfileEvent()
+        object ThemeChanged : ProfileEvent()
     }
-
 
     init {
         val username = sessionManager.getCurrentUsername(context) ?: ""
         val email = sessionManager.getCurrentEmail(context) ?: ""
-        _uiState.value = _uiState.value.copy(username = username, email = email)
+        _uiState.value = _uiState.value.copy(
+            username = username, 
+            email = email
+        )
+    }
+
+    fun setThemeMode(mode: Int) {
+        viewModelScope.launch {
+            sessionManager.setThemeMode(context, mode)
+            _eventChannel.emit(ProfileEvent.ThemeChanged)
+        }
     }
 
     fun onUsernameChange(value: String) {

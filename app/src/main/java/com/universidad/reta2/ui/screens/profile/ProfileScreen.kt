@@ -22,7 +22,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.Icons
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
@@ -39,6 +44,9 @@ fun ProfileScreen(
             when(event){
                 is ProfileViewModel.ProfileEvent.LaunchIntent -> {
                     context.startActivity(event.intent)
+                }
+                ProfileViewModel.ProfileEvent.ThemeChanged -> {
+                    // El tema cambia reactivamente, no es necesaria acción extra aquí
                 }
             }
         }
@@ -105,6 +113,85 @@ fun ProfileScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+            }
+
+            // ----- Apariencia (Modo Oscuro) -----
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Apariencia",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    val themeMode by viewModel.themeMode.collectAsState()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = when (themeMode) {
+                                1 -> "Modo Claro"
+                                2 -> "Modo Oscuro"
+                                else -> "Seguir Sistema"
+                            },
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+
+                        IconButton(onClick = {
+                            val nextMode = (themeMode + 1) % 3
+                            viewModel.setThemeMode(nextMode)
+                        }) {
+                            Icon(
+                                imageVector = when (themeMode) {
+                                    1 -> Icons.Default.LightMode
+                                    2 -> Icons.Default.DarkMode
+                                    else -> Icons.Default.Settings
+                                },
+                                contentDescription = "Cambiar tema",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    // Botones de opción rápida (Reemplazando FilterChip por Button por seguridad)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.setThemeMode(0) },
+                            colors = if (themeMode == 0) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Auto", style = MaterialTheme.typography.labelSmall)
+                        }
+                        Button(
+                            onClick = { viewModel.setThemeMode(1) },
+                            colors = if (themeMode == 1) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Claro", style = MaterialTheme.typography.labelSmall)
+                        }
+                        Button(
+                            onClick = { viewModel.setThemeMode(2) },
+                            colors = if (themeMode == 2) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Oscuro", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
             }
 

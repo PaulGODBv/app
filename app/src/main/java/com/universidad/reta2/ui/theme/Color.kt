@@ -26,6 +26,26 @@ val Success100 = Color(0xFF2E7D32)   // Verde para respuestas correctas
 val Success200 = Color(0xFF1B5E20)   // Verde oscuro para fondos
 val Error100 = Color(0xFFD32F2F)     // Rojo para respuestas incorrectas
 
+// Feedback Oscuro (Más pasteles para legibilidad)
+val DarkSuccess100 = Color(0xFF81C784) // Verde pastel
+val DarkSuccess200 = Color(0xFF2E7D32) // Verde oscuro original usado como fondo de feedback
+val DarkError100 = Color(0xFFE57373)   // Rojo pastel
+
+// --- MODO OSCURO (Nuevos colores solicitados) ---
+val DarkPrimary100 = Color(0xFF82B9F8) // Azul claro desaturado
+val DarkPrimary200 = Color(0xFFA6CBEA) // Azul pastel medio
+val DarkPrimary300 = Color(0xFF003865) // Azul muy oscuro (Para fondos sobre el primary)
+
+val DarkAccent100 = Color(0xFFFFE066)  // Dorado suave
+val DarkAccent200 = Color(0xFFF2C252)  // Dorado medio suave
+
+val DarkText100 = Color(0xFFEFEFEF)    // Casi blanco
+val DarkText200 = Color(0xFFA0A0A0)    // Gris claro
+
+val DarkBg100 = Color(0xFF121212)      // Fondo base
+val DarkBg200 = Color(0xFF1E1E1E)      // Gris oscuro (Tarjetas)
+val DarkBg300 = Color(0xFF2C2C2C)      // Gris más claro (Botones secundarios)
+
 // Colores legacy para compatibilidad
 val AzulPrincipal = Primary100
 val AzulClaro = Primary200

@@ -21,13 +21,13 @@ class SessionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun clearSession() {
-        prefs.edit().clear().apply()
+        prefs.edit().clear().commit() // Cambiado apply() por commit()
     }
 
     override suspend fun saveSession(user: User) {
         prefs.edit()
             .putString("username", user.username)
             .putString("email", user.email)
-            .apply()
+            .commit() // Cambiado apply() por commit()
     }
 }

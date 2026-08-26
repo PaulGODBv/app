@@ -6,18 +6,18 @@ import androidx.compose.ui.graphics.Color
 
 private val TemaClaro = lightColorScheme(
     primary = Primary100,
-    primaryContainer = Primary200,
+    primaryContainer = Primary300,
     onPrimary = Color.White,
-    onPrimaryContainer = Color.White,
+    onPrimaryContainer = Text100,
 
     secondary = Accent100,
     secondaryContainer = Accent200,
     onSecondary = Text100,
     onSecondaryContainer = Text100,
 
-    tertiary = Primary300,
+    tertiary = Primary200,
     tertiaryContainer = Bg200,
-    onTertiary = Text100,
+    onTertiary = Color.White,
     onTertiaryContainer = Text100,
 
     background = Bg100,
@@ -28,10 +28,10 @@ private val TemaClaro = lightColorScheme(
     onSurface = Text100,
     onSurfaceVariant = Text200,
 
-    error = Color(0xFFB3261E),
+    error = Error100,
     onError = Color.White,
-    errorContainer = Color(0xFFF9DEDC),
-    onErrorContainer = Color(0xFF410E0B),
+    errorContainer = Success200.copy(alpha = 0.1f),
+    onErrorContainer = Success100,
 
     outline = Bg300,
     outlineVariant = Bg200,
@@ -43,41 +43,41 @@ private val TemaClaro = lightColorScheme(
 )
 
 private val TemaOscuro = darkColorScheme(
-    primary = Primary200,
-    primaryContainer = Primary100,
-    onPrimary = Color.White,
-    onPrimaryContainer = Color.White,
+    primary = DarkPrimary100,
+    primaryContainer = DarkPrimary300,
+    onPrimary = DarkBg100,
+    onPrimaryContainer = DarkText100,
 
-    secondary = Accent200,
-    secondaryContainer = Accent100,
-    onSecondary = Text100,
-    onSecondaryContainer = Text100,
+    secondary = DarkAccent100,
+    secondaryContainer = DarkAccent200,
+    onSecondary = DarkBg100,
+    onSecondaryContainer = DarkText100,
 
-    tertiary = Primary300,
-    tertiaryContainer = Primary100,
-    onTertiary = Text100,
-    onTertiaryContainer = Color.White,
+    tertiary = DarkPrimary200,
+    tertiaryContainer = DarkBg200,
+    onTertiary = DarkBg100,
+    onTertiaryContainer = DarkText100,
 
-    background = Color(0xFF121212),
-    onBackground = Color.White,
+    background = DarkBg100,
+    onBackground = DarkText100,
 
-    surface = Color(0xFF1E1E1E),
-    surfaceVariant = Color(0xFF2D2D2D),
-    onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFCCCCCC),
+    surface = DarkBg200, // Cambiado de DarkBg100 para dar elevación a tarjetas
+    surfaceVariant = DarkBg300,
+    onSurface = DarkText100,
+    onSurfaceVariant = DarkText200,
 
-    error = Color(0xFFF2B8B5),
-    onError = Color(0xFF601410),
-    errorContainer = Color(0xFF8C1D18),
-    onErrorContainer = Color(0xFFF9DEDC),
+    error = DarkError100,
+    onError = Color.Black,
+    errorContainer = DarkSuccess200.copy(alpha = 0.2f),
+    onErrorContainer = DarkSuccess100,
 
-    outline = Color(0xFF666666),
-    outlineVariant = Color(0xFF444444),
+    outline = DarkBg300,
+    outlineVariant = DarkBg200,
 
-    scrim = Color.Black.copy(alpha = 0.32f),
-    inverseSurface = Color.White,
-    inverseOnSurface = Text100,
-    inversePrimary = Primary100
+    scrim = Color.Black.copy(alpha = 0.5f),
+    inverseSurface = DarkText100,
+    inverseOnSurface = DarkBg100,
+    inversePrimary = DarkPrimary200
 )
 
 @Composable

@@ -16,8 +16,12 @@ import com.universidad.reta2.ui.navigation.BottomNavigationBar
 import com.universidad.reta2.ui.navigation.NavGraph
 import com.universidad.reta2.ui.navigation.Screen
 import com.universidad.reta2.ui.theme.Reta2Theme
+import com.universidad.reta2.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -31,8 +35,15 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun AppContent() {
-    Reta2Theme {
+fun AppContent(themeViewModel: ThemeViewModel = hiltViewModel()) {
+    val themeMode by themeViewModel.themeMode.collectAsState()
+    val isDark = when (themeMode) {
+        1 -> false
+        2 -> true
+        else -> isSystemInDarkTheme()
+    }
+
+    Reta2Theme(darkTheme = isDark) {
         val navController = rememberNavController()
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route

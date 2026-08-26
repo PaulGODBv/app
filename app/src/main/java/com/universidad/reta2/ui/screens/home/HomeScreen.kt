@@ -62,10 +62,10 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Bg100),
+                .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Primary100)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
         return
     }
@@ -73,7 +73,7 @@ fun HomeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Bg100)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -97,7 +97,7 @@ fun HomeScreen(
                 text = "Modos de práctica",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Text100,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
@@ -118,7 +118,7 @@ fun HomeScreen(
                     text = "Continuar practicando",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Text100,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             }
@@ -152,7 +152,7 @@ fun PracticeModeCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Primary100
+            containerColor = MaterialTheme.colorScheme.primary
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         onClick = onClick
@@ -198,7 +198,7 @@ fun UserHeaderCard(userName: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Bg200),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -212,14 +212,14 @@ fun UserHeaderCard(userName: String) {
                 modifier = Modifier
                     .size(60.dp)
                     .clip(RoundedCornerShape(30.dp))
-                    .background(Bg300),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = userName.take(1).uppercase(),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary100
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -230,12 +230,12 @@ fun UserHeaderCard(userName: String) {
                     text = userName,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Text100
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Estudiante",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Text200
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -253,7 +253,7 @@ fun MainStatsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = StatsCardBackground),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -331,7 +331,7 @@ fun CompetencePracticeCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         onClick = onClick
     ) {
@@ -364,7 +364,7 @@ fun CompetencePracticeCard(
                         text = competence.name.take(1).uppercase(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Primary100 // Usar el color primario
+                        color = MaterialTheme.colorScheme.primary // Usar el color primario
                     )
                 }
             }
@@ -376,12 +376,12 @@ fun CompetencePracticeCard(
                     text = competence.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Text100
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${(competence.totalProgress * 100).toInt()}% completado",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Text200
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -393,15 +393,15 @@ fun CompetencePracticeCard(
                 CircularProgressIndicator(
                     progress = competence.totalProgress,
                     modifier = Modifier.size(40.dp),
-                    color = Primary100,
+                    color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 3.dp,
-                    trackColor = ProgressBackground
+                    trackColor = MaterialTheme.colorScheme.outlineVariant
                 )
                 Text(
                     text = "${(competence.totalProgress * 100).toInt()}%",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
-                    color = Text100
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -413,7 +413,7 @@ fun EmptyProgressCard(navController: NavController) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -426,14 +426,14 @@ fun EmptyProgressCard(navController: NavController) {
                 text = "No tienes progreso aún",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
-                color = Text100,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "¡Empieza a practicar!",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Text200,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -441,7 +441,7 @@ fun EmptyProgressCard(navController: NavController) {
                 onClick = {
                     navController.navigate(Screen.Competencies.route)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Primary100)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text("Ver Competencias", color = Color.White)
             }
