@@ -39,9 +39,16 @@ class HomeViewModel @Inject constructor(
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
+        resetAndLoad()
+    }
+
+    private fun resetAndLoad() {
+        _userName.value = ""
+        _userStats.value = UserStats()
+        _competences.value = emptyList()
+        _isLoading.value = true
+        
         loadUserData()
-//        loadCompetences()
-//        loadUserStats()
     }
 
     private fun loadUserData() {
