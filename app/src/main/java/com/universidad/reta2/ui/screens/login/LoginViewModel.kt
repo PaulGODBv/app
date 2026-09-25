@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.data.preferences.SessionManager
 import com.universidad.reta2.domain.repositories.UserRepository
+import com.universidad.reta2.utils.PasswordHasher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +16,8 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val passwordHasher: PasswordHasher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -62,11 +64,14 @@ class LoginViewModel @Inject constructor(
                 try {
                     val user = userRepository.getUserByUsernameOrEmail(state.username)
 
-                    if (user != null && user.password == state.password) {
+                    // La contraseña escrita se compara contra el hash guardado;
+                    // el texto plano nunca sale de este ViewModel.
+                    if (user != null && passwordHasher.verifyPassword(state.password, user.passwordHash)) {
                         sessionManager.saveUserSession(
                             context=context,
                             username = user.username,
-                            email = user.email
+                            email = user.email,
+                            studentProgram = user.studentProgram
                         )
                         _uiState.value = _uiState.value.copy(
                             successMessage = "Login exitoso"

@@ -16,7 +16,8 @@ class SessionRepositoryImpl @Inject constructor(
         val username = prefs.getString("username", null)
         val email = prefs.getString("email", null)
         return if (username != null && email != null) {
-            User(username = username, email = email, password = "") // password vacío
+            // La sesión no guarda credenciales: el hash solo vive en la tabla users.
+            User(username = username, email = email, passwordHash = "")
         } else null
     }
 

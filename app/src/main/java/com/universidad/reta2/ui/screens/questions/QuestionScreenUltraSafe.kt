@@ -30,6 +30,10 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.OutlinedButton
@@ -238,9 +242,11 @@ private fun SafeTopBar(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
-                            text = "🔥",
-                            style = MaterialTheme.typography.titleMedium
+                        Icon(
+                            imageVector = Icons.Filled.LocalFireDepartment,
+                            contentDescription = "Racha",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = "$streak",
@@ -417,12 +423,19 @@ private fun SafeQuestionContent(
                     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                Text(
-                    text = if (uiState.currentQuestionIndex == uiState.questions.size - 1) {
-                        "🎯 Finalizar Quiz"
+                val esUltima = uiState.currentQuestionIndex == uiState.questions.size - 1
+                Icon(
+                    imageVector = if (esUltima) {
+                        Icons.Filled.Flag
                     } else {
-                        "➡️ Siguiente Pregunta"
+                        Icons.AutoMirrored.Filled.ArrowForward
                     },
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (esUltima) "Finalizar quiz" else "Siguiente pregunta",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -455,9 +468,11 @@ private fun ProgressSection(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "🔥",
-                        style = MaterialTheme.typography.titleLarge
+                    Icon(
+                        imageVector = Icons.Filled.LocalFireDepartment,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
                     )
                     Text(
                         text = "Racha $streak",
@@ -629,9 +644,11 @@ private fun SafeErrorState(error: String) {
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "⚠️",
-                    style = MaterialTheme.typography.displaySmall
+                Icon(
+                    imageVector = Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(48.dp)
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(

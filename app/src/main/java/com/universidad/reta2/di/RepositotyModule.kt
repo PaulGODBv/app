@@ -26,6 +26,7 @@ import com.universidad.reta2.data.repositories.QuestionRepositoryImpl
 import com.universidad.reta2.domain.repositories.CompetenceRepository
 import com.universidad.reta2.domain.repositories.QuestionRepository
 import com.universidad.reta2.domain.usecases.GetQuestionsUseCase
+import com.universidad.reta2.utils.PasswordHasher
 import dagger.Module
 import dagger.Provides
 import dagger.Binds
@@ -70,13 +71,15 @@ object RepositoryModule {
     fun provideUserRepository(
         userDao: UserDao,
         userStatsDao: UserStatsDao,
-        mapper: UserMapper
+        mapper: UserMapper,
+        passwordHasher: PasswordHasher
     ): UserRepository {
 
         return UserRepositoryImpl(
             userDao = userDao,
             userStatsDao = userStatsDao,
-            mapper = mapper
+            mapper = mapper,
+            passwordHasher = passwordHasher
         )
     }
 
@@ -118,6 +121,12 @@ object RepositoryModule {
     @Singleton
     fun provideUserMapper(): UserMapper {
         return UserMapper
+    }
+
+    @Provides
+    @Singleton
+    fun providePasswordHasher(): PasswordHasher {
+        return PasswordHasher
     }
 
     @Provides

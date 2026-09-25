@@ -363,7 +363,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 levels = listOf(
                     Level(
                         id = generateLevelId(1, 1), // 🔥 ID único: 101
-                        name = "🟢 Nivel 1 – Comprensión literal",
+                        name = "Nivel 1 – Comprensión literal",
                         description = "Identifica información explícita en textos",
                         questions = emptyList(),
                         isLocked = false,
@@ -372,7 +372,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                     ),
                     Level(
                         id = generateLevelId(1, 2), // 🔥 ID único: 102
-                        name = "🟡 Nivel 2 – Interpretación e inferencia",
+                        name = "Nivel 2 – Interpretación e inferencia",
                         description = "Identifica la organización y estructura de textos",
                         questions = emptyList(),
                         isLocked = true,
@@ -381,7 +381,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                     ),
                     Level(
                         id = generateLevelId(1, 3), // 🔥 ID único: 103
-                        name = "🔴 Nivel 3 – Análisis crítico y evaluación",
+                        name = "Nivel 3 – Análisis crítico y evaluación",
                         description = "Evalúa la calidad y credibilidad de textos",
                         questions = emptyList(),
                         isLocked = true,
@@ -480,7 +480,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                 levels = listOf(
                     Level(
                         id = generateLevelId(4, 1), // 🔥 ID único: 401
-                        name = "🟢 Nivel 1 – Conocimiento Constitucional",
+                        name = "Nivel 1 – Conocimiento Constitucional",
                         description = "Conoce los derechos, deberes y principios fundamentales de la Constitución",
                         questions = emptyList(),
                         isLocked = false,
@@ -489,7 +489,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                     ),
                     Level(
                         id = generateLevelId(4, 2), // 🔥 ID único: 402
-                        name = "🟡 Nivel 2 – Análisis de Perspectivas",
+                        name = "Nivel 2 – Análisis de Perspectivas",
                         description = "Reconoce diferentes perspectivas y comprende la multidimensionalidad de los problemas",
                         questions = emptyList(),
                         isLocked = true,
@@ -498,7 +498,7 @@ class CompetenceRepositoryImpl @Inject constructor(
                     ),
                     Level(
                         id = generateLevelId(4, 3), // 🔥 ID único: 403
-                        name = "🔴 Nivel 3 – Análisis Crítico",
+                        name = "Nivel 3 – Análisis Crítico",
                         description = "Analiza y evalúa la pertinencia y solidez de argumentos y discursos",
                         questions = emptyList(),
                         isLocked = true,

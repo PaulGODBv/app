@@ -22,6 +22,7 @@ Estructura de carpetas (resumen)
     - screens/ — pantallas composables por funcionalidad (home, questions, timedmode, registration, splash, profile, progress...)
     - navigation/ — NavGraph y definición de rutas (Screen.kt)
   - di/ — módulos Hilt para inyección de dependencias
+  - utils/ — utilidades transversales (PasswordHasher: hash de contraseñas)
 
 Uso de repositorios
 -------------------
@@ -35,12 +36,13 @@ Las preguntas se mantienen en memoria en el archivo CompetencyData (hardcode). E
 
 Estructura de la base de datos (Room)
 -----------------------------------
-Entidades registradas en AppDatabase (versión actual: 8):
+Entidades registradas en AppDatabase (versión actual: 9):
 - UserEntity (table: users)
   - username: String (PK)
   - email: String
-  - password: String
+  - password_hash: String — hash SHA-256 con salt, nunca la contraseña en claro
   - student_code: String
+  - student_program: String
   - created_at: Long
 - UserStatsEntity
 - CompetenceEntity
@@ -52,7 +54,7 @@ Entidades registradas en AppDatabase (versión actual: 8):
 
 Modelos principales (domain/models)
 ----------------------------------
-- User: username, email, password, studentCode
+- User: username, email, passwordHash, studentCode, studentProgram
 - Question: id, text, options (QuestionOption), correctOptionId, readingText, contextImage, etc.
 - QuestionOption: id, text
 - Competence: id, name, list de Level
@@ -69,6 +71,29 @@ Inyección de dependencias
 - Hilt se usa para DI. Los módulos están en di/ (RepositoryModule, UseCaseModule, etc.).
 - Proveedores típicos: AppDatabase/DAOs, mappers, repositorios, casos de uso.
 
+Seguridad de credenciales
+-------------------------
+Las contraseñas no se guardan ni se comparan en texto plano. `utils/PasswordHasher.kt` genera un salt aleatorio de 16 bytes por contraseña y persiste el resultado con el formato:
+
+```
+sha256$<salt en hexadecimal>$<hash en hexadecimal>
+```
+
+- `hashPassword(password)` — crea un salt nuevo y devuelve la cadena completa.
+- `verifyPassword(password, storedHash)` — recalcula con el salt guardado y compara en tiempo constante (`MessageDigest.isEqual`).
+- `isHashed(value)` — valida el formato; `UserRepositoryImpl` lo usa como última barrera para no escribir texto plano en Room.
+
+Dónde interviene:
+
+| Flujo | Comportamiento |
+| --- | --- |
+| Registro | `RegistrationViewModel` hashea antes de construir el `User` |
+| Inicio de sesión | `LoginViewModel` compara con `verifyPassword`, no con `==` |
+| Cambio de contraseña | Perfil exige la contraseña actual, la verifica contra el hash y solo entonces guarda el hash de la nueva; si no coincide muestra «Contraseña actual incorrecta» |
+| Sesión y sincronización | `SessionManager` no guarda credenciales y los DTO no envían la contraseña al servidor |
+
+El salt por usuario evita tablas precalculadas y que dos cuentas con la misma clave compartan hash. SHA-256 sigue siendo una función rápida: para un despliegue real se recomienda migrar a PBKDF2 o Argon2, cambio acotado a la función privada `computeHash()`.
+
 Tecnologías usadas
 ------------------
 - Kotlin
@@ -79,7 +104,8 @@ Tecnologías usadas
 
 Notas operativas
 ----------------
-- La base de datos Room está configurada con fallbackToDestructiveMigration() por simplicidad de desarrollo; actualizar la versión (ahora v8) provocará recreación del DB en dispositivos con versiones previas. Para producción se debe añadir migraciones no destructivas.
+- La base de datos Room está configurada con fallbackToDestructiveMigration() por simplicidad de desarrollo; actualizar la versión (ahora v9) provocará recreación del DB en dispositivos con versiones previas. Para producción se debe añadir migraciones no destructivas.
+- La versión 9 renombró la columna `password` como `password_hash`. Al recrearse la base se eliminaron las contraseñas en texto plano de instalaciones anteriores: los usuarios previos deben registrarse de nuevo.
 - CompetencyData contiene el contenido de preguntas; migrar a una fuente externa (archivo JSON o servidor) es posible implementando un repositorio distinto.
 - El modo contrarreloj (TimedMode) y la selección aleatoria priorizan preguntas no resueltas correctamente; la selección nunca pedirá más preguntas que las disponibles.
 

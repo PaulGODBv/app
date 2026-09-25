@@ -1,5 +1,6 @@
 package com.universidad.reta2.ui.screens.progress
 
+import com.universidad.reta2.ui.components.shimmerEffect
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +12,10 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,6 +89,11 @@ fun ProgressScreen(
             if (isCompositionActive) {
                 viewModel.loadProgressData()
             }
+        },
+        onSync = {
+            if (isCompositionActive) {
+                viewModel.syncNow()
+            }
         }
     )
 }
@@ -93,7 +103,8 @@ private fun ProgressContentUltraSafe(
     state: ProgressState,
     formattedPracticeTime: String,
     onCompetencyClick: (Competence) -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onSync: () -> Unit
 ) {
     when {
         state.isLoading -> LoadingIndicatorSafe()
@@ -108,7 +119,11 @@ private fun ProgressContentUltraSafe(
             weeklyProgress = state.weeklyProgress,
             ranking = state.ranking,
             formattedPracticeTime = formattedPracticeTime,
-            onCompetencyClick = onCompetencyClick
+            onCompetencyClick = onCompetencyClick,
+            isSyncing = state.isSyncing,
+            syncMessage = state.syncMessage,
+            syncFailed = state.syncFailed,
+            onSync = onSync
         )
     }
 }
@@ -120,7 +135,11 @@ private fun ProgressSuccessContentSafe(
     weeklyProgress: List<DailyProgress>,
     ranking: RankingResponse?,
     formattedPracticeTime: String,
-    onCompetencyClick: (Competence) -> Unit
+    onCompetencyClick: (Competence) -> Unit,
+    isSyncing: Boolean,
+    syncMessage: String?,
+    syncFailed: Boolean,
+    onSync: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -164,6 +183,106 @@ private fun ProgressSuccessContentSafe(
                 competence = competence,
                 onClick = { onCompetencyClick(competence) }
             )
+        }
+
+        item {
+            SyncCard(
+                isSyncing = isSyncing,
+                message = syncMessage,
+                failed = syncFailed,
+                onSync = onSync
+            )
+        }
+    }
+}
+
+/**
+ * Sincronización manual con el panel, al final de Progreso.
+ *
+ * Es el sitio donde el dato que se envía está a la vista, así que es donde
+ * tiene sentido pedir el envío. La comprobación automática de conexión se hace
+ * una sola vez, en el splash.
+ */
+@Composable
+private fun SyncCard(
+    isSyncing: Boolean,
+    message: String?,
+    failed: Boolean,
+    onSync: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Sincronización",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Envía tu progreso al panel de la universidad. Practicar no necesita conexión.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // El aviso va encima del botón: la tarjeta es lo último de la
+            // lista y debajo del botón quedaba fuera de la pantalla.
+            message?.let { texto ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (failed) {
+                        Icon(
+                            imageVector = Icons.Filled.CloudOff,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Text(
+                        text = texto,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (failed) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    )
+                }
+            }
+
+            Button(
+                onClick = onSync,
+                enabled = !isSyncing,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isSyncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Sincronizando…")
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Sync,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Sincronizar ahora")
+                }
+            }
         }
     }
 }
@@ -288,7 +407,15 @@ fun WeeklyActivityCard(weeklyProgress: List<DailyProgress>) {
 fun RankingCard(ranking: RankingResponse) {
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-            Text(text = "🏆 Ranking Global", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(text = "Ranking Global", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
             Spacer(modifier = Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ranking.top10.forEach { entry -> 
@@ -327,11 +454,30 @@ fun RankingItem(entry: RankingEntryDto) {
 
 @Composable
 private fun LoadingIndicatorSafe() {
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Cargando progreso...", color = MaterialTheme.colorScheme.onBackground)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .shimmerEffect()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .shimmerEffect()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        repeat(3) {
+            com.universidad.reta2.ui.components.CompetenceSkeletonItem()
         }
     }
 }
@@ -349,10 +495,19 @@ private fun ErrorStateSafe(error: String, onRetry: () -> Unit) {
 
 @Composable
 private fun EmptyStateSafe() {
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "No hay datos de progreso", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-            Text(text = "Completa algunos niveles para ver tu progreso aquí", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
-        }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        com.universidad.reta2.ui.components.IllustratedEmptyState(
+            title = "No hay datos de progreso",
+            description = "Completa algunos niveles para ver tus estadísticas y ranking aquí.",
+            actionLabel = "Jugar primer nivel",
+            onActionClick = {
+                // Noop o navegación al inicio / competencias
+            }
+        )
     }
 }

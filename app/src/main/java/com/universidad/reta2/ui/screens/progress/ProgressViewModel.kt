@@ -8,7 +8,9 @@ import com.universidad.reta2.domain.models.DailyProgress
 import com.universidad.reta2.domain.usecases.GetUserStatsUseCase
 import com.universidad.reta2.domain.usecases.GetCompetencesUseCase
 import com.universidad.reta2.domain.repositories.UserStatsRepository
+import com.universidad.reta2.data.remote.NetworkChecker
 import com.universidad.reta2.data.repositories.RankingRepository
+import com.universidad.reta2.data.repositories.SyncRepository
 import com.universidad.reta2.data.remote.dto.RankingResponse
 import com.universidad.reta2.data.preferences.SessionManager
 import android.content.Context
@@ -24,7 +26,11 @@ data class ProgressState(
     val competences: List<Competence> = emptyList(),
     val weeklyProgress: List<DailyProgress> = emptyList(),
     val ranking: RankingResponse? = null,
-    val error: String? = null
+    val error: String? = null,
+    // Sincronización manual: la automática vive en el splash.
+    val isSyncing: Boolean = false,
+    val syncMessage: String? = null,
+    val syncFailed: Boolean = false
 )
 
 @HiltViewModel
@@ -33,6 +39,8 @@ class ProgressViewModel @Inject constructor(
     private val getCompetencesUseCase: GetCompetencesUseCase,
     private val userStatsRepository: UserStatsRepository,
     private val rankingRepository: RankingRepository,
+    private val syncRepository: SyncRepository,
+    private val networkChecker: NetworkChecker,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -41,6 +49,13 @@ class ProgressViewModel @Inject constructor(
     val state: StateFlow<ProgressState> = _state.asStateFlow()
 
     private var isViewModelActive = true
+
+    // La pantalla muestra el estado vacío cuando no hay competencias. Si se quita
+    // el "cargando" al recibir solo las estadísticas, durante unos milisegundos se
+    // ve ese estado vacío antes de que lleguen las competencias. Por eso se espera
+    // a que ambas cargas terminen.
+    private var statsLoaded = false
+    private var localDataLoaded = false
 
     init {
         println(" ProgressViewModel INIT")
@@ -66,6 +81,8 @@ class ProgressViewModel @Inject constructor(
             try {
                 println(" ProgressViewModel: Iniciando carga de datos...")
 
+                statsLoaded = false
+                localDataLoaded = false
                 _state.update { it.copy(isLoading = true, error = null) }
 
                 val username = SessionManager.getCurrentUsername(context) ?: ""
@@ -78,10 +95,11 @@ class ProgressViewModel @Inject constructor(
                             _state.update {
                                 it.copy(
                                     userStats = userStats,
-                                    isLoading = false, // Quitar loading al recibir los primeros stats
                                     error = null
                                 )
                             }
+                            statsLoaded = true
+                            finishLoadingIfReady()
                         }
                     }
                 }
@@ -100,7 +118,12 @@ class ProgressViewModel @Inject constructor(
                             }
                         }
                     } catch (e: Exception) {
-                        println("⚠️ Error cargando datos locales: ${e.message}")
+                        println("Error cargando datos locales: ${e.message}")
+                    } finally {
+                        // También en caso de error: si no se marca, la pantalla
+                        // se quedaría cargando para siempre.
+                        localDataLoaded = true
+                        if (isViewModelActive) finishLoadingIfReady()
                     }
                 }
 
@@ -133,7 +156,54 @@ class ProgressViewModel @Inject constructor(
         }
     }
 
+    /** Quita el indicador de carga solo cuando ambas fuentes locales respondieron. */
+    private fun finishLoadingIfReady() {
+        if (statsLoaded && localDataLoaded) {
+            _state.update { it.copy(isLoading = false) }
+        }
+    }
+
     // FORMATO SEGURO DE TIEMPO
+    /**
+     * Sincronización manual con el panel.
+     *
+     * Usa el mismo [SyncRepository.syncToServer] que el splash ejecuta de forma
+     * automática al abrir la app. Comprobar la conexión en cada pantalla no
+     * compensa en una app de este tamaño, así que aquí la comprobación solo
+     * ocurre cuando el usuario pulsa el botón.
+     */
+    fun syncNow() {
+        if (_state.value.isSyncing) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                isSyncing = true,
+                syncMessage = null,
+                syncFailed = false
+            )
+
+            if (!networkChecker.isConnected()) {
+                _state.value = _state.value.copy(
+                    isSyncing = false,
+                    syncMessage = "Sin conexión. Tu progreso sigue guardado en el teléfono.",
+                    syncFailed = true
+                )
+                return@launch
+            }
+
+            val resultado = syncRepository.syncToServer()
+
+            _state.value = _state.value.copy(
+                isSyncing = false,
+                syncMessage = resultado.fold(
+                    onSuccess = { "Progreso enviado al panel." },
+                    onFailure = { "No se pudo sincronizar: ${it.message ?: "error desconocido"}" }
+                ),
+                syncFailed = resultado.isFailure
+            )
+        }
+    }
+
     fun getFormattedPracticeTime(): String {
         val totalSeconds = state.value.userStats?.dailyPracticeTime ?: 0
         return when {

@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +27,10 @@ import com.universidad.reta2.ui.theme.*
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
+import com.universidad.reta2.ui.components.CompetenceSkeletonItem
+import com.universidad.reta2.ui.components.shimmerEffect
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -59,63 +64,97 @@ fun HomeScreen(
     }
 
     if (isLoading) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .shimmerEffect()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .shimmerEffect()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            repeat(3) {
+                CompetenceSkeletonItem()
+            }
         }
         return
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Header con información del usuario
-        item {
-            UserHeaderCard(userName = userName)
-        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Alerta Premium de Racha en Peligro
+            if (userStats.currentStreakDays == 0) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Column {
+                                Text(
+                                    text = "¡Tu racha está en riesgo!",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    text = "Practica un nivel hoy para mantener tu racha activa.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
-        // Tarjeta de estadísticas principales
-        item {
-            MainStatsCard(
-                totalQuestions = userStats.totalQuestionsAnswered,
-                dailyStreak = userStats.currentStreakDays,
-                competenciesCompleted = completedCompetencesCount
-            )
-        }
+            // Header con información del usuario
+            item {
+                UserHeaderCard(userName = userName)
+            }
 
-        // Sección "Modos de práctica"
-        item {
-            Text(
-                text = "Modos de práctica",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        }
+            // Tarjeta de estadísticas principales
+            item {
+                MainStatsCard(
+                    totalQuestions = userStats.totalQuestionsAnswered,
+                    dailyStreak = userStats.currentStreakDays,
+                    competenciesCompleted = completedCompetencesCount
+                )
+            }
 
-        item {
-            PracticeModeCard(
-                emoji = "⏱",
-                title = "Contrarreloj",
-                description = "Responde el mayor número de preguntas antes de que se acabe el tiempo",
-                onClick = { navController.navigate(Screen.TimedMode.route) }
-            )
-        }
-
-        // Sección "Continuar practicando"
-        if (competencesWithProgress.isNotEmpty()) {
+            // Sección "Modos de práctica"
             item {
                 Text(
-                    text = "Continuar practicando",
+                    text = "Modos de práctica",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -123,17 +162,39 @@ fun HomeScreen(
                 )
             }
 
-            items(competencesWithProgress) { competence ->
-                CompetencePracticeCard(
-                    competence = competence,
-                    onClick = {
-                        navController.navigate(Screen.CompetenceDetail.createRoute(competence.id))
-                    }
+            item {
+                PracticeModeCard(
+                    emoji = "⏱",
+                    title = "Contrarreloj",
+                    description = "Responde el mayor número de preguntas antes de que se acabe el tiempo",
+                    onClick = { navController.navigate(Screen.TimedMode.route) }
                 )
             }
-        } else {
-            item {
-                EmptyProgressCard(navController = navController)
+
+            // Sección "Continuar practicando"
+            if (competencesWithProgress.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Continuar practicando",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                items(competencesWithProgress) { competence ->
+                    CompetencePracticeCard(
+                        competence = competence,
+                        onClick = {
+                            navController.navigate(Screen.CompetenceDetail.createRoute(competence.id))
+                        }
+                    )
+                }
+            } else {
+                item {
+                    EmptyProgressCard(navController = navController)
+                }
             }
         }
     }

@@ -26,6 +26,10 @@ class SplashViewModel @Inject constructor(
     private val _isUserLoggedIn = MutableStateFlow<Boolean?>(null)
     val isUserLoggedIn = _isUserLoggedIn.asStateFlow()
 
+    // NUEVO: estado de sincronización para mostrar feedback
+    private val _syncResult = MutableStateFlow<Result<String>?>(null)
+    val syncResult = _syncResult.asStateFlow()
+
     // NUEVO: estado de conectividad
     private val _networkState = MutableStateFlow<NetworkState>(NetworkState.Checking)
     val networkState = _networkState.asStateFlow()
@@ -87,7 +91,8 @@ class SplashViewModel @Inject constructor(
                 // Sync en background solo si hay conexión
                 if (networkChecker.isConnected()) {
                     viewModelScope.launch {
-                        syncRepository.syncToServer()
+                        val result = syncRepository.syncToServer()
+                        _syncResult.value = result
                     }
                 }
                 _isUserLoggedIn.value = true

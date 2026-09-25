@@ -32,7 +32,10 @@ import androidx.room.Room
         QuestionAttemptEntity::class,
         LevelProgressEntity::class
     ],
-    version = 8
+    // v9: la columna "password" pasó a "password_hash" y guarda el hash SHA-256
+    // con salt. Al subir la versión, fallbackToDestructiveMigration borra la base
+    // local y elimina de paso las contraseñas que estaban en texto plano.
+    version = 9
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao

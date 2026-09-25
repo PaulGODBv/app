@@ -8,7 +8,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -17,14 +16,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.universidad.reta2.ui.navigation.Screen
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.compose.material3.Icon
-import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.Icons
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,17 +33,12 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
     onBackClick: () -> Unit
 ) {
-    val context = LocalContext.current
     val state by viewModel.uiState.collectAsState()
 
-    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        viewModel.eventChannel.collect{ event ->
-            when(event){
-                is ProfileViewModel.ProfileEvent.LaunchIntent -> {
-                    context.startActivity(event.intent)
-                }
+        viewModel.eventChannel.collect { event ->
+            when (event) {
                 ProfileViewModel.ProfileEvent.ThemeChanged -> {
                     // El tema cambia reactivamente, no es necesaria acción extra aquí
                 }
@@ -79,6 +73,13 @@ fun ProfileScreen(
                 text = "Mi Perfil",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
+            )
+
+            // Componentes Premium de Experiencia y Gamificación
+            com.universidad.reta2.ui.components.LevelXpBar(totalQuestionsAnswered = state.totalQuestionsAnswered)
+            com.universidad.reta2.ui.components.UnlockableBadgesGrid(
+                totalQuestionsAnswered = state.totalQuestionsAnswered,
+                currentStreak = state.currentStreak
             )
 
             // ----- Información Personal -----
@@ -238,150 +239,89 @@ fun ProfileScreen(
                 }
             }
 
-            // ----- Reporte de Progreso -----
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "📊 Reporte de Progreso",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    
-                    Text(
-                        text = "Envía un reporte detallado de tu progreso a administración",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
-                    // Información del destinatario
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            Text(
-                                text = "📧 Destino: appreta2@gmail.com",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                text = "Se enviará un análisis completo de tu progreso",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-
-                    Button(
-                        onClick = { 
-                            coroutineScope.launch {
-                                viewModel.exportStatisticsToAdmin()
-                            }
-                        },
-                        enabled = !state.isLoading,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiary
-                        )
-                    ) {
-                        if (state.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onTertiary
-                            )
-                        } else {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = android.R.drawable.ic_menu_send),
-                                    contentDescription = "Enviar reporte"
-                                )
-                                Text("Enviar Reporte Detallado")
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Mensajes de error o éxito
-            if (state.errorMessage.isNotEmpty()) {
+        // ----- Mensajes de error o éxito -----
+        // Van fuera del scroll, pegados a las acciones: el aviso nace al pulsar
+        // «Guardar cambios» y antes podía quedar tapado por esa misma zona fija.
+        if (state.errorMessage.isNotEmpty()) {
+            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 MessageCard(
                     text = state.errorMessage,
                     color = MaterialTheme.colorScheme.errorContainer,
                     textColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
+        }
 
-            if (state.successMessage.isNotEmpty()) {
+        if (state.successMessage.isNotEmpty()) {
+            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 MessageCard(
                     text = state.successMessage,
                     color = MaterialTheme.colorScheme.primaryContainer,
                     textColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
+        // ----- Acciones -----
+        // La acción principal conserva el peso visual; cerrar sesión pasa a ser un
+        // botón de texto: sigue accesible, pero deja de competir con el contenido.
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ----- Botones inferiores -----
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Button(
+                onClick = { viewModel.updateProfile() },
+                enabled = !state.isLoading,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Button(
-                    onClick = { viewModel.updateProfile() },
-                    enabled = !state.isLoading,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
+                if (state.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Save,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
                         )
-                    } else {
-                        Text("Actualizar Perfil")
+                        Text("Guardar cambios")
                     }
                 }
+            }
 
-                Button(
-                    onClick = {
-                        viewModel.logout()
-                        navController.navigate(Screen.Login.route) {
-                            // Limpiar el back stack completamente para destruir ViewModels
-                            popUpTo(0) { inclusive = true }
-                            // Evitar múltiples instancias de la pantalla de login
-                            launchSingleTop = true
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Cerrar Sesión")
-                }
+            TextButton(
+                onClick = {
+                    viewModel.logout()
+                    navController.navigate(Screen.Login.route) {
+                        // Limpiar el back stack completamente para destruir ViewModels
+                        popUpTo(0) { inclusive = true }
+                        // Evitar múltiples instancias de la pantalla de login
+                        launchSingleTop = true
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Cerrar sesión")
             }
         }
     }

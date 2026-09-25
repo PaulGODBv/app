@@ -1,25 +1,19 @@
 package com.universidad.reta2.ui.screens.profile
 
 import android.content.Context
-import android.content.Intent
-import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.data.preferences.SessionManager
 import com.universidad.reta2.domain.repositories.UserRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
+import com.universidad.reta2.utils.PasswordHasher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,6 +21,7 @@ class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val sessionManager: SessionManager,
     private val userStatsRepository: UserStatsRepository,
+    private val passwordHasher: PasswordHasher,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -38,8 +33,7 @@ class ProfileViewModel @Inject constructor(
     private val _eventChannel= MutableSharedFlow<ProfileEvent>()
     val eventChannel = _eventChannel.asSharedFlow()
 
-    sealed class ProfileEvent{
-        data class LaunchIntent(val intent: Intent): ProfileEvent()
+    sealed class ProfileEvent {
         object ThemeChanged : ProfileEvent()
     }
 
@@ -50,6 +44,18 @@ class ProfileViewModel @Inject constructor(
             username = username, 
             email = email
         )
+        viewModelScope.launch {
+            try {
+                userStatsRepository.getUserStats().collect { stats ->
+                    _uiState.value = _uiState.value.copy(
+                        totalQuestionsAnswered = stats.totalQuestionsAnswered,
+                        currentStreak = stats.currentStreakDays
+                    )
+                }
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
     }
 
     fun setThemeMode(mode: Int) {
@@ -92,22 +98,72 @@ class ProfileViewModel @Inject constructor(
                 return@launch
             }
 
-            _uiState.value = state.copy(isLoading = true, errorMessage = "", successMessage = "")
-
             val currentUsername = sessionManager.getCurrentUsername(context) ?: ""
             val currentEmail = sessionManager.getCurrentEmail(context) ?: ""
+
+            // Solo se intenta cambiar la contraseña si la persona escribió algo
+            // en alguno de los tres campos del bloque de contraseña.
+            val wantsPasswordChange = state.currentPassword.isNotEmpty() ||
+                    state.newPassword.isNotEmpty() ||
+                    state.confirmPassword.isNotEmpty()
+
+            var newPasswordHash: String? = null
+
+            if (wantsPasswordChange) {
+                when {
+                    state.currentPassword.isEmpty() -> {
+                        showError("Ingresa tu contraseña actual")
+                        return@launch
+                    }
+                    state.newPassword.isEmpty() -> {
+                        showError("La nueva contraseña no puede estar vacía")
+                        return@launch
+                    }
+                    state.newPassword.length < 6 -> {
+                        showError("La nueva contraseña debe tener al menos 6 caracteres")
+                        return@launch
+                    }
+                    state.newPassword != state.confirmPassword -> {
+                        showError("Las contraseñas no coinciden")
+                        return@launch
+                    }
+                }
+
+                val storedUser = userRepository.getUserByUsername(currentUsername)
+                if (storedUser == null) {
+                    showError("No se encontró el usuario de la sesión")
+                    return@launch
+                }
+
+                // Paso clave: la contraseña actual se comprueba contra el hash guardado.
+                if (!passwordHasher.verifyPassword(state.currentPassword, storedUser.passwordHash)) {
+                    showError("Contraseña actual incorrecta")
+                    return@launch
+                }
+
+                newPasswordHash = passwordHasher.hashPassword(state.newPassword)
+            }
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = "",
+                successMessage = ""
+            )
 
             val success = userRepository.updateUser(
                 currentUsername,
                 currentEmail,
                 state.username,
                 state.email,
-                if (state.newPassword.isNotEmpty()) state.newPassword else null
+                newPasswordHash
             )
 
             if (success) {
                 sessionManager.updateUserData(context, state.username, state.email)
-                showSuccess("Perfil actualizado exitosamente")
+                showSuccess(
+                    if (newPasswordHash != null) "Perfil y contraseña actualizados exitosamente"
+                    else "Perfil actualizado exitosamente"
+                )
                 _uiState.value = _uiState.value.copy(
                     currentPassword = "",
                     newPassword = "",
@@ -129,119 +185,6 @@ class ProfileViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(errorMessage = "", successMessage = "")
     }
 
-    private companion object {
-        const val ADMIN_EMAIL = "appreta2@gmail.com"
-    }
-
-    fun exportStatisticsToAdmin() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "", successMessage = "")
-
-            try {
-                // 1. Generar CSV con estadísticas
-                val csvContent = generateStatisticsCSV()
-
-                // 2. Enviar por correo
-                sendEmailWithCSV(csvContent)
-
-                showSuccess("Estadísticas enviadas a administración exitosamente")
-
-            } catch (e: Exception) {
-                showError("Error al exportar estadísticas: ${e.message}")
-            } finally {
-                _uiState.value = _uiState.value.copy(isLoading = false)
-            }
-        }
-    }
-
-
-    private suspend fun generateStatisticsCSV(): String {
-        val username = sessionManager.getCurrentUsername(context) ?: "Usuario"
-        val userEmail = sessionManager.getCurrentEmail(context) ?: "No especificado"
-
-        // Collect stats using Flow
-        val stats = userStatsRepository.getUserStats().first()
-        val weeklyProgress = userStatsRepository.getWeeklyProgress()
-        val achievements = userStatsRepository.getAchievementsProgress()
-
-        val csvBuilder = StringBuilder()
-
-        // Headers
-        csvBuilder.append("Usuario,Email,Métricas,Valor,Fecha Reporte\n")
-
-        val currentDate = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-
-        // General stats
-        csvBuilder.append("$username,$userEmail,Preguntas Respondidas,${stats.totalQuestionsAnswered},$currentDate\n")
-        csvBuilder.append("$username,$userEmail,Tiempo Total (min),${stats.totalPracticeTimeSeconds / 60},$currentDate\n")
-        csvBuilder.append("$username,$userEmail,Racha Actual,${stats.currentStreakDays},$currentDate\n")
-        csvBuilder.append("$username,$userEmail,Tiempo Hoy (min),${stats.dailyPracticeTime / 60},$currentDate\n")
-
-        // Weekly progress
-        weeklyProgress.forEach { daily ->
-            csvBuilder.append("$username,$userEmail,Preguntas ${daily.date},${daily.questionsAnswered},$currentDate\n")
-            csvBuilder.append("$username,$userEmail,Tiempo ${daily.date} (min),${daily.practiceTime / 60},$currentDate\n")
-        }
-
-        // Achievements progress
-        achievements.forEach { (achievement, progress) ->
-            csvBuilder.append("$username,$userEmail,Logro $achievement,${(progress * 100).toInt()}%,$currentDate\n")
-        }
-
-        return csvBuilder.toString()
-    }
-
-    private fun sendEmailWithCSV(csvContent: String) {
-        val username = sessionManager.getCurrentUsername(context) ?: "Usuario"
-        val userEmail = sessionManager.getCurrentEmail(context) ?: "No especificado"
-
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_EMAIL, arrayOf(ADMIN_EMAIL))
-            putExtra(Intent.EXTRA_SUBJECT, "Reporte de Progreso - $username")
-            putExtra(Intent.EXTRA_TEXT,
-                """
-                Reporte de progreso generado automáticamente desde la app Reta2.
-
-                Usuario: $username
-                Email: $userEmail
-                Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}
-
-                El archivo CSV adjunto contiene las estadísticas detalladas del usuario.
-
-                ¡Saludos!
-                """.trimIndent()
-            )
-
-            // Crear archivo temporal CSV
-            val tempFile = createTempCSVFile(csvContent, username)
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                tempFile
-            )
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-
-        val chooser=Intent.createChooser(intent, "Enviar reporte a administración")
-        viewModelScope.launch {
-            _eventChannel.emit(ProfileEvent.LaunchIntent(chooser))
-        }
-
-    }
-
-    private fun createTempCSVFile(csvContent: String, username: String): File {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val safeUsername = username.replace("[^a-zA-Z0-9]".toRegex(), "_")
-        val fileName = "reporte_${safeUsername}_$timeStamp.csv"
-
-        val file = File(context.getExternalFilesDir(null), fileName)
-        file.writeText(csvContent, Charsets.UTF_8)
-
-        return file
-    }
-
     private fun showError(msg: String) {
         _uiState.value = _uiState.value.copy(errorMessage = msg)
     }
@@ -259,6 +202,8 @@ data class ProfileUiState(
     val confirmPassword: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String = "",
-    val successMessage: String = ""
+    val successMessage: String = "",
+    val totalQuestionsAnswered: Int = 0,
+    val currentStreak: Int = 0
 )
 

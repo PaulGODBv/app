@@ -13,6 +13,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -90,48 +99,91 @@ fun TimedModeScreen(
             )
         }
     ) { paddingValues ->
-        Box(
+        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val hapticTypeLong = androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+        val hapticTypeText = androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (uiState.step) {
-                TimedModeStep.SETUP_SOURCE -> SetupSourceStep(
-                    onSelectSource = { viewModel.selectSource(it) }
-                )
-                TimedModeStep.SETUP_COMPETENCE -> SetupCompetenceStep(
-                    competences = uiState.competences,
-                    onSelectCompetence = { viewModel.selectCompetence(it) }
-                )
-                TimedModeStep.SETUP_LEVEL -> SetupLevelStep(
-                    competence = uiState.selectedCompetence,
-                    onSelectLevel = { viewModel.selectLevel(it) }
-                )
-                TimedModeStep.SETUP_TIME -> SetupTimeStep(
-                    selectedMinutes = uiState.selectedMinutes,
-                    questionSource = uiState.questionSource,
-                    selectedCompetence = uiState.selectedCompetence,
-                    selectedLevelId = uiState.selectedLevelId,
-                    isLoading = uiState.isLoadingQuestions,
-                    error = uiState.error,
-                    onMinutesChange = { viewModel.selectMinutes(it) },
-                    onStart = { viewModel.startTimedMode() }
-                )
-                TimedModeStep.PLAYING -> PlayingStep(
-                    uiState = uiState,
-                    onSelectOption = { viewModel.selectOption(it) }
-                )
-                TimedModeStep.FINISHED -> FinishedStep(
-                    totalAnswered = uiState.totalAnswered,
-                    totalCorrect = uiState.totalCorrect,
-                    minutes = uiState.selectedMinutes,
-                    onPlayAgain = { viewModel.resetMode() },
-                    onGoHome = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) { inclusive = false }
+            // Mostrar indicador de pasos en configuración
+            if (uiState.step == TimedModeStep.SETUP_SOURCE ||
+                uiState.step == TimedModeStep.SETUP_COMPETENCE ||
+                uiState.step == TimedModeStep.SETUP_LEVEL ||
+                uiState.step == TimedModeStep.SETUP_TIME
+            ) {
+                val currentStepIndex = when (uiState.step) {
+                    TimedModeStep.SETUP_SOURCE -> 0
+                    TimedModeStep.SETUP_COMPETENCE, TimedModeStep.SETUP_LEVEL -> 1
+                    TimedModeStep.SETUP_TIME -> 2
+                    else -> 0
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    com.universidad.reta2.ui.components.ProgressStepIndicator(
+                        currentStep = currentStepIndex,
+                        totalSteps = 3
+                    )
+                }
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
+                when (uiState.step) {
+                    TimedModeStep.SETUP_SOURCE -> SetupSourceStep(
+                        onSelectSource = { viewModel.selectSource(it) }
+                    )
+                    TimedModeStep.SETUP_COMPETENCE -> SetupCompetenceStep(
+                        competences = uiState.competences,
+                        onSelectCompetence = { viewModel.selectCompetence(it) }
+                    )
+                    TimedModeStep.SETUP_LEVEL -> SetupLevelStep(
+                        competence = uiState.selectedCompetence,
+                        onSelectLevel = { viewModel.selectLevel(it) }
+                    )
+                    TimedModeStep.SETUP_TIME -> SetupTimeStep(
+                        selectedMinutes = uiState.selectedMinutes,
+                        questionSource = uiState.questionSource,
+                        selectedCompetence = uiState.selectedCompetence,
+                        selectedLevelId = uiState.selectedLevelId,
+                        isLoading = uiState.isLoadingQuestions,
+                        error = uiState.error,
+                        onMinutesChange = { viewModel.selectMinutes(it) },
+                        onStart = { viewModel.startTimedMode() }
+                    )
+                    TimedModeStep.PLAYING -> PlayingStep(
+                        uiState = uiState,
+                        onSelectOption = { optionId ->
+                            val currentQuestion = uiState.currentQuestion
+                            if (currentQuestion != null) {
+                                val isCorrect = optionId == currentQuestion.correctOptionId
+                                if (isCorrect) {
+                                    haptic.performHapticFeedback(hapticTypeLong) // Patrón corto / sutil
+                                } else {
+                                    haptic.performHapticFeedback(hapticTypeText) // Patrón doble / alternativo
+                                }
+                            }
+                            viewModel.selectOption(optionId)
                         }
-                    }
-                )
+                    )
+                    TimedModeStep.FINISHED -> FinishedStep(
+                        totalAnswered = uiState.totalAnswered,
+                        totalCorrect = uiState.totalCorrect,
+                        minutes = uiState.selectedMinutes,
+                        onPlayAgain = { viewModel.resetMode() },
+                        onGoHome = {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Home.route) { inclusive = false }
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -181,21 +233,21 @@ private fun SetupSourceStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         SourceOptionCard(
-            emoji = "🌐",
+            icon = Icons.Filled.Public,
             title = "Todas las competencias",
             description = "Preguntas mezcladas de todos los temas y niveles",
             onClick = { onSelectSource(QuestionSource.ALL) }
         )
         Spacer(modifier = Modifier.height(12.dp))
         SourceOptionCard(
-            emoji = "📚",
+            icon = Icons.Filled.MenuBook,
             title = "Una competencia",
             description = "Elige una competencia y practica todos sus niveles",
             onClick = { onSelectSource(QuestionSource.COMPETENCE) }
         )
         Spacer(modifier = Modifier.height(12.dp))
         SourceOptionCard(
-            emoji = "🎯",
+            icon = Icons.Filled.GpsFixed,
             title = "Nivel específico",
             description = "Elige competencia y nivel exacto a practicar",
             onClick = { onSelectSource(QuestionSource.LEVEL) }
@@ -205,7 +257,7 @@ private fun SetupSourceStep(
 
 @Composable
 private fun SourceOptionCard(
-    emoji: String,
+    icon: ImageVector,
     title: String,
     description: String,
     onClick: () -> Unit
@@ -231,9 +283,11 @@ private fun SourceOptionCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = emoji,
-                style = MaterialTheme.typography.headlineSmall
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -406,9 +460,11 @@ private fun SetupLevelStep(
                         )
                     }
                     if (level.isLocked) {
-                        Text(
-                            text = "🔒",
-                            style = MaterialTheme.typography.titleMedium
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = "Nivel bloqueado",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -842,11 +898,19 @@ private fun TimedOptionItem(
                 color = MaterialTheme.colorScheme.onSurface
             )
             if (showFeedback && isCorrect) {
-                Text("✓", style = MaterialTheme.typography.titleLarge,
-                    color = Success100)
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Respuesta correcta",
+                    tint = Success100,
+                    modifier = Modifier.size(24.dp)
+                )
             } else if (showFeedback && isSelected && !isCorrect) {
-                Text("✗", style = MaterialTheme.typography.titleLarge,
-                    color = Error100)
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Respuesta incorrecta",
+                    tint = Error100,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
@@ -871,14 +935,20 @@ private fun FinishedStep(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = when {
-                percentage >= 80 -> "🏆"
-                percentage >= 60 -> "🎯"
-                percentage >= 40 -> "💪"
-                else             -> "📚"
+        Icon(
+            imageVector = when {
+                percentage >= 80 -> Icons.Filled.EmojiEvents
+                percentage >= 60 -> Icons.Filled.GpsFixed
+                percentage >= 40 -> Icons.Filled.FitnessCenter
+                else             -> Icons.Filled.MenuBook
             },
-            style = MaterialTheme.typography.displayMedium
+            contentDescription = null,
+            tint = when {
+                percentage >= 80 -> MaterialTheme.colorScheme.primary
+                percentage >= 60 -> MaterialTheme.colorScheme.tertiary
+                else             -> MaterialTheme.colorScheme.secondary
+            },
+            modifier = Modifier.size(64.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -930,9 +1000,9 @@ private fun FinishedStep(
         ) {
             Text(
                 text = when {
-                    percentage >= 80 -> "¡Excelente desempeño en $minutes minutos! 🎉"
-                    percentage >= 60 -> "¡Buen trabajo! Sigue practicando 👍"
-                    else             -> "Practica más para mejorar tu velocidad 💪"
+                    percentage >= 80 -> "¡Excelente desempeño en $minutes minutos!"
+                    percentage >= 60 -> "¡Buen trabajo! Sigue practicando"
+                    else             -> "Practica más para mejorar tu velocidad"
                 },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,

@@ -9,3 +9,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+/graphify-out
+CLAUDE.md
+ENTORNO_REGLAS_NEGOCIO_Y_DISENO.md

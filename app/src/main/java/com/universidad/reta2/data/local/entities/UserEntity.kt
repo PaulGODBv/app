@@ -12,11 +12,15 @@ data class UserEntity(
     @ColumnInfo(name = "email")
     val email: String,
     
-    @ColumnInfo(name = "password")
-    val password: String,
+    /** Hash de la contraseña generado por PasswordHasher: nunca texto plano. */
+    @ColumnInfo(name = "password_hash")
+    val passwordHash: String,
 
     @ColumnInfo(name = "student_code")
     val studentCode: String = "",
+
+    @ColumnInfo(name = "student_program")
+    val studentProgram: String = "",
     
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis()

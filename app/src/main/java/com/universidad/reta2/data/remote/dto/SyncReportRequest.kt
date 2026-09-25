@@ -9,6 +9,7 @@ data class SyncReportRequest(
     @SerializedName("total_practice_time_seconds") val totalPracticeTimeSeconds: Int,
     @SerializedName("current_streak_days") val currentStreakDays: Int,
     @SerializedName("daily_practice_time_seconds") val dailyPracticeTimeSeconds: Int,
+    @SerializedName("academic_program") val academicProgram: String = "",
     @SerializedName("app_version") val appVersion: String = "1.0",
     @SerializedName("level_progress") val levelProgress: List<LevelProgressDto> = emptyList()
 )

@@ -11,8 +11,9 @@ object UserMapper {
         return User(
             username = entity.username,
             email = entity.email,
-            password = entity.password,
-            studentCode = entity.studentCode
+            passwordHash = entity.passwordHash,
+            studentCode = entity.studentCode,
+            studentProgram = entity.studentProgram
         )
     }
 
@@ -20,8 +21,9 @@ object UserMapper {
         return UserEntity(
             username = domain.username,
             email = domain.email,
-            password = domain.password,
-            studentCode = domain.studentCode
+            passwordHash = domain.passwordHash,
+            studentCode = domain.studentCode,
+            studentProgram = domain.studentProgram
         )
     }
 

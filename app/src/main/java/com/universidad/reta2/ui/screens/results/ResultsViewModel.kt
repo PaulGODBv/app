@@ -62,10 +62,10 @@ class ResultsViewModel @Inject constructor(
 
             _syncState.value = if (result.isSuccess) {
                 println("✅ Sync desde ResultsScreen exitoso")
-                SyncUiState.Success
+                SyncUiState.Success(result.getOrNull() ?: "Sincronizado")
             } else {
                 println("⚠️ Sync desde ResultsScreen falló: ${result.exceptionOrNull()?.message}")
-                SyncUiState.Error // No mostramos error al usuario, es silencioso
+                SyncUiState.Error(result.exceptionOrNull()?.message ?: "Error de sincronización")
             }
         }
     }
@@ -90,6 +90,6 @@ class ResultsViewModel @Inject constructor(
 sealed class SyncUiState {
     object Idle : SyncUiState()
     object Loading : SyncUiState()
-    object Success : SyncUiState()
-    object Error : SyncUiState()
+    data class Success(val message: String) : SyncUiState()
+    data class Error(val message: String) : SyncUiState()
 }

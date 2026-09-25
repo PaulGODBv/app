@@ -25,6 +25,7 @@ class SyncRepository(
                 Exception("No hay usuario logueado")
             )
             val email = SessionManager.getCurrentEmail(context) ?: ""
+            val academicProgram = SessionManager.getCurrentStudentProgram(context) ?: ""
 
             // Obtener estadísticas actuales
             val stats = userStatsRepository.getUserStats().first()
@@ -60,6 +61,7 @@ class SyncRepository(
                 totalPracticeTimeSeconds = stats.totalPracticeTimeSeconds,
                 currentStreakDays = stats.currentStreakDays,
                 dailyPracticeTimeSeconds = stats.dailyPracticeTime,
+                academicProgram = academicProgram,
                 levelProgress = levelProgressList
             )
 

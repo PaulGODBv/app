@@ -30,8 +30,8 @@ private val TemaClaro = lightColorScheme(
 
     error = Error100,
     onError = Color.White,
-    errorContainer = Success200.copy(alpha = 0.1f),
-    onErrorContainer = Success100,
+    errorContainer = Error200.copy(alpha = 0.1f),
+    onErrorContainer = Error100,
 
     outline = Bg300,
     outlineVariant = Bg200,
@@ -43,38 +43,42 @@ private val TemaClaro = lightColorScheme(
 )
 
 private val TemaOscuro = darkColorScheme(
+    // Azul: acciones y estado.
     primary = DarkPrimary100,
+    onPrimary = Color(0xFF05203A),
     primaryContainer = DarkPrimary300,
-    onPrimary = DarkBg100,
-    onPrimaryContainer = DarkText100,
+    onPrimaryContainer = Color(0xFFCFE3F8),
 
+    // Ámbar: logro. Lo consumen el ranking, la tarjeta de desbloqueo de
+    // resultados y los tramos del contrarreloj.
     secondary = DarkAccent100,
+    onSecondary = Color(0xFF2A1A06),
     secondaryContainer = DarkAccent200,
-    onSecondary = DarkBg100,
-    onSecondaryContainer = DarkText100,
+    onSecondaryContainer = Color(0xFFF5DCBB),
 
-    tertiary = DarkPrimary200,
-    tertiaryContainer = DarkBg200,
+    // Azul pizarra: el tramo intermedio (60–69 %), que no es ni logro ni fallo.
+    tertiary = DarkTertiary100,
     onTertiary = DarkBg100,
-    onTertiaryContainer = DarkText100,
+    tertiaryContainer = DarkTertiary200,
+    onTertiaryContainer = Color(0xFFD6E0EA),
 
     background = DarkBg100,
     onBackground = DarkText100,
 
-    surface = DarkBg200, // Cambiado de DarkBg100 para dar elevación a tarjetas
-    surfaceVariant = DarkBg300,
+    surface = DarkBg200,
     onSurface = DarkText100,
+    surfaceVariant = DarkBg300,
     onSurfaceVariant = DarkText200,
 
     error = DarkError100,
-    onError = Color.Black,
-    errorContainer = DarkSuccess200.copy(alpha = 0.2f),
-    onErrorContainer = DarkSuccess100,
+    onError = Color(0xFF2A0A0A),
+    errorContainer = DarkError200.copy(alpha = 0.2f),
+    onErrorContainer = DarkError100,
 
-    outline = DarkBg300,
-    outlineVariant = DarkBg200,
+    outline = DarkOutline,
+    outlineVariant = DarkOutlineVariant,
 
-    scrim = Color.Black.copy(alpha = 0.5f),
+    scrim = Color.Black.copy(alpha = 0.6f),
     inverseSurface = DarkText100,
     inverseOnSurface = DarkBg100,
     inversePrimary = DarkPrimary200

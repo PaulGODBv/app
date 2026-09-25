@@ -106,6 +106,21 @@ fun RegistrationScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Campo nuevo: Programa académico
+        OutlinedTextField(
+            value = uiState.studentProgram,
+            onValueChange = { viewModel.onStudentProgramChange(it) },
+            label = { Text("Programa académico") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
+            isError = uiState.errorMessage.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         OutlinedTextField(
             value = uiState.password,
             onValueChange = { viewModel.onPasswordChange(it) },

@@ -9,6 +9,7 @@ object SessionManager {
     private const val PREFS_NAME = "user_session"
     private const val KEY_USERNAME = "username"
     private const val KEY_EMAIL = "email"
+    private const val KEY_STUDENT_PROGRAM = "student_program"
     private const val KEY_IS_LOGGED_IN = "is_logged_in"
     private const val KEY_THEME_MODE = "theme_mode" // 0: Auto, 1: Light, 2: Dark
     private const val PREFIX_AVATAR = "avatar_"
@@ -20,11 +21,12 @@ object SessionManager {
         _themeModeFlow.value = getThemeMode(context)
     }
 
-    fun saveUserSession(context: Context, username: String, email: String) {
+    fun saveUserSession(context: Context, username: String, email: String, studentProgram: String = "") {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().apply {
             putString(KEY_USERNAME, username)
             putString(KEY_EMAIL, email)
+            putString(KEY_STUDENT_PROGRAM, studentProgram)
             putBoolean(KEY_IS_LOGGED_IN, true)
             commit() // Cambiado apply() por commit() para persistencia inmediata
         }
@@ -61,6 +63,11 @@ object SessionManager {
         return prefs.getString(KEY_EMAIL, null)
     }
 
+    fun getCurrentStudentProgram(context: Context): String? {
+        val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_STUDENT_PROGRAM, "")
+    }
+
     fun isLoggedIn(context: Context): Boolean {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(KEY_IS_LOGGED_IN, false)
@@ -71,16 +78,18 @@ object SessionManager {
         prefs.edit().apply {
             remove(KEY_USERNAME)
             remove(KEY_EMAIL)
+            remove(KEY_STUDENT_PROGRAM)
             putBoolean(KEY_IS_LOGGED_IN, false)
             commit() // Cambiado apply() por commit() para persistencia inmediata
         }
     }
 
-    fun updateUserData(context: Context, username: String, email: String) {
+    fun updateUserData(context: Context, username: String, email: String, studentProgram: String = "") {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().apply {
             putString(KEY_USERNAME, username)
             putString(KEY_EMAIL, email)
+            putString(KEY_STUDENT_PROGRAM, studentProgram)
             commit() // Cambiado apply() por commit() para persistencia inmediata
         }
     }

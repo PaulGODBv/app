@@ -6,11 +6,13 @@ import com.universidad.reta2.data.local.dao.UserStatsDao
 import com.universidad.reta2.data.local.mappers.UserMapper
 import com.universidad.reta2.domain.models.User
 import com.universidad.reta2.domain.repositories.UserRepository
+import com.universidad.reta2.utils.PasswordHasher
 
 class UserRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
     private val userStatsDao: UserStatsDao,
-    private val mapper: UserMapper
+    private val mapper: UserMapper,
+    private val passwordHasher: PasswordHasher
 ) : UserRepository {
 
     override suspend fun getUserByUsernameOrEmail(identifier: String): User? {
@@ -27,11 +29,16 @@ class UserRepositoryImpl @Inject constructor(
 
     override suspend fun createUser(user: User): Boolean {
         return try {
-            userDao.insertUser(mapper.toEntity(user))
+            // El hash debería llegar ya generado desde la capa de presentación.
+            // Esta comprobación es la última barrera: si por cualquier motivo llegara
+            // texto plano, se hashea aquí antes de tocar la base de datos.
+            val safeUser = user.copy(passwordHash = ensureHashed(user.passwordHash))
+
+            userDao.insertUser(mapper.toEntity(safeUser))
 
             // Crear estadísticas iniciales para el nuevo usuario
             val initialStats = com.universidad.reta2.data.local.mappers.UserStatsMapper
-                .createInitialStats(user.username)
+                .createInitialStats(safeUser.username)
             userStatsDao.createInitialStats(initialStats)
 
             true
@@ -62,7 +69,7 @@ class UserRepositoryImpl @Inject constructor(
         currentEmail: String,
         newUsername: String,
         newEmail: String,
-        newPassword: String?
+        newPasswordHash: String?
     ): Boolean {
         return try {
             // Buscar el usuario actual
@@ -72,7 +79,8 @@ class UserRepositoryImpl @Inject constructor(
             val updatedUser = user.copy(
                 username = newUsername,
                 email = newEmail,
-                password = newPassword ?: user.password
+                // Si no se envía contraseña nueva se conserva el hash actual.
+                passwordHash = newPasswordHash?.let { ensureHashed(it) } ?: user.passwordHash
             )
 
             userDao.updateUser(updatedUser)
@@ -83,4 +91,7 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
+    /** Devuelve el valor tal cual si ya es un hash; si no, lo hashea. */
+    private fun ensureHashed(value: String): String =
+        if (passwordHasher.isHashed(value)) value else passwordHasher.hashPassword(value)
 }

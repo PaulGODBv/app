@@ -1,5 +1,6 @@
 package com.universidad.reta2.data.repositories
 
+import com.universidad.reta2.domain.LevelRules
 import com.universidad.reta2.data.local.dao.ProgressDao
 import com.universidad.reta2.data.local.dao.UserStatsDao
 import com.universidad.reta2.data.local.dao.LevelDao
@@ -104,9 +105,9 @@ class ProgressRepositoryImpl @Inject constructor(
             println("🎯 DIAGNÓSTICO INICIO - completeLevelAndUnlockNext")
             println("   📊 Score: $score/$totalQuestions")
 
-            // 🔥 VERIFICAR PROGRESO MÍNIMO PARA COMPLETAR (80%)
+            // Umbral compartido con la pantalla de resultados (LevelRules).
             val progress = score.toFloat() / totalQuestions
-            val minProgressRequired = 0.8f // 80% mínimo para completar
+            val minProgressRequired = LevelRules.PASSING_RATIO
 
             println("   📈 Progreso: ${(progress * 100).toInt()}%")
             println("   🎯 Mínimo requerido: ${(minProgressRequired * 100).toInt()}%")
