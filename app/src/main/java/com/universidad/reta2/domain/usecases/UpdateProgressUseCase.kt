@@ -2,7 +2,6 @@ package com.universidad.reta2.domain.usecases
 
 import com.universidad.reta2.domain.repositories.ProgressRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
-import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class UpdateProgressUseCase @Inject constructor(
@@ -18,7 +17,20 @@ class UpdateProgressUseCase @Inject constructor(
         competenceId: Int? = null,
         isLevelCompleted: Boolean = false,
         levelScore: Int = 0,
-        totalQuestions: Int = 0
+        totalQuestions: Int = 0,
+        /**
+         * Si la sesión es de práctica.
+         *
+         * En práctica **no se registra el intento ni se completa el nivel**:
+         * practicar no puntúa ni desbloquea, que es lo que la separa de
+         * evaluarse. Si se registrara, las respuestas de práctica entrarían en
+         * el porcentaje del nivel y de la competencia, y el estudiante vería
+         * subir su progreso sin haberse evaluado nunca.
+         *
+         * Lo que sí cuenta es el tiempo y la racha: practicar es practicar, y
+         * el objetivo de la app es que vuelvan todos los días.
+         */
+        esPractica: Boolean = false
     ) {
         try {
             println(" UpdateProgressUseCase INVOCADO")
@@ -30,16 +42,18 @@ class UpdateProgressUseCase @Inject constructor(
             println("   - levelScore: $levelScore")
             println("   - totalQuestions: $totalQuestions")
 
-             //1. Registrar la respuesta individual
-            progressRepository.recordQuestionAttempt(
-                questionId = questionId,
-                isCorrect = isCorrect,
-                timeSpentSeconds = timeSpent,
-                levelId = levelId
-            )
+            //1. Registrar la respuesta individual (solo en evaluación)
+            if (!esPractica) {
+                progressRepository.recordQuestionAttempt(
+                    questionId = questionId,
+                    isCorrect = isCorrect,
+                    timeSpentSeconds = timeSpent,
+                    levelId = levelId
+                )
+            }
 
             // 2. Actualizar estadísticas del usuario
-            val currentStats = userStatsRepository.getUserStats().first()
+            val currentStats = userStatsRepository.getUserStatsOnce()
 
             val questionsToAdd= if (isCorrect) 1 else 0
             val updatedStats = currentStats.copy(
@@ -58,7 +72,7 @@ class UpdateProgressUseCase @Inject constructor(
             println("   - Condición: ${isLevelCompleted && competenceId != null}")
 
 
-            if (isLevelCompleted && competenceId != null) {
+            if (isLevelCompleted && competenceId != null && !esPractica) {
                 println("🚀 EJECUTANDO completeLevelAndUnlockNext...")
                 println("🎯 Completando nivel $levelId con score: $levelScore/$totalQuestions")
 

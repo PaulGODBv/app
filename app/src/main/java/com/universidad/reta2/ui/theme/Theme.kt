@@ -2,6 +2,7 @@ package com.universidad.reta2.ui.theme
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 
 private val TemaClaro = lightColorScheme(
@@ -87,9 +88,17 @@ private val TemaOscuro = darkColorScheme(
 @Composable
 fun Reta2Theme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
     val colors = if (darkTheme) TemaOscuro else TemaClaro
-    MaterialTheme(
-        colorScheme = colors,
-        typography = Typography(),
-        content = content
-    )
+    // El verde del acierto no cabe en el colorScheme —Material 3 no tiene rol
+    // de exito— y se provee aparte. Aqui, que es donde de verdad se sabe en
+    // que tema estamos: preguntarselo al sistema daria el color equivocado a
+    // quien haya forzado un modo desde Perfil.
+    val veredicto = if (darkTheme) VEREDICTO_OSCURO else VEREDICTO_CLARO
+
+    CompositionLocalProvider(LocalVeredicto provides veredicto) {
+        MaterialTheme(
+            colorScheme = colors,
+            typography = Typography(),
+            content = content
+        )
+    }
 }

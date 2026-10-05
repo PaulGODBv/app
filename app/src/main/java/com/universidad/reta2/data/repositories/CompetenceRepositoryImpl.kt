@@ -1,5 +1,6 @@
 package com.universidad.reta2.data.repositories
 
+import com.universidad.reta2.data.local.CatalogoCache
 import android.content.Context
 import com.universidad.reta2.data.local.dao.CompetenceDao
 import com.universidad.reta2.data.local.dao.LevelDao
@@ -8,6 +9,7 @@ import com.universidad.reta2.data.local.dao.QuestionDao
 import com.universidad.reta2.data.local.mappers.CompetenceMapper
 import com.universidad.reta2.data.local.entities.LevelEntity
 import com.universidad.reta2.data.local.entities.CompetenceEntity
+import com.universidad.reta2.domain.LevelRules
 import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.models.Level
 import com.universidad.reta2.domain.repositories.CompetenceRepository
@@ -23,6 +25,7 @@ class CompetenceRepositoryImpl @Inject constructor(
     private val competenceMapper: CompetenceMapper,
     private val progressDao: ProgressDao,
     private val questionDao: QuestionDao,
+    private val catalogoCache: CatalogoCache,
     @ApplicationContext private val context: Context,
     private val questionRepository: QuestionRepository
 ) : CompetenceRepository {
@@ -43,6 +46,14 @@ class CompetenceRepositoryImpl @Inject constructor(
     }
     override suspend fun getAllCompetences(): List<Competence> {
         return try {
+            // Componer el catalogo con el progreso cuesta unos 200 ms por las
+            // consultas de intentos nivel a nivel. Los ViewModel de las
+            // pestanas se recrean al volver a ellas, asi que sin esta cache el
+            // calculo se repetia en cada cambio y obligaba a ensenar el
+            // esqueleto de carga una y otra vez. La capa de progreso la invalida
+            // en cuanto escribe algo.
+            catalogoCache.obtener(getCurrentUserName())?.let { return it }
+
             val competenceEntities = competenceDao.getAllCompetences()
 
             if (competenceEntities.isEmpty()) {
@@ -61,32 +72,54 @@ class CompetenceRepositoryImpl @Inject constructor(
                     val competence = competenceMapper.toDomain(entity, levels)
 
                     // 2. Calcular el progreso real
-                    val levelIds = levels.map { it.id } // Obtener IDs de nivel (ej. [101, 102, 103])
+                    // Sin los de práctica: el calentamiento no es evaluación, y
+                    // sumarlo movería el porcentaje de la competencia con
+                    // ejercicios que a propósito no desbloquean nada.
+                    val levelIds = levels.map { it.id }
+                        .filterNot { LevelRules.esDePractica(it) }
                     var calculatedProgress = 0f
 
                     if (levelIds.isNotEmpty()) {
 
-                        // 1. DENOMINADOR: Calcular usando QuestionRepository
-                        var totalQuestions = 0
+                        // 1. DENOMINADOR: las preguntas que hoy tiene el banco.
                         val competenceId = entity.id
+                        val idsDelBanco = mutableListOf<Int>()
 
-                        // Usamos un bucle for tradicional porque getQuestions... es 'suspend'
+                        // Bucle tradicional porque getQuestions... es 'suspend'
                         for (levelId in levelIds) {
-                            totalQuestions += questionRepository.getQuestionsByCompetenceAndLevel(competenceId, levelId).size
+                            idsDelBanco += questionRepository
+                                .getQuestionsByCompetenceAndLevel(competenceId, levelId)
+                                .map { it.id }
                         }
+                        val totalQuestions = idsDelBanco.size
 
-                        // 2. NUMERADOR: Obtener de la BD (esto está bien)
-                        val correctQuestions = progressDao.getUniqueCorrectQuestionCountForLevels(username, levelIds)
+                        // 2. NUMERADOR: aciertos, pero solo de esas preguntas.
+                        //
+                        // Se le pasan los ids del banco a proposito. Contar
+                        // cualquier intento acertado incluia los que apuntan a
+                        // preguntas que ya no existen —los ids cambiaron al
+                        // traer el banco del panel— y el porcentaje se iba por
+                        // encima del 100 %: un nivel de 8 marcaba 137 %.
+                        val correctQuestions = if (idsDelBanco.isEmpty()) 0
+                        else progressDao.contarAciertosDeEstasPreguntas(
+                            username, levelIds, idsDelBanco
+                        )
 
                         if (totalQuestions > 0) {
-                            calculatedProgress = correctQuestions.toFloat() / totalQuestions.toFloat()
+                            // El techo es una red de seguridad: con numerador y
+                            // denominador midiendo lo mismo no deberia hacer
+                            // falta, pero una barra al 137 % es peor que una
+                            // barra llena.
+                            calculatedProgress =
+                                (correctQuestions.toFloat() / totalQuestions.toFloat())
+                                    .coerceIn(0f, 1f)
                         }
 
                         println("📊 Progreso para ${competence.name}: $correctQuestions / $totalQuestions = $calculatedProgress")
                     }
 
                     competence.copy(totalProgress = calculatedProgress)
-                }
+                }.also { catalogoCache.guardar(username, it) }
             }
         } catch (e: Exception) {
             println("❌ Error en getAllCompetences: ${e.message}")
@@ -106,20 +139,29 @@ class CompetenceRepositoryImpl @Inject constructor(
                 val competence = competenceMapper.toDomain(entity, levels)
 
                 // 2. Calcular
+                // Mismo criterio que en getAllCompetences: la práctica no puntúa.
                 val levelIds = levels.map { it.id }
+                    .filterNot { LevelRules.esDePractica(it) }
                 var calculatedProgress = 0f
                 if (levelIds.isNotEmpty()) {
 
 
-                    var totalQuestions = 0
+                    val idsDelBanco = mutableListOf<Int>()
                     for (levelId in levelIds) {
-                        totalQuestions += questionRepository.getQuestionsByCompetenceAndLevel(entity.id, levelId).size
+                        idsDelBanco += questionRepository
+                            .getQuestionsByCompetenceAndLevel(entity.id, levelId)
+                            .map { it.id }
                     }
+                    val totalQuestions = idsDelBanco.size
 
-                    val correctQuestions = progressDao.getUniqueCorrectQuestionCountForLevels(username, levelIds)
+                    // Acotado al banco actual: ver contarAciertosDeEstasPreguntas.
+                    val correctQuestions = if (idsDelBanco.isEmpty()) 0
+                    else progressDao.contarAciertosDeEstasPreguntas(username, levelIds, idsDelBanco)
 
                     if (totalQuestions > 0) {
-                        calculatedProgress = correctQuestions.toFloat() / totalQuestions.toFloat()
+                        calculatedProgress =
+                            (correctQuestions.toFloat() / totalQuestions.toFloat())
+                                .coerceIn(0f, 1f)
                     }
                 }
 
@@ -155,15 +197,26 @@ class CompetenceRepositoryImpl @Inject constructor(
                 for (entity in levelEntities) {
                     val levelId = entity.id
 
-                    // 1. DENOMINADOR (Total de preguntas en este nivel)
-                    val totalQuestionsInLevel = questionRepository.getQuestionsByCompetenceAndLevel(competenceId, levelId).size
+                    // 1. DENOMINADOR (preguntas que hoy tiene el nivel)
+                    val idsDelNivel = questionRepository
+                        .getQuestionsByCompetenceAndLevel(competenceId, levelId)
+                        .map { it.id }
+                    val totalQuestionsInLevel = idsDelNivel.size
 
-                    // 2. NUMERADOR (Correctas únicas en este nivel)
-                    val correctQuestionsInLevel = progressDao.getUniqueCorrectQuestionCountForLevels(username, listOf(levelId))
+                    // 2. NUMERADOR (aciertos, solo de esas preguntas)
+                    //
+                    // Aqui se vio el 137 %: el nivel tiene 8 preguntas y habia
+                    // 11 intentos acertados, la mayoria apuntando a ids que
+                    // dejaron de existir al traer el banco del panel.
+                    val correctQuestionsInLevel = if (idsDelNivel.isEmpty()) 0
+                    else progressDao.contarAciertosDeEstasPreguntas(
+                        username, listOf(levelId), idsDelNivel
+                    )
 
                     // 3. CALCULAR
                     val calculatedProgress = if (totalQuestionsInLevel > 0) {
-                        correctQuestionsInLevel.toFloat() / totalQuestionsInLevel.toFloat()
+                        (correctQuestionsInLevel.toFloat() / totalQuestionsInLevel.toFloat())
+                            .coerceIn(0f, 1f)
                     } else {
                         0f
                     }
@@ -177,7 +230,13 @@ class CompetenceRepositoryImpl @Inject constructor(
                             questions = emptyList(),
                             isLocked = entity.isLocked,
                             isCompleted = (calculatedProgress == 1f), // Se considera completo si es 100%
-                            progress = calculatedProgress // Usamos el progreso real
+                            progress = calculatedProgress, // Usamos el progreso real
+                            // Sin esto el nivel llega con el formato por
+                            // defecto y la practica nunca enruta al tablero de
+                            // parejas, aunque el panel lo haya dicho y Room lo
+                            // tenga guardado.
+                            formatoPractica = entity.formatoPractica,
+                            ultimaPractica = entity.ultimaPractica
                         )
                     )
                 }
@@ -306,6 +365,16 @@ class CompetenceRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun marcarNivelPracticado(levelId: Int) {
+        runCatching {
+            levelDao.marcarPracticado(levelId, System.currentTimeMillis())
+            // Sin esto la marca queda escrita pero Inicio no la ve: el
+            // catalogo se sirve de cache y solo se invalidaba al escribir
+            // progreso, cosa que la practica no hace a proposito.
+            catalogoCache.invalidar()
+        }.onFailure { println("⚠️ No se pudo marcar el nivel $levelId: ${it.message}") }
+    }
+
     override suspend fun updateCompetence(competence: Competence): Boolean {
         return try {
             val entity = competenceMapper.toEntity(competence)
@@ -351,9 +420,36 @@ class CompetenceRepositoryImpl @Inject constructor(
     }
 
     /**
+     * El catálogo de arranque, con el nivel de práctica delante de cada
+     * competencia.
+     *
+     * Se añade aquí en vez de dentro de los cuatro literales para que haya un
+     * único sitio que decida cómo es un nivel de práctica. Esto solo lo ve
+     * quien instala la app limpia; a quien ya la tiene se los pone
+     * `MIGRACION_11_12`.
+     */
+    private fun getHardcodedCompetences(): List<Competence> =
+        catalogoDeArranque().map { competencia ->
+            competencia.copy(levels = listOf(nivelDePractica(competencia.id)) + competencia.levels)
+        }
+
+    private fun nivelDePractica(competenceId: Int) = Level(
+        // competencia * 100: termina en 00, que es lo que marca la práctica.
+        id = generateLevelId(competenceId, 0),
+        name = "Calentamiento",
+        description = "Ítems cortos para coger ritmo. No cuenta para desbloquear: " +
+            "al responder te dice si acertaste y por qué.",
+        questions = emptyList(),
+        // Practicar es la puerta de entrada, no un premio: nunca bloqueado.
+        isLocked = false,
+        isCompleted = false,
+        progress = 0f
+    )
+
+    /**
      * Datos hardcodeados basados en tu CompetencyData
      */
-    private fun getHardcodedCompetences(): List<Competence> {
+    private fun catalogoDeArranque(): List<Competence> {
         return listOf(
             Competence(
                 id = 1,
@@ -502,6 +598,24 @@ class CompetenceRepositoryImpl @Inject constructor(
                         description = "Analiza y evalúa la pertinencia y solidez de argumentos y discursos",
                         questions = emptyList(),
                         isLocked = true,
+                        isCompleted = false,
+                        progress = 0f
+                    )
+                ),
+                totalProgress = 0f
+            ),
+            Competence(
+                id = 5,
+                name = "Comunicación Escrita",
+                description = "Cohesión, precisión léxica y corrección gramatical: los ejes con los que el Icfes califica el texto escrito.",
+                iconResId = R.drawable.ic_comunicacion_escrita,
+                levels = listOf(
+                    Level(
+                        id = generateLevelId(5, 1), // ID único: 501
+                        name = "Nivel 1 – Cohesión y corrección",
+                        description = "Conectores, adverbios y artículos dentro de una frase con sentido.",
+                        questions = emptyList(),
+                        isLocked = false,
                         isCompleted = false,
                         progress = 0f
                     )

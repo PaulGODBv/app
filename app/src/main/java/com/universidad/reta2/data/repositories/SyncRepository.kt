@@ -9,7 +9,6 @@ import com.universidad.reta2.data.remote.dto.SyncReportRequest
 import com.universidad.reta2.domain.repositories.CompetenceRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class SyncRepository(
@@ -27,8 +26,9 @@ class SyncRepository(
             val email = SessionManager.getCurrentEmail(context) ?: ""
             val academicProgram = SessionManager.getCurrentStudentProgram(context) ?: ""
 
-            // Obtener estadísticas actuales
-            val stats = userStatsRepository.getUserStats().first()
+            // Obtener estadísticas actuales. Lectura puntual: lo que se sube
+            // al panel sale de la base, no de la caché en memoria.
+            val stats = userStatsRepository.getUserStatsOnce()
 
             // Obtener progreso por nivel
             val competences = competenceRepository.getAllCompetences()
@@ -60,6 +60,7 @@ class SyncRepository(
                 totalQuestionsAnswered = stats.totalQuestionsAnswered,
                 totalPracticeTimeSeconds = stats.totalPracticeTimeSeconds,
                 currentStreakDays = stats.currentStreakDays,
+                maxStreakDays = stats.maxStreakDays,
                 dailyPracticeTimeSeconds = stats.dailyPracticeTime,
                 academicProgram = academicProgram,
                 levelProgress = levelProgressList

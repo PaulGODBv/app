@@ -18,7 +18,9 @@ object LevelMapper {
             questions = questions,
             isLocked = entity.isLocked,
             isCompleted = entity.isCompleted,
-            progress = entity.progress
+            progress = entity.progress,
+            formatoPractica = entity.formatoPractica,
+            ultimaPractica = entity.ultimaPractica
         )
     }
 
@@ -34,7 +36,9 @@ object LevelMapper {
             description = domain.description,
             isLocked = domain.isLocked,
             isCompleted = domain.isCompleted,
-            progress = domain.progress
+            progress = domain.progress,
+            formatoPractica = domain.formatoPractica,
+            ultimaPractica = domain.ultimaPractica
         )
     }
 

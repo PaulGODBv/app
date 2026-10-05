@@ -8,9 +8,16 @@ object ApiConfig {
     //Datos
     //const val BASE_URL = "http://10.81.235.97:8000/api/"
 
+    //Acceso Movil PC sala de informatica
+    //const val BASE_URL = "http://192.168.137.24:8000/api/"
 
     //Udes Campus Data wifi
     //const val BASE_URL = "http://10.10.16.97:8000/api/"
+
+
+    //const val BASE_URL = "http://10.20.9.41:8000/api/"
+
+
 
     const val TIMEOUT_SECONDS = 30L
 

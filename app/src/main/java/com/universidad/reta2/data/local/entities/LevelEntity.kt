@@ -36,5 +36,19 @@ data class LevelEntity(
     val isCompleted: Boolean = false,
 
     @ColumnInfo(name = "progress")
-    val progress: Float = 0f
+    val progress: Float = 0f,
+
+    /** Como se juega en practica: "opcion", "unir" o "arrastrar". */
+    @ColumnInfo(name = "formato_practica")
+    val formatoPractica: String = "opcion",
+
+    /**
+     * Cuando se practico este nivel por ultima vez, en milisegundos. 0 = nunca.
+     *
+     * Se escribe en **los dos modos**. Es lo que alimenta "Continuar
+     * practicando", que antes miraba el progreso y por eso ignoraba todo lo
+     * hecho en practica.
+     */
+    @ColumnInfo(name = "last_practiced_at")
+    val ultimaPractica: Long = 0L
 )

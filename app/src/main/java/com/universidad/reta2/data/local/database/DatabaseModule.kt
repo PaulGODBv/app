@@ -23,6 +23,18 @@ object DatabaseModule {
             AppDatabase::class.java,
             "reta2_database"
         )
+            // La app se sirve de este builder, no del de AppDatabase.getDatabase().
+            // Si la migración se registra solo en uno de los dos, el otro cae en
+            // la vía destructiva y borra el progreso sin avisar.
+            .addMigrations(
+                AppDatabase.MIGRACION_9_10,
+                AppDatabase.MIGRACION_10_11,
+                AppDatabase.MIGRACION_11_12,
+                AppDatabase.MIGRACION_12_13,
+                AppDatabase.MIGRACION_13_14,
+                AppDatabase.MIGRACION_14_15,
+                AppDatabase.MIGRACION_15_16
+            )
             .fallbackToDestructiveMigration()
             .build()
     }

@@ -1,5 +1,11 @@
 package com.universidad.reta2.ui.screens.results
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +16,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Refresh
@@ -22,18 +30,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.universidad.reta2.data.local.RespuestaDeSesion
 import com.universidad.reta2.domain.LevelRules
 import com.universidad.reta2.ui.navigation.Screen
+import com.universidad.reta2.ui.theme.Veredicto
 
 /**
  * Porcentaje mínimo para dar un nivel por superado.
@@ -59,6 +75,7 @@ fun ResultsScreen(
     val competency by viewModel.competenceState.collectAsState()
     val level by viewModel.levelState.collectAsState()
     val syncState by viewModel.syncState.collectAsState()
+    val repaso by viewModel.repaso.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -78,6 +95,17 @@ fun ResultsScreen(
                 null
             }
         }
+    }
+
+    // Si el siguiente nivel ya esta abierto, este nivel se supero en algun
+    // intento anterior. Sin este dato, al repetir un nivel ya hecho y fallar,
+    // la pantalla prometia desbloquear algo que llevaba desbloqueado desde
+    // hace tiempo — y daba a entender que se habia perdido el avance.
+    val siguienteYaAbierto = remember(competency, levelId) {
+        competency?.levels?.let { niveles ->
+            val i = niveles.indexOfFirst { it.id == levelId }
+            if (i >= 0 && i < niveles.size - 1) !niveles[i + 1].isLocked else false
+        } ?: false
     }
 
     val percentage = if (totalQuestions > 0) (score * 100) / totalQuestions else 0
@@ -312,11 +340,18 @@ fun ResultsScreen(
                             }
                         )
                         Text(
+                            // El mensaje depende de si el nivel ya estaba
+                            // superado: un repaso no desbloquea nada nuevo, y
+                            // fallarlo tampoco quita lo ya conseguido.
                             text = when {
-                                passed && nextLevelId != null ->
-                                    "Has desbloqueado el siguiente nivel de esta competencia."
-                                passed ->
+                                passed && nextLevelId == null ->
                                     "Completaste el último nivel de esta competencia."
+                                passed && siguienteYaAbierto ->
+                                    "Repaso superado. El siguiente nivel sigue desbloqueado."
+                                passed ->
+                                    "Has desbloqueado el siguiente nivel de esta competencia."
+                                siguienteYaAbierto ->
+                                    "Este intento se quedó en el $percentage%, pero ya habías superado el nivel: el siguiente sigue desbloqueado."
                                 missingForPass == 1 ->
                                     "Te falta 1 acierto para alcanzar el $PASSING_PERCENTAGE% y desbloquear el siguiente nivel."
                                 else ->
@@ -330,6 +365,13 @@ fun ResultsScreen(
                             }
                         )
                     }
+                }
+
+                // ---- Repaso con la explicacion de cada pregunta ----
+                // Solo si hay registro de la sesion: si se llega aqui por otro
+                // camino la lista viene vacia y no se pinta nada.
+                if (repaso.isNotEmpty()) {
+                    RepasoDeLaSesion(respuestas = repaso)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -409,6 +451,205 @@ fun ResultsScreen(
 }
 
 /** Etiqueta con el nombre de la competencia o del nivel. */
+/**
+ * Repaso de la sesion: una fila por pregunta, con la explicacion al abrirla.
+ *
+ * En la categoria de evaluacion la retroalimentacion va aqui y no durante el
+ * cuestionario: ensenar el porque en cada pregunta convierte el examen en un
+ * tutorial. El feedback inmediato queda para la categoria de practica.
+ *
+ * Los fallos nacen abiertos y los aciertos cerrados. Es lo que hay que repasar,
+ * pero un acierto se puede abrir igual: acertar adivinando es justo el caso en
+ * que la explicacion mas hace falta, y esconderla ahi seria perder el motivo.
+ */
+@Composable
+private fun RepasoDeLaSesion(respuestas: List<RespuestaDeSesion>) {
+    // Se recuerda por lista, no por Unit: al repetir el nivel llegan otras
+    // preguntas y el conjunto de abiertas tiene que empezar de nuevo.
+    var abiertas by remember(respuestas) {
+        mutableStateOf(
+            respuestas.withIndex().filter { !it.value.acerto }.map { it.index }.toSet()
+        )
+    }
+    val fallos = respuestas.count { !it.acerto }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (respuestas.size == 1) "Repaso de la pregunta"
+                       else "Repaso de las ${respuestas.size} preguntas",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = when (fallos) {
+                    0 -> "Todas correctas"
+                    1 -> "1 para repasar"
+                    else -> "$fallos para repasar"
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = if (fallos == 0) Veredicto.colores.acierto
+                        else MaterialTheme.colorScheme.error
+            )
+        }
+
+        respuestas.forEachIndexed { indice, respuesta ->
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            FilaDeRepaso(
+                respuesta = respuesta,
+                abierta = indice in abiertas,
+                onAlternar = {
+                    abiertas = if (indice in abiertas) abiertas - indice else abiertas + indice
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilaDeRepaso(
+    respuesta: RespuestaDeSesion,
+    abierta: Boolean,
+    onAlternar: () -> Unit
+) {
+    // Mismo lenguaje que la retroalimentación inmediata: verde es acierto.
+    val acento = if (respuesta.acerto) Veredicto.colores.acierto
+                 else MaterialTheme.colorScheme.error
+
+    // El ripple se pasa explicito, como en el resto de la app. El `clickable`
+    // sin argumentos resuelve `LocalIndication` por su cuenta y exige que sea
+    // un IndicationNodeFactory; aqui lo provisto es todavia el PlatformRipple
+    // de Material 2, y la pantalla reventaba al componerse.
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (respuesta.acerto) Color.Transparent
+                else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+            )
+            .clickable(
+                indication = LocalIndication.current,
+                interactionSource = interactionSource,
+                onClick = onAlternar
+            )
+            .animateContentSize()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = if (respuesta.acerto) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+                contentDescription = if (respuesta.acerto) "Correcta" else "Incorrecta",
+                tint = acento,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = respuesta.pregunta.text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = if (abierta) Int.MAX_VALUE else 1,
+                overflow = if (abierta) TextOverflow.Clip else TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = if (abierta) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (abierta) "Cerrar" else "Ver por que",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        if (abierta) {
+            Column(
+                modifier = Modifier.padding(start = 48.dp, end = 16.dp, bottom = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // La elegida solo se ensena si se fallo: repetirla cuando
+                // coincide con la correcta no aporta y alarga el bloque.
+                if (!respuesta.acerto) {
+                    OpcionDeRepaso(
+                        etiqueta = "Elegiste",
+                        letra = respuesta.letraDe(respuesta.opcionElegida),
+                        texto = respuesta.opcionElegida?.text ?: "Sin responder",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                OpcionDeRepaso(
+                    etiqueta = "Correcta",
+                    letra = respuesta.letraDe(respuesta.opcionCorrecta),
+                    texto = respuesta.opcionCorrecta?.text.orEmpty(),
+                    color = Veredicto.colores.acierto
+                )
+
+                // El contenido de arranque puede no traer explicacion; las 101
+                // del panel si la traen.
+                if (respuesta.pregunta.explanation.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        VerticalDivider(color = acento.copy(alpha = 0.5f))
+                        Text(
+                            text = respuesta.pregunta.explanation,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpcionDeRepaso(
+    etiqueta: String,
+    letra: String?,
+    texto: String,
+    color: Color
+) {
+    // El color se lee fuera del constructor del texto anotado: dentro de un
+    // lambda leer MaterialTheme depende de que la funcion sea inline, y no
+    // conviene apoyarse en eso.
+    val colorEtiqueta = MaterialTheme.colorScheme.onSurfaceVariant
+    val estilo = MaterialTheme.typography.bodySmall
+
+    Text(
+        text = buildAnnotatedString {
+            withStyle(SpanStyle(color = colorEtiqueta)) {
+                append("$etiqueta ")
+            }
+            withStyle(SpanStyle(color = color, fontWeight = FontWeight.Medium)) {
+                append(if (letra != null) "$letra. $texto" else texto)
+            }
+        },
+        style = estilo
+    )
+}
+
 @Composable
 private fun ContextChip(
     icon: ImageVector,

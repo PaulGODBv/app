@@ -15,6 +15,7 @@ object CompetenceMapper {
             "razonamiento cuantitativo" -> R.drawable.ic_razonamiento_critico
             "inglés" -> R.drawable.ic_ingles
             "competencias ciudadanas" -> R.drawable.ic_competencia_ciudadana
+            "comunicación escrita" -> R.drawable.ic_comunicacion_escrita
             else -> R.drawable.ic_launcher_foreground // ícono genérico
         }
 

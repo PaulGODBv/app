@@ -22,5 +22,15 @@ data class UserStatsEntity(
     val lastPracticeDate: String = "",
 
     @ColumnInfo(name = "daily_practice_time")
-    val dailyPracticeTime: Int = 0
+    val dailyPracticeTime: Int = 0,
+
+    // Marcas históricas. Los logros se miden contra estas y no contra los
+    // contadores vivos, porque la racha y el tiempo del día se reinician por
+    // diseño: sin esto, perder la racha bloqueaba de nuevo una insignia ya
+    // conseguida. Solo suben, nunca bajan.
+    @ColumnInfo(name = "max_streak_days")
+    val maxStreakDays: Int = 0,
+
+    @ColumnInfo(name = "max_daily_practice_time")
+    val maxDailyPracticeTime: Int = 0
 )

@@ -22,6 +22,7 @@ val ProgressBackground = Color(0xFFE9ECEF)  // Fondo de círculos de progreso
 val BorderColor = Color(0xFF005B99)         // Color de bordes y separadores
 
 // Colores para feedback de respuestas
+val Success050 = Color(0xFFE8F5E9)   // Fondo del veredicto de acierto, tema claro
 val Success100 = Color(0xFF2E7D32)   // Verde para respuestas correctas
 val Success200 = Color(0xFF1B5E20)   // Verde oscuro para fondos
 val Error100 = Color(0xFFD32F2F)     // Rojo para respuestas incorrectas
@@ -30,6 +31,7 @@ val Error200 = Color(0xFFB71C1C)     // Rojo oscuro para fondos de error
 // Feedback Oscuro (Más pasteles para legibilidad)
 val DarkSuccess100 = Color(0xFF81C784) // Verde pastel
 val DarkSuccess200 = Color(0xFF2E7D32) // Verde oscuro original usado como fondo de feedback
+val DarkSuccess300 = Color(0xFF1E3A22) // Fondo del veredicto de acierto, tema oscuro
 val DarkError100 = Color(0xFFE57373)   // Rojo pastel
 val DarkError200 = Color(0xFFC62828)   // Rojo oscuro usado como fondo de error
 

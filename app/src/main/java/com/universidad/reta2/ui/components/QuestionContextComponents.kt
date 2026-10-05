@@ -21,6 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +35,52 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
+
+/**
+ * Que le damos a Coil para pintar la imagen de contexto.
+ *
+ * Coil acepta tanto una URL como el id de un recurso, asi que aqui se decide
+ * una vez y el resto del archivo no vuelve a preguntarselo:
+ *
+ * - Si la cadena es una URL, viene del panel. Coil la descarga y la deja en su
+ *   cache de disco, de modo que la siguiente vez no necesita conexion.
+ * - Si no, es el nombre de un drawable del contenido de arranque. Se resuelve
+ *   con getIdentifier, que solo funciona para lo empaquetado en el APK; ese
+ *   camino desaparece cuando se retire CompetencyData.
+ */
+@Composable
+internal fun modeloDeImagen(imagen: String?): Any? {
+    val contexto = LocalContext.current
+    return remember(imagen) {
+        when {
+            imagen.isNullOrBlank() -> null
+            imagen.startsWith("http", ignoreCase = true) -> imagen
+            else -> runCatching {
+                contexto.resources.getIdentifier(imagen, "drawable", contexto.packageName)
+            }.getOrDefault(0).takeIf { it != 0 }
+        }
+    }
+}
+
+
+/**
+ * Tine el trazo de una figura con el color del tema, o no tine nada.
+ *
+ * Las figuras que publica el panel vienen despegadas del papel: el fondo es
+ * transparente y el dibujo es tinta negra con el alfa haciendo de matiz. Sobre
+ * una superficie oscura, esa tinta negra seria invisible, asi que se sustituye
+ * su color por el del tema —oscuro en claro, claro en oscuro— conservando el
+ * alfa. `SrcIn` hace justo eso.
+ *
+ * **Solo para lo que llega por URL.** El contenido de arranque son drawables
+ * del APK, imagenes opacas sin matiz: tenirlas con `SrcIn` las convertiria en
+ * un rectangulo de color liso. `modeloDeImagen` devuelve `String` para lo del
+ * panel e `Int` para lo empaquetado, y esa es la distincion que se usa aqui.
+ */
+@Composable
+private fun filtroDeFigura(modelo: Any?, tinta: Color): ColorFilter? =
+    if (modelo is String) ColorFilter.tint(tinta, BlendMode.SrcIn) else null
 
 // ── CARD DE CONTEXTO ──────────────────────────────────────────
 // Reutilizable en QuestionScreen y TimedModeScreen
@@ -40,6 +89,7 @@ import androidx.compose.ui.window.DialogProperties
 internal fun QuestionContextCard(
     readingText: String,
     contextImage: String?,
+    contextImageAlt: String? = null,
     onShowTextModal: () -> Unit,
     onShowImageModal: (String) -> Unit
 ) {
@@ -76,7 +126,7 @@ internal fun QuestionContextCard(
                 readingText.isNotEmpty() && contextImage == null -> {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
-                            text = getTextPreview(readingText, maxLines = 2),
+                            text = readingText,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.2,
@@ -125,6 +175,7 @@ internal fun QuestionContextCard(
                         }
                         LoadContextImage(
                             imageName = contextImage,
+                            alt = contextImageAlt,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(120.dp)
@@ -151,7 +202,7 @@ internal fun QuestionContextCard(
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                text = getTextPreview(readingText, maxLines = 2),
+                                text = readingText,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.2,
@@ -203,6 +254,7 @@ internal fun QuestionContextCard(
                             }
                             LoadContextImage(
                                 imageName = contextImage,
+                                alt = contextImageAlt,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(100.dp)
@@ -242,15 +294,30 @@ internal fun TextContextModal(
 ) {
     val scrollState = rememberScrollState()
 
+    // Dos alturas: abre a media pantalla y el arrastre la sube hasta arriba.
+    // `skipPartiallyExpanded = false` es el valor por defecto, pero se escribe
+    // a proposito: es la decision de diseno, no una casualidad de la libreria.
+    val estadoDeLaHoja = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = estadoDeLaHoja,
+        // Sin esto, al subirla del todo la hoja se mete debajo de la barra de
+        // estado y el tirador de arrastre acaba entre los iconos del reloj y
+        // la bateria. Arriba del todo es hasta el borde util, no hasta el
+        // borde fisico.
+        modifier = Modifier.statusBarsPadding(),
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
+            // Alto completo, no 0.7f. Con el tope al 70 % la hoja no podia
+            // subir mas aunque se arrastrase: es lo que se veia como "solo
+            // cubre 3/4 de la pantalla". Ahora el estado manda, y el contenido
+            // da de si hasta arriba.
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.7f)
+                .fillMaxHeight()
         ) {
             Row(
                 modifier = Modifier
@@ -292,21 +359,10 @@ internal fun TextContextModal(
                 )
             }
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
-                    Text("Cerrar")
-                }
-            }
+            // Aqui habia un boton de "Cerrar" anclado abajo. Se quita: repetia
+            // lo que ya hacen la X de la cabecera, el gesto hacia abajo y el
+            // boton de atras, y a media altura quedaba fuera de la pantalla
+            // mientras se comia espacio de lectura al subirla.
         }
     }
 }
@@ -322,12 +378,7 @@ internal fun ImageContextModal(
     onOffsetChange: (Offset) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-    val imageResourceId = remember(imageName) {
-        try {
-            context.resources.getIdentifier(imageName, "drawable", context.packageName)
-        } catch (e: Exception) { 0 }
-    }
+    val modelo = modeloDeImagen(imageName)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -398,9 +449,13 @@ internal fun ImageContextModal(
                             onOffsetChange(offset + panChange)
                         }
 
-                        if (imageResourceId != 0) {
-                            Image(
-                                painter = painterResource(id = imageResourceId),
+                        if (modelo != null) {
+                            AsyncImage(
+                                colorFilter = filtroDeFigura(
+                                    modelo,
+                                    MaterialTheme.colorScheme.onSurface
+                                ),
+                                model = modelo,
                                 contentDescription = "Imagen de contexto: $imageName",
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -470,38 +525,41 @@ internal fun ImageContextModal(
 @Composable
 internal fun LoadContextImage(
     imageName: String,
-    modifier: Modifier = Modifier
+    alt: String? = null,
+    modifier: Modifier = Modifier,
+    tinta: Color = MaterialTheme.colorScheme.onPrimaryContainer
 ) {
-    val context = LocalContext.current
-    val imageResourceId = remember(imageName) {
-        try {
-            context.resources.getIdentifier(imageName, "drawable", context.packageName)
-        } catch (e: Exception) { 0 }
-    }
+    val modelo = modeloDeImagen(imageName)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (imageResourceId != 0) {
-            Image(
-                painter = painterResource(id = imageResourceId),
-                contentDescription = "Imagen de contexto: $imageName",
-                modifier = modifier
-                    .clip(MaterialTheme.shapes.medium)
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        shape = MaterialTheme.shapes.medium
-                    ),
-                contentScale = ContentScale.Fit
+        if (modelo != null) {
+            AsyncImage(
+                model = modelo,
+                // El texto alternativo describe lo que se ve; el nombre del
+                // archivo no le dice nada a quien usa lector de pantalla.
+                contentDescription = alt ?: "Imagen de contexto",
+                modifier = modifier.clip(MaterialTheme.shapes.medium),
+                contentScale = ContentScale.Fit,
+                colorFilter = filtroDeFigura(modelo, tinta)
             )
-            Text(
-                text = imageName.replace("_", " ").replaceFirstChar { it.uppercase() },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                fontStyle = FontStyle.Italic
-            )
+            // Pie de figura. La URL no sirve de pie —saldria "Https: media
+            // question-context…"—, asi que solo se pinta el texto alternativo
+            // que manda el panel; para el contenido de arranque se cae al
+            // nombre del drawable, que es lo unico que hay.
+            val pie = alt?.takeIf { it.isNotBlank() }
+                ?: imageName.takeIf { !it.startsWith("http", ignoreCase = true) }
+                    ?.replace("_", " ")?.replaceFirstChar { it.uppercase() }
+            if (pie != null) {
+                Text(
+                    text = pie,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    fontStyle = FontStyle.Italic
+                )
+            }
         } else {
             Box(
                 modifier = modifier
@@ -546,12 +604,18 @@ internal fun LoadContextImage(
 
 // ── UTILIDAD ───────────────────────────────────────────────────
 
-internal fun getTextPreview(fullText: String, maxLines: Int = 2): String {
-    if (fullText.length <= 150) return fullText
-    val lines = fullText.lineSequence().take(maxLines).toList()
-    return if (lines.size < maxLines) {
-        fullText.take(150) + "..."
-    } else {
-        lines.joinToString("\n").take(150) + "..."
-    }
-}
+/**
+ * Recortaba la vista previa del contexto a 150 caracteres. Ya no recorta.
+ *
+ * El `Text` que la pintaba ya tenia `maxLines = 2` y `TextOverflow.Ellipsis`,
+ * asi que este recorte a mano llegaba **antes** que el del propio componente
+ * y cortaba de mas: un contexto de 158 caracteres se veia como «...poblacion
+ * col...» y al abrir «Ver texto completo» aparecian ocho letras mas. Parecia
+ * que el dato estaba incompleto cuando no lo estaba, y eso mando a buscar un
+ * fallo de datos en Competencias Ciudadanas que no existia.
+ *
+ * Ahora el limite lo pone la tipografia: dos lineas exactas, con puntos
+ * suspensivos solo si de verdad sobra texto.
+ */
+@Deprecated("El recorte lo hace maxLines; pasa el texto entero.")
+internal fun getTextPreview(fullText: String, maxLines: Int = 2): String = fullText

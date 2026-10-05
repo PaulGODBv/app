@@ -71,4 +71,29 @@ interface ProgressDao {
         AND level_id IN (:levelIds)
     """)
     suspend fun getUniqueCorrectQuestionCountForLevels(username: String, levelIds: List<Int>): Int
+
+    /**
+     * Aciertos que cuentan para el progreso, acotados al banco actual.
+     *
+     * La version de arriba cuenta cualquier intento acertado, exista aun la
+     * pregunta o no. Cuando el banco paso a venir del panel los ids cambiaron
+     * y los intentos viejos quedaron apuntando a preguntas que ya no estan:
+     * el numerador seguia sumandolos y el porcentaje se iba por encima del
+     * 100 % — un nivel de 8 preguntas llego a marcar 137 %.
+     *
+     * Pasando los ids del banco, numerador y denominador miden lo mismo.
+     */
+    @Query("""
+        SELECT COUNT(DISTINCT question_id)
+        FROM question_attempts
+        WHERE username = :username
+        AND is_correct = 1
+        AND level_id IN (:levelIds)
+        AND question_id IN (:questionIds)
+    """)
+    suspend fun contarAciertosDeEstasPreguntas(
+        username: String,
+        levelIds: List<Int>,
+        questionIds: List<Int>
+    ): Int
 }

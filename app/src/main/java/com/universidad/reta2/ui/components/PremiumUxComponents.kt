@@ -12,13 +12,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Rocket
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -325,10 +328,19 @@ fun LevelXpBar(totalQuestionsAnswered: Int) {
 
 // ── 6. INSIGNIAS (BADGES) DESBLOQUEABLES ───────────────────────
 @Composable
-fun UnlockableBadgesGrid(totalQuestionsAnswered: Int, currentStreak: Int) {
+fun UnlockableBadgesGrid(totalQuestionsAnswered: Int, mejorRacha: Int) {
+    // Las insignias se miden contra marcas históricas, nunca contra contadores
+    // que se reinician. `totalQuestionsAnswered` ya solo sube; la racha viva no,
+    // así que aquí entra `mejorRacha` (`max_streak_days`). Antes llegaba la
+    // racha actual y perderla volvía a bloquear «Constancia» después de
+    // haberla conseguido.
     val badges = listOf(
         BadgeItemData("Primer Intento", "Responde tu primera pregunta", totalQuestionsAnswered >= 1, Icons.Filled.GpsFixed),
-        BadgeItemData("Constancia", "Alcanza una racha de 3 días", currentStreak >= 3, Icons.Filled.LocalFireDepartment),
+        BadgeItemData("Constancia", "Alcanza una racha de 3 días", mejorRacha >= 3, Icons.Filled.LocalFireDepartment),
+        // Tres peldaños de racha con iconos distintos: con la misma llama en
+        // los tres no se distingue de un vistazo cuál se tiene.
+        BadgeItemData("Semana Completa", "Alcanza una racha de 7 días", mejorRacha >= 7, Icons.Filled.Bolt),
+        BadgeItemData("Imparable", "Alcanza una racha de 15 días", mejorRacha >= 15, Icons.Filled.MilitaryTech),
         BadgeItemData("Maestro Básico", "Responde 50 preguntas", totalQuestionsAnswered >= 50, Icons.Filled.WorkspacePremium),
         BadgeItemData("Explorador", "Responde 100 preguntas", totalQuestionsAnswered >= 100, Icons.Filled.Rocket)
     )
@@ -340,11 +352,15 @@ fun UnlockableBadgesGrid(totalQuestionsAnswered: Int, currentStreak: Int) {
             fontWeight = FontWeight.Bold
         )
 
+        // Dos filas de tres. Con las seis en una sola fila cada tarjeta bajaría
+        // a unos 48 dp y no cabría la descripción; repartidas quedan incluso
+        // más anchas que las cuatro de antes.
+        badges.chunked(3).forEach { fila ->
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            badges.forEach { badge ->
+            fila.forEach { badge ->
                 Card(
                     modifier = Modifier
                         .weight(1f)
@@ -395,6 +411,14 @@ fun UnlockableBadgesGrid(totalQuestionsAnswered: Int, currentStreak: Int) {
                     }
                 }
             }
+
+            // Si alguna vez el número de insignias deja de ser múltiplo de
+            // tres, los huecos mantienen el ancho en lugar de estirar la
+            // última tarjeta de la fila.
+            repeat(3 - fila.size) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
         }
     }
 }
@@ -407,3 +431,32 @@ data class BadgeItemData(
     val isUnlocked: Boolean,
     val icon: ImageVector
 )
+
+/**
+ * Decide si una espera merece anunciarse.
+ *
+ * Un esqueleto es una promesa de espera: si la carga termina en unas decenas de
+ * milisegundos —que es lo que tarda Room— ensenarlo solo produce un parpadeo y
+ * acostumbra al usuario a esperar algo que no ocurre.
+ *
+ * Devuelve true solo cuando [cargando] lleva activo mas de [umbralMs]. Mientras
+ * tanto conviene no pintar nada: el contenido real suele llegar antes.
+ *
+ * No basta con mirar si hay datos, porque los ViewModel de las pestanas se
+ * recrean al volver a ellas y arrancan siempre vacios.
+ */
+@Composable
+fun esperaVisible(cargando: Boolean, umbralMs: Long = 350L): Boolean {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cargando) {
+        if (cargando) {
+            delay(umbralMs)
+            visible = true
+        } else {
+            visible = false
+        }
+    }
+
+    return visible && cargando
+}

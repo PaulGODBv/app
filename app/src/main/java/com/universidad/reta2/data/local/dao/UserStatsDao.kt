@@ -34,15 +34,29 @@ interface UserStatsDao {
     suspend fun resetStreak(username: String, date: String)
 
     // Obtener progreso semanal
+    //
+    // `'localtime'` no es opcional. Sin él, date(..., 'unixepoch') agrupa por
+    // fecha UTC, y en Colombia (UTC-5) todo lo practicado a partir de las 19:00
+    // se contaba en el día siguiente. Dos consecuencias medidas el 29/09/2026:
+    // la gráfica semanal enseñaba las barras corridas un día respecto a la
+    // realidad —una sesión del viernes por la noche aparecía en sábado— y
+    // discrepaba de `last_practice_date`, que sí usa la fecha local del
+    // dispositivo. Para un estudiante que repasa de noche, que es lo normal,
+    // casi todas las barras caían en el día equivocado.
+    //
+    // La ventana pasa a 8 días por el mismo motivo: el día local más antiguo
+    // que la pantalla pinta empieza hasta 14 horas antes del instante «hace 7
+    // días», así que con 7 se recortaba. Las filas de más no molestan: la
+    // tarjeta solo busca las siete fechas locales que dibuja.
     @Query("""
-        SELECT 
-            date(attempted_at / 1000, 'unixepoch') as date,
+        SELECT
+            date(attempted_at / 1000, 'unixepoch', 'localtime') as date,
             COUNT(*) as questionsAnswered,
             SUM(time_spent_seconds) as practiceTime
-        FROM question_attempts 
-        WHERE username = :username 
-        AND attempted_at >= strftime('%s', 'now', '-7 days') * 1000
-        GROUP BY date(attempted_at / 1000, 'unixepoch')
+        FROM question_attempts
+        WHERE username = :username
+        AND attempted_at >= strftime('%s', 'now', '-8 days') * 1000
+        GROUP BY date(attempted_at / 1000, 'unixepoch', 'localtime')
         ORDER BY date DESC
     """)
     suspend fun getWeeklyProgress(username: String): List<DailyProgress>

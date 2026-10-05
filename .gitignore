@@ -1,14 +1,58 @@
+# ---- Notas internas de trabajo ----
+CLAUDE.md
+ENTORNO_REGLAS_NEGOCIO_Y_DISENO.md
+/graphify-out
+/.claude
+
+# ---- Build ----
 *.iml
-/.idea/caches
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
+.gradle/
 /build
+/app/build
 /captures
 .externalNativeBuild
 .cxx
+*.apk
+*.aab
+*.ap_
+*.dex
 local.properties
-/graphify-out
-CLAUDE.md
-ENTORNO_REGLAS_NEGOCIO_Y_DISENO.md
+
+# Cache del compilador de Kotlin
+.kotlin/
+
+# ---- Android Studio / IntelliJ ----
+# Se versiona lo compartible del proyecto y se ignora lo que es de cada
+# maquina o cambia en cada sesion de la IDE.
+.idea/*
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/deploymentTargetSelector.xml
+.idea/deploymentTargetDropDown.xml
+.idea/appInsightsSettings.xml
+.idea/androidTestResultsUserPreferences.xml
+.idea/migrations.xml
+.idea/gradle.xml
+.idea/compiler.xml
+.idea/misc.xml
+.idea/kotlinc.xml
+.idea/runConfigurations.xml
+.idea/shelf/
+
+# ---- Claves y firmas ----
+# Nunca versionar el keystore de firma ni sus contrasenas.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
+# ---- Sistema operativo ----
+.DS_Store
+Thumbs.db
+desktop.ini

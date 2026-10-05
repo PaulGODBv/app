@@ -24,7 +24,10 @@ import com.universidad.reta2.ui.screens.progress.ProgressScreen
 import com.universidad.reta2.ui.screens.splash.SplashScreen
 import com.universidad.reta2.ui.screens.home.HomeScreen
 import com.universidad.reta2.ui.screens.timedmode.TimedModeScreen
+import com.universidad.reta2.domain.models.Level
 import com.universidad.reta2.ui.screens.results.ResultsScreen
+import com.universidad.reta2.ui.screens.arrastrar.ArrastrarScreen
+import com.universidad.reta2.ui.screens.unir.UnirParejasScreen
 import com.universidad.reta2.ui.screens.questions.QuestionScreenUltraSafe
 import kotlinx.coroutines.delay
 
@@ -108,13 +111,21 @@ fun NavGraph(
 
             CompetenceDetailScreen(
                 competenceId = competenceId,
-                onLevelClick = { levelId ->
+                onLevelClick = { levelId, modo, formato ->
                     if (!isNavigating) {
-                        val target = Screen.Questions.createRoute(
-                            competenceId = competenceId,
-                            levelId = levelId,
-                            origin = origin
-                        )
+                        val practicando = modo == Screen.Questions.MODO_PRACTICA
+                        val target = if (practicando && formato == Level.FORMATO_UNIR) {
+                            Screen.Unir.createRoute(competenceId, levelId)
+                        } else if (practicando && formato == Level.FORMATO_ARRASTRAR) {
+                            Screen.Arrastrar.createRoute(competenceId, levelId)
+                        } else {
+                            Screen.Questions.createRoute(
+                                competenceId = competenceId,
+                                levelId = levelId,
+                                origin = origin,
+                                modo = modo
+                            )
+                        }
                         if (navController.safeNavigate(target)) {
                             isNavigating = true
                         }
@@ -128,6 +139,30 @@ fun NavGraph(
             )
         }
 
+        // ---------- Unir parejas ----------
+        composable(
+            route = Screen.Unir.route,
+            arguments = Screen.Unir.arguments
+        ) { backStackEntry ->
+            UnirParejasScreen(
+                navController = navController,
+                competenceId = backStackEntry.arguments?.getInt("competenceId") ?: 0,
+                levelId = backStackEntry.arguments?.getInt("levelId") ?: 0
+            )
+        }
+
+        // ---------- Completar arrastrando ----------
+        composable(
+            route = Screen.Arrastrar.route,
+            arguments = Screen.Arrastrar.arguments
+        ) { backStackEntry ->
+            ArrastrarScreen(
+                navController = navController,
+                competenceId = backStackEntry.arguments?.getInt("competenceId") ?: 0,
+                levelId = backStackEntry.arguments?.getInt("levelId") ?: 0
+            )
+        }
+
         // ---------- Preguntas ----------
         composable(
             route = Screen.Questions.route,
@@ -136,14 +171,19 @@ fun NavGraph(
             val competenceId = backStackEntry.arguments?.getInt("competenceId") ?: 0
             val levelId = backStackEntry.arguments?.getInt("levelId") ?: 0
             val origin = backStackEntry.arguments?.getString("origin") ?: "competencies"
+            val modo = backStackEntry.arguments?.getString("modo")
+                ?: Screen.Questions.MODO_EVALUACION
 
-            // Key única para forzar recomposición limpia
-            key("questions_safe_${competenceId}_${levelId}") {
+            // Key única para forzar recomposición limpia. Incluye el modo: la
+            // misma pantalla del mismo nivel en práctica y en evaluación no
+            // debe reutilizar estado.
+            key("questions_safe_${competenceId}_${levelId}_${modo}") {
                 QuestionScreenUltraSafe(
                     navController = navController,
                     competencyId = competenceId,
                     levelId = levelId,
-                    origin = origin
+                    origin = origin,
+                    esPractica = modo == Screen.Questions.MODO_PRACTICA
                 )
             }
         }

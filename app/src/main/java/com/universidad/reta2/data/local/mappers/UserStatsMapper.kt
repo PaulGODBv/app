@@ -11,7 +11,9 @@ object UserStatsMapper {
             totalPracticeTimeSeconds = entity.totalPracticeTimeSeconds,
             currentStreakDays = entity.currentStreakDays,
             lastPracticeDate = entity.lastPracticeDate,
-            dailyPracticeTime = entity.dailyPracticeTime
+            dailyPracticeTime = entity.dailyPracticeTime,
+            maxStreakDays = entity.maxStreakDays,
+            maxDailyPracticeTime = entity.maxDailyPracticeTime
         )
     }
 
@@ -22,7 +24,9 @@ object UserStatsMapper {
             totalPracticeTimeSeconds = domain.totalPracticeTimeSeconds,
             currentStreakDays = domain.currentStreakDays,
             lastPracticeDate = domain.lastPracticeDate,
-            dailyPracticeTime = domain.dailyPracticeTime
+            dailyPracticeTime = domain.dailyPracticeTime,
+            maxStreakDays = domain.maxStreakDays,
+            maxDailyPracticeTime = domain.maxDailyPracticeTime
         )
     }
 
@@ -34,7 +38,9 @@ object UserStatsMapper {
             totalPracticeTimeSeconds = 0,
             currentStreakDays = 0,
             lastPracticeDate = "",
-            dailyPracticeTime = 0
+            dailyPracticeTime = 0,
+            maxStreakDays = 0,
+            maxDailyPracticeTime = 0
         )
     }
 }

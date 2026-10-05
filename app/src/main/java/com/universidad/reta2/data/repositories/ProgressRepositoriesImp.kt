@@ -1,5 +1,6 @@
 package com.universidad.reta2.data.repositories
 
+import com.universidad.reta2.data.local.CatalogoCache
 import com.universidad.reta2.domain.LevelRules
 import com.universidad.reta2.data.local.dao.ProgressDao
 import com.universidad.reta2.data.local.dao.UserStatsDao
@@ -21,6 +22,7 @@ class ProgressRepositoryImpl @Inject constructor(
     private val progressDao: ProgressDao,
     private val userStatsDao: UserStatsDao,
     private val levelDao: LevelDao,
+    private val catalogoCache: CatalogoCache,
     @ApplicationContext private val context: Context
 ) : ProgressRepository {
 
@@ -47,6 +49,9 @@ class ProgressRepositoryImpl @Inject constructor(
         levelId: Int
     ) {
         val username = getCurrentUserName()
+
+        // El progreso cambia: el catalogo en memoria deja de ser valido.
+        catalogoCache.invalidar()
 
         val attempt = QuestionAttemptEntity(
             username = username,
@@ -102,6 +107,8 @@ class ProgressRepositoryImpl @Inject constructor(
     ): Boolean {
         return try {
             val username = getCurrentUserName()
+            catalogoCache.invalidar()
+
             println("🎯 DIAGNÓSTICO INICIO - completeLevelAndUnlockNext")
             println("   📊 Score: $score/$totalQuestions")
 

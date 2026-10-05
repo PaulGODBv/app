@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Visibility
@@ -40,6 +42,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.delay
 import com.universidad.reta2.ui.navigation.Screen
+import com.universidad.reta2.ui.theme.Veredicto
 import com.universidad.reta2.domain.models.QuestionOption
 import androidx.compose.foundation.clickable
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -51,6 +54,7 @@ fun QuestionScreenUltraSafe(
     competencyId: Int,
     levelId: Int,
     origin: String,
+    esPractica: Boolean = false,
     viewModel: QuestionViewModel = hiltViewModel()
 ) {
     // Estado local para control absoluto del ciclo de vida
@@ -59,6 +63,9 @@ fun QuestionScreenUltraSafe(
 
     LaunchedEffect(origin) {
         viewModel.setOrigin(origin)
+        // El modo llega por la ruta y se fija antes de cargar: de él
+        // dependen la revelación inmediata y que el intento no cuente.
+        viewModel.fijarModo(esPractica)
     }
 
     // 🔥 ESTADOS PARA MODALES
@@ -321,6 +328,18 @@ private fun SafeQuestionContent(
     val currentQuestion = uiState.currentQuestion ?: return
     val scrollState = rememberScrollState()
 
+    // Al revelar, bajar hasta el porqué.
+    //
+    // Con una pregunta larga el panel nace por debajo del pliegue, y una
+    // explicación que hay que ir a buscar no la lee nadie. Se desplaza al
+    // final en vez de a una posición fija porque el alto depende del enunciado
+    // y del número de opciones.
+    LaunchedEffect(uiState.respuestaRevelada, uiState.currentQuestionIndex) {
+        if (uiState.respuestaRevelada) {
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -347,7 +366,11 @@ private fun SafeQuestionContent(
                 key("context_${currentQuestion.id}_${uiState.currentQuestionIndex}") {
                     QuestionContextCard(
                         readingText = currentQuestion.readingText,
-                        contextImage = currentQuestion.contextImage,
+                        // La URL del panel manda; el nombre de drawable es el respaldo
+                        // del contenido de arranque.
+                        contextImage = currentQuestion.contextImageUrl?.takeIf { it.isNotBlank() }
+                            ?: currentQuestion.contextImage?.takeIf { it.isNotBlank() },
+                        contextImageAlt = currentQuestion.contextImageAlt?.takeIf { it.isNotBlank() },
                         onShowTextModal = onShowTextModal,
                         onShowImageModal = onShowImageModal
                     )
@@ -392,10 +415,25 @@ private fun SafeQuestionContent(
                         SafeOptionItem(
                             option = option,
                             isSelected = uiState.selectedOptionId == option.id,
+                            revelada = uiState.respuestaRevelada,
+                            esLaCorrecta = option.id == currentQuestion.correctOptionId,
                             onOptionSelected = onOptionSelected
                         )
                     }
                 }
+            }
+
+            // Retroalimentación inmediata: solo en práctica y solo una vez
+            // respondida. Va debajo de las opciones y no en una hoja ni en una
+            // banda superior a propósito: así la pregunta, lo que elegiste y la
+            // correcta siguen a la vista mientras lees el porqué, que es lo
+            // que hace que la corrección se fije.
+            if (uiState.respuestaRevelada) {
+                Spacer(modifier = Modifier.height(16.dp))
+                PorQueDeLaRespuesta(
+                    acerto = uiState.selectedOptionId == currentQuestion.correctOptionId,
+                    explicacion = currentQuestion.explanation
+                )
             }
         }
 
@@ -526,40 +564,115 @@ private fun ProgressSection(
 
 
 
+
+/**
+ * El porqué de la respuesta, debajo de las opciones ya teñidas.
+ *
+ * Solo aparece en práctica. En evaluación la explicación se guarda para el
+ * repaso de la pantalla de resultados: enseñarla en cada pregunta convertiría
+ * el examen en un tutorial.
+ */
+@Composable
+private fun PorQueDeLaRespuesta(acerto: Boolean, explicacion: String) {
+    val veredicto = Veredicto.colores
+    val acento = if (acerto) veredicto.acierto else MaterialTheme.colorScheme.error
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (acerto) veredicto.aciertoContenedor
+                             else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+        ),
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (acerto) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+                    contentDescription = null,
+                    tint = acento,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = if (acerto) "Correcto" else "No era esa",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = acento
+                )
+            }
+
+            // El contenido de arranque puede no traer explicación; las del
+            // panel sí la traen.
+            if (explicacion.isNotBlank()) {
+                Text(
+                    text = explicacion,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun SafeOptionItem(
     option: QuestionOption,
     isSelected: Boolean,
+    revelada: Boolean = false,
+    esLaCorrecta: Boolean = false,
     onOptionSelected: (Int) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
+    // Tras revelar hay tres papeles: la correcta, la elegida si no lo era, y
+    // las demás, que se apagan para que no compitan por la atención.
+    val marcaCorrecta = revelada && esLaCorrecta
+    val marcaFallo = revelada && isSelected && !esLaCorrecta
+    val apagada = revelada && !marcaCorrecta && !marcaFallo
+
+    // Verde para acierto y rojo para fallo. El azul se queda para la selección
+    // antes de revelar, que es estado y no veredicto: mezclar los dos era lo
+    // que hacía falta distinguir.
+    val veredicto = Veredicto.colores
+    val acento = when {
+        marcaCorrecta -> veredicto.acierto
+        marcaFallo -> MaterialTheme.colorScheme.error
+        isSelected -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(
+                // Revelada deja de aceptar toques: la respuesta ya está dada.
+                enabled = !revelada,
                 interactionSource = interactionSource,
                 indication = null, // 🔒 MANTENER null PARA SEGURIDAD
                 onClick = { onOptionSelected(option.id) }
             ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant // ✅ CAMBIO SEGURO
+            containerColor = when {
+                marcaCorrecta -> veredicto.aciertoContenedor
+                marcaFallo -> MaterialTheme.colorScheme.errorContainer
+                apagada -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                isSelected -> MaterialTheme.colorScheme.primaryContainer
+                else -> MaterialTheme.colorScheme.surfaceVariant // ✅ CAMBIO SEGURO
             }
         ),
         elevation = CardDefaults.cardElevation( // ✅ AGREGAR ELEVACIÓN SEGURA
-            defaultElevation = if (isSelected) 8.dp else 4.dp
+            defaultElevation = if (isSelected && !apagada) 8.dp else 4.dp
         ),
         border = BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp, // ✅ CAMBIO SEGURO
-            color = if (isSelected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) // ✅ CAMBIO SEGURO
-            }
+            width = if (isSelected || marcaCorrecta) 2.dp else 1.dp, // ✅ CAMBIO SEGURO
+            color = acento
         ),
         shape = MaterialTheme.shapes.large // ✅ CAMBIO SEGURO
     ) {
@@ -570,15 +683,25 @@ private fun SafeOptionItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
-            // RadioButton con mejor diseño
-            RadioButton(
-                selected = isSelected,
-                onClick = null, // 🔒 MANTENER null - EL CLICK ESTÁ EN EL CARD
-                colors = RadioButtonDefaults.colors( // ✅ CAMBIO SEGURO
-                    selectedColor = MaterialTheme.colorScheme.primary,
-                    unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
+            // Revelada, el círculo de selección deja paso al veredicto.
+            if (marcaCorrecta || marcaFallo) {
+                Icon(
+                    imageVector = if (marcaCorrecta) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+                    contentDescription = if (marcaCorrecta) "Respuesta correcta" else "Tu respuesta, incorrecta",
+                    tint = acento,
+                    modifier = Modifier.size(24.dp)
                 )
-            )
+            } else {
+                // RadioButton con mejor diseño
+                RadioButton(
+                    selected = isSelected,
+                    onClick = null, // 🔒 MANTENER null - EL CLICK ESTÁ EN EL CARD
+                    colors = RadioButtonDefaults.colors( // ✅ CAMBIO SEGURO
+                        selectedColor = MaterialTheme.colorScheme.primary,
+                        unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
 
             Spacer(Modifier.width(16.dp)) // ✅ AUMENTAR ESPACIO SEGURO
 

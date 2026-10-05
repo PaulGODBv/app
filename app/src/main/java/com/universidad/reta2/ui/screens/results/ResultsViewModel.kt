@@ -2,6 +2,8 @@ package com.universidad.reta2.ui.screens.results
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.universidad.reta2.data.local.RepasoDeSesion
+import com.universidad.reta2.data.local.RespuestaDeSesion
 import com.universidad.reta2.data.repositories.SyncRepository
 import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.models.Level
@@ -19,7 +21,8 @@ import javax.inject.Inject
 class ResultsViewModel @Inject constructor(
     private val userStatsRepository: UserStatsRepository,
     private val competenceRepository: CompetenceRepository,
-    private val syncRepository: SyncRepository
+    private val syncRepository: SyncRepository,
+    private val repasoDeSesion: RepasoDeSesion
 ) : ViewModel() {
 
     private val _competenceState = MutableStateFlow<Competence?>(null)
@@ -28,6 +31,16 @@ class ResultsViewModel @Inject constructor(
     private val _levelState = MutableStateFlow<Level?>(null)
     val levelState: StateFlow<Level?> = _levelState.asStateFlow()
 
+    /**
+     * Las preguntas de la sesion con lo que se respondio en cada una.
+     *
+     * Es lo que alimenta el repaso con explicacion. Viene de un registro en
+     * memoria porque a esta pantalla solo llegan numeros por la ruta; si se
+     * entra por otro camino la lista sale vacia y el bloque no se pinta.
+     */
+    private val _repaso = MutableStateFlow<List<RespuestaDeSesion>>(emptyList())
+    val repaso: StateFlow<List<RespuestaDeSesion>> = _repaso.asStateFlow()
+
     private val _syncState = MutableStateFlow<SyncUiState>(SyncUiState.Idle)
     val syncState: StateFlow<SyncUiState> = _syncState.asStateFlow()
 
@@ -35,6 +48,10 @@ class ResultsViewModel @Inject constructor(
     private var lastUpdateKey = ""
 
     fun loadData(competenceId: Int, levelId: Int) {
+        // El repaso se lee siempre, aunque el catalogo ya estuviera cargado:
+        // es lo unico que cambia entre dos visitas seguidas a esta pantalla.
+        _repaso.value = repasoDeSesion.obtener(levelId)
+
         // Evitar recargar si ya los tenemos
         if (_competenceState.value != null && _levelState.value != null) return
 

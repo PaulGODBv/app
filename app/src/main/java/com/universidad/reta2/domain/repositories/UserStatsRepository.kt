@@ -9,6 +9,12 @@ interface UserStatsRepository {
     // Obtener estadísticas del usuario actual
     fun getUserStats(): Flow<UserStats>
 
+    // Lectura puntual contra la base, sin la caché en memoria que adelanta el
+    // primer valor de `getUserStats()`. Es la que debe usar cualquier
+    // leer-modificar-escribir: leer de la caché y escribir encima perdería lo
+    // que se hubiera guardado desde la última emisión.
+    suspend fun getUserStatsOnce(): UserStats
+
     // Actualizar estadísticas completas
     suspend fun updateUserStats(stats: UserStats)
     // Actualizar progreso de un nivel específico

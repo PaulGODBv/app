@@ -674,7 +674,11 @@ private fun PlayingStep(
                 if (currentQuestion.readingText.isNotEmpty() || currentQuestion.contextImage != null) {
                     QuestionContextCard(
                         readingText = currentQuestion.readingText,
-                        contextImage = currentQuestion.contextImage,
+                        // La URL del panel manda; el nombre de drawable es el respaldo
+                        // del contenido de arranque.
+                        contextImage = currentQuestion.contextImageUrl?.takeIf { it.isNotBlank() }
+                            ?: currentQuestion.contextImage?.takeIf { it.isNotBlank() },
+                        contextImageAlt = currentQuestion.contextImageAlt?.takeIf { it.isNotBlank() },
                         onShowTextModal = {
                             if (currentQuestion.readingText.isNotEmpty()) {
                                 currentReadingText = currentQuestion.readingText

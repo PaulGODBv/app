@@ -1,5 +1,10 @@
 package com.universidad.reta2.ui.navigation
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
@@ -12,7 +17,10 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -31,8 +39,29 @@ fun BottomNavigationBar(navController: NavController) {
 
     NavigationBar {
         items.forEach { item ->
+            // Respuesta al pulsar, como en Material 3: el icono se hunde un
+            // poco mientras el dedo esta encima y vuelve con un rebote corto al
+            // soltar. El ripple de la pestana lo sigue poniendo el componente.
+            val interaccion = remember { MutableInteractionSource() }
+            val pulsado by interaccion.collectIsPressedAsState()
+            val escala by animateFloatAsState(
+                targetValue = if (pulsado) 0.86f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                label = "escalaPulsacion"
+            )
+
             NavigationBarItem(
-                icon = { Icon(item.icon, contentDescription = item.title) },
+                interactionSource = interaccion,
+                icon = {
+                    Icon(
+                        item.icon,
+                        contentDescription = item.title,
+                        modifier = Modifier.scale(escala)
+                    )
+                },
                 label = { Text(item.title) },
                 selected = currentRoute == item.route,
                 // Estar en una pestaña es estado, no logro: el indicador va en

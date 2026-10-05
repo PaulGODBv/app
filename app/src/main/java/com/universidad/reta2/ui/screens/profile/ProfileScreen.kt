@@ -79,7 +79,7 @@ fun ProfileScreen(
             com.universidad.reta2.ui.components.LevelXpBar(totalQuestionsAnswered = state.totalQuestionsAnswered)
             com.universidad.reta2.ui.components.UnlockableBadgesGrid(
                 totalQuestionsAnswered = state.totalQuestionsAnswered,
-                currentStreak = state.currentStreak
+                mejorRacha = state.maxStreak
             )
 
             // ----- Información Personal -----
@@ -166,28 +166,36 @@ fun ProfileScreen(
                         }
                     }
 
-                    // Botones de opción rápida (Reemplazando FilterChip por Button por seguridad)
+                    // Botones de opción rápida (Reemplazando FilterChip por Button por seguridad).
+                    // Elegir tema es una acción, no un logro: el seleccionado va en
+                    // azul y los otros en gris neutro. Con el tonal de Material
+                    // heredaban `secondaryContainer`, que en esta paleta es el
+                    // ámbar reservado a rachas y desbloqueos.
+                    val tonalNeutro = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = { viewModel.setThemeMode(0) },
-                            colors = if (themeMode == 0) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+                            colors = if (themeMode == 0) ButtonDefaults.buttonColors() else tonalNeutro,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Auto", style = MaterialTheme.typography.labelSmall)
                         }
                         Button(
                             onClick = { viewModel.setThemeMode(1) },
-                            colors = if (themeMode == 1) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+                            colors = if (themeMode == 1) ButtonDefaults.buttonColors() else tonalNeutro,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Claro", style = MaterialTheme.typography.labelSmall)
                         }
                         Button(
                             onClick = { viewModel.setThemeMode(2) },
-                            colors = if (themeMode == 2) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+                            colors = if (themeMode == 2) ButtonDefaults.buttonColors() else tonalNeutro,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Oscuro", style = MaterialTheme.typography.labelSmall)

@@ -1,5 +1,7 @@
 package com.universidad.reta2.di
 
+import com.universidad.reta2.data.local.CatalogoCache
+import com.universidad.reta2.data.local.EstadisticasCache
 import android.content.Context
 import com.universidad.reta2.data.local.dao.ProgressDao
 import com.universidad.reta2.data.local.dao.UserDao
@@ -45,12 +47,14 @@ object RepositoryModule {
         progressDao: ProgressDao,
         userStatsDao: UserStatsDao,
         levelDao: LevelDao,
+        catalogoCache: CatalogoCache,
         @ApplicationContext context: Context,
     ): ProgressRepository {
         return ProgressRepositoryImpl(
             progressDao = progressDao,
             userStatsDao = userStatsDao,
             levelDao = levelDao,
+            catalogoCache = catalogoCache,
             context = context,
         )
     }
@@ -61,9 +65,15 @@ object RepositoryModule {
     fun provideUserStatsRepository(
         userStatsDao: UserStatsDao,
         statsInitializer: StatsInitializer,
+        estadisticasCache: EstadisticasCache,
         @ApplicationContext context: Context
     ): UserStatsRepository {
-        return UserStatsRepositoriesImp(userStatsDao, StatsInitializer(userStatsDao), context)
+        return UserStatsRepositoriesImp(
+            userStatsDao = userStatsDao,
+            statsInitializer = StatsInitializer(userStatsDao),
+            estadisticasCache = estadisticasCache,
+            context = context,
+        )
     }
 
     @Provides
@@ -97,6 +107,7 @@ object RepositoryModule {
         levelDao: LevelDao,
         questionDao: QuestionDao,
         progressDao: ProgressDao,
+        catalogoCache: CatalogoCache,
         @ApplicationContext context: Context,
         questionRepository: QuestionRepository
     ): CompetenceRepository {
@@ -105,6 +116,7 @@ object RepositoryModule {
             competenceMapper = competenceMapper,
             levelDao = levelDao,
             questionDao = questionDao,
+            catalogoCache = catalogoCache,
             progressDao = progressDao,
             context = context,
             questionRepository = questionRepository
@@ -131,8 +143,10 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideQuestionRepository(): QuestionRepository {
-        return QuestionRepositoryImpl()
+    fun provideQuestionRepository(
+        questionDao: QuestionDao,
+    ): QuestionRepository {
+        return QuestionRepositoryImpl(questionDao)
     }
 
 @Provides

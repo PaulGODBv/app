@@ -1,6 +1,7 @@
 package com.universidad.reta2.ui.screens.progress
 
 import com.universidad.reta2.ui.components.shimmerEffect
+import com.universidad.reta2.ui.components.esperaVisible
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +51,11 @@ fun ProgressScreen(
 ) {
     var isCompositionActive by remember { mutableStateOf(true) }
     val state by viewModel.state.collectAsState()
-    val formattedPracticeTime by remember { derivedStateOf { viewModel.getFormattedPracticeTime() } }
+    // Con `derivedStateOf` el tiempo se quedaba clavado en «0 seg»: la función
+    // lee el StateFlow del ViewModel, que no es estado de Compose, así que
+    // nunca había nada que invalidara el valor guardado. La llave son las
+    // estadísticas ya recogidas.
+    val formattedPracticeTime = remember(state.userStats) { viewModel.getFormattedPracticeTime() }
 
     DisposableEffect(Unit) {
         isCompositionActive = true
@@ -106,8 +112,19 @@ private fun ProgressContentUltraSafe(
     onRetry: () -> Unit,
     onSync: () -> Unit
 ) {
+    // El esqueleto es una promesa de espera: solo se ensena si la carga se
+    // alarga de verdad. Lo de Room llega en milisegundos y ensenarlo produciria
+    // un parpadeo en cada cambio de pestana.
+    val cargandoDeVerdad = state.isLoading && state.competences.isEmpty()
+    val mostrarEsqueleto = esperaVisible(cargandoDeVerdad)
+
     when {
-        state.isLoading -> LoadingIndicatorSafe()
+        cargandoDeVerdad && !mostrarEsqueleto -> Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        )
+        mostrarEsqueleto -> LoadingIndicatorSafe()
         state.error != null -> ErrorStateSafe(
             error = state.error,
             onRetry = onRetry
@@ -118,6 +135,8 @@ private fun ProgressContentUltraSafe(
             competences = state.competences,
             weeklyProgress = state.weeklyProgress,
             ranking = state.ranking,
+            rankingCargando = state.rankingCargando,
+            rankingFallo = state.rankingFallo,
             formattedPracticeTime = formattedPracticeTime,
             onCompetencyClick = onCompetencyClick,
             isSyncing = state.isSyncing,
@@ -134,6 +153,8 @@ private fun ProgressSuccessContentSafe(
     competences: List<Competence>,
     weeklyProgress: List<DailyProgress>,
     ranking: RankingResponse?,
+    rankingCargando: Boolean,
+    rankingFallo: Boolean,
     formattedPracticeTime: String,
     onCompetencyClick: (Competence) -> Unit,
     isSyncing: Boolean,
@@ -162,9 +183,13 @@ private fun ProgressSuccessContentSafe(
             WeeklyActivityCard(weeklyProgress = weeklyProgress)
         }
 
-        ranking?.let {
-            item {
-                RankingCard(ranking = it)
+        // Unica seccion que depende del panel: tiene su propio estado para que
+        // su espera no bloquee lo que ya esta listo.
+        item {
+            when {
+                ranking != null -> RankingCard(ranking = ranking)
+                rankingCargando -> RankingSkeleton()
+                rankingFallo -> RankingNoDisponible()
             }
         }
 
@@ -292,17 +317,19 @@ fun MainStatsCardSafe(practiceTime: String, totalQuestions: Int, streakDays: Int
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(24.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatItemSafe(label = "Tiempo", value = practiceTime, modifier = Modifier.weight(1f))
-            Divider(modifier = Modifier.width(1.dp).height(40.dp), color = Color.White.copy(alpha = 0.3f))
+            // «Hoy» va en la etiqueta: el contador se reinicia cada dia y sin eso
+            // un cero a primera hora parece un fallo.
+            StatItemSafe(label = "Tiempo hoy", value = practiceTime, modifier = Modifier.weight(1f))
+            Divider(modifier = Modifier.width(1.dp).height(40.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f))
             StatItemSafe(label = "Preguntas", value = totalQuestions.toString(), modifier = Modifier.weight(1f))
-            Divider(modifier = Modifier.width(1.dp).height(40.dp), color = Color.White.copy(alpha = 0.3f))
+            Divider(modifier = Modifier.width(1.dp).height(40.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f))
             StatItemSafe(label = "Racha", value = "$streakDays días", modifier = Modifier.weight(1f))
         }
     }
@@ -311,8 +338,8 @@ fun MainStatsCardSafe(practiceTime: String, totalQuestions: Int, streakDays: Int
 @Composable
 fun StatItemSafe(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White)
-        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center)
+        Text(text = value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f), textAlign = TextAlign.Center)
     }
 }
 
@@ -369,18 +396,65 @@ fun WeeklyActivityCard(weeklyProgress: List<DailyProgress>) {
         Triple(dateStr, dayName, activity?.questionsAnswered ?: 0)
     }
     val maxQuestions = last7Days.maxOfOrNull { it.third } ?: 1
+
+    // El día que rompió la racha: el primero en blanco después de uno activo.
+    // Se marca solo ese, no los que vengan detrás: los siguientes días sin
+    // practicar no rompieron nada, la racha ya estaba perdida, y pintarlos
+    // todos convertiría una semana normal de tres días en un parte de faltas.
+    //
+    // Hoy nunca se marca. El día no ha terminado y aún se puede practicar; dar
+    // por perdida una racha que todavía se puede salvar es justo lo contrario
+    // de lo que debe hacer la pantalla.
+    //
+    // Si la ruptura ocurrió antes del primer día de la ventana no hay con qué
+    // compararla y no se marca: se prefiere callar a señalar el día que no es.
+    val rompioLaRacha = last7Days.mapIndexed { i, dia ->
+        val esHoy = i == last7Days.lastIndex
+        val vieneDeDiaActivo = i > 0 && last7Days[i - 1].third > 0
+        !esHoy && dia.third == 0 && vieneDeDiaActivo
+    }
+
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
-                last7Days.forEach { (_, dayName, questions) ->
+                last7Days.forEachIndexed { i, (_, dayName, questions) ->
                     val fraction = if (maxQuestions > 0) questions.toFloat() / maxQuestions.toFloat() else 0f
+                    val rachaPerdida = rompioLaRacha[i]
+                    // El rojo es el mismo que la app ya usa para las respuestas
+                    // incorrectas, así que el significado no hay que aprenderlo.
+                    val colorBarra = when {
+                        questions > 0 -> MaterialTheme.colorScheme.primary
+                        rachaPerdida -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.outlineVariant
+                    }
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom, modifier = Modifier.weight(1f)) {
-                        if (questions > 0) Text(text = "$questions", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                        // La flama ocupa el hueco donde los días activos ponen su
+                        // número, así que la tarjeta no cambia de alto.
+                        if (questions > 0) {
+                            Text(text = "$questions", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                        } else if (rachaPerdida) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocalFireDepartment,
+                                contentDescription = "Aquí se perdió la racha",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         val barHeight = (fraction * 80f).coerceAtLeast(4f)
-                        Box(modifier = Modifier.fillMaxWidth(0.6f).height(barHeight.dp).clip(RoundedCornerShape(2.dp)).background(if (questions > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant).align(Alignment.CenterHorizontally))
+                        Box(modifier = Modifier.fillMaxWidth(0.6f).height(barHeight.dp).clip(RoundedCornerShape(2.dp)).background(colorBarra).align(Alignment.CenterHorizontally))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = dayName, style = MaterialTheme.typography.labelSmall, color = if (questions > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (questions > 0) FontWeight.Bold else FontWeight.Normal, fontSize = 11.sp)
+                        Text(
+                            text = dayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = when {
+                                questions > 0 -> MaterialTheme.colorScheme.onSurface
+                                rachaPerdida -> MaterialTheme.colorScheme.error
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            fontWeight = if (questions > 0 || rachaPerdida) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 11.sp
+                        )
                     }
                 }
             }
@@ -399,6 +473,79 @@ fun WeeklyActivityCard(weeklyProgress: List<DailyProgress>) {
                     Text(text = "días activos", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RankingSkeleton() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Ranking Global",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            // Tres filas del alto de RankingItem: reservan el sitio para que la
+            // lista no de un salto cuando llegue el ranking de verdad.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .shimmerEffect()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RankingNoDisponible() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.CloudOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Ranking Global",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = "No se pudo cargar. Tu progreso sigue guardado en el teléfono.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

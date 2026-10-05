@@ -18,6 +18,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 data class ProgressState(
@@ -26,6 +27,10 @@ data class ProgressState(
     val competences: List<Competence> = emptyList(),
     val weeklyProgress: List<DailyProgress> = emptyList(),
     val ranking: RankingResponse? = null,
+    // El ranking es lo unico de esta pantalla que sale del panel, asi que
+    // lleva su propio estado: el resto se pinta de inmediato desde Room.
+    val rankingCargando: Boolean = true,
+    val rankingFallo: Boolean = false,
     val error: String? = null,
     // Sincronización manual: la automática vive en el splash.
     val isSyncing: Boolean = false,
@@ -49,6 +54,11 @@ class ProgressViewModel @Inject constructor(
     val state: StateFlow<ProgressState> = _state.asStateFlow()
 
     private var isViewModelActive = true
+
+    private companion object {
+        /** Lo que se espera al panel por el ranking antes de rendirse. */
+        const val ESPERA_RANKING_MS = 8_000L
+    }
 
     // La pantalla muestra el estado vacío cuando no hay competencias. Si se quita
     // el "cargando" al recibir solo las estadísticas, durante unos milisegundos se
@@ -83,7 +93,14 @@ class ProgressViewModel @Inject constructor(
 
                 statsLoaded = false
                 localDataLoaded = false
-                _state.update { it.copy(isLoading = true, error = null) }
+                _state.update {
+                    it.copy(
+                        isLoading = true,
+                        error = null,
+                        rankingCargando = true,
+                        rankingFallo = false
+                    )
+                }
 
                 val username = SessionManager.getCurrentUsername(context) ?: ""
 
@@ -131,15 +148,39 @@ class ProgressViewModel @Inject constructor(
                 if (username.isNotEmpty()) {
                     launch {
                         try {
-                            val rankingResult = rankingRepository.getGlobalRanking(username).getOrNull()
-                            if (rankingResult != null && isViewModelActive) {
-                                println(" ProgressViewModel: Ranking cargado exitosamente")
-                                _state.update { it.copy(ranking = rankingResult) }
+                            // El ranking es decoracion: si el panel no contesta
+                            // pronto, se abandona. El timeout de red son 30 s y
+                            // dejar el hueco girando medio minuto es peor que
+                            // decir que no se pudo.
+                            val rankingResult = withTimeoutOrNull(ESPERA_RANKING_MS) {
+                                rankingRepository.getGlobalRanking(username).getOrNull()
+                            }
+                            if (isViewModelActive) {
+                                if (rankingResult != null) {
+                                    println(" ProgressViewModel: Ranking cargado exitosamente")
+                                    _state.update {
+                                        it.copy(
+                                            ranking = rankingResult,
+                                            rankingCargando = false,
+                                            rankingFallo = false
+                                        )
+                                    }
+                                } else {
+                                    // Se reserva el sitio y se explica: la tarjeta ya
+                                    // ocupa espacio, desaparecer seria peor que avisar.
+                                    _state.update { it.copy(rankingCargando = false, rankingFallo = true) }
+                                }
                             }
                         } catch (e: Exception) {
                             println("⚠️ Error cargando ranking: ${e.message}")
+                            if (isViewModelActive) {
+                                _state.update { it.copy(rankingCargando = false, rankingFallo = true) }
+                            }
                         }
                     }
+                } else {
+                    // Sin usuario no hay ranking que pedir: no se deja el hueco cargando.
+                    _state.update { it.copy(rankingCargando = false) }
                 }
 
             } catch (e: Exception) {

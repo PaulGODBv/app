@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Reta2" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Reta2" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- El sistema pinta este fondo desde que se toca el icono hasta que la
+             app dibuja su primer fotograma: unos 2,5 s en frío. Estaba en el
+             blanco del tema Light, así que con la app en oscuro el arranque era
+             un fogonazo blanco. Sigue al modo del sistema; el conmutador de
+             tema de Perfil no puede alcanzar esta ventana, que se dibuja antes
+             de que corra código nuestro. -->
+        <item name="android:windowBackground">@color/fondo_arranque</item>
+    </style>
 </resources>

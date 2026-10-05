@@ -28,7 +28,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import com.universidad.reta2.ui.components.CompetenceSkeletonItem
+import com.universidad.reta2.ui.components.esperaVisible
 import com.universidad.reta2.ui.components.shimmerEffect
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,15 +41,15 @@ fun HomeScreen(
     val userName by viewModel.userName.collectAsState()
     val userStats by viewModel.userStats.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val competences by viewModel.competences.collectAsState()
+    val statsCargadas by viewModel.statsCargadas.collectAsState()
 
-    // Obtener competencias con progreso del ViewModel
-    val competencesWithProgress by remember {
-        derivedStateOf { viewModel.getCompetencesWithProgress() }
-    }
-
-    val completedCompetencesCount by remember {
-        derivedStateOf { viewModel.getCompletedCompetencesCount() }
-    }
+    // `derivedStateOf` solo se recalcula cuando cambia el estado de Compose que
+    // ha leído, y estas dos funciones leen el StateFlow del ViewModel, que no lo
+    // es: el valor se quedaba congelado en el de la primera composición —cero
+    // competencias— para siempre. La llave es la lista ya recogida.
+    val competencesWithProgress = remember(competences) { viewModel.getCompetencesWithProgress() }
+    val completedCompetencesCount = remember(competences) { viewModel.getCompletedCompetencesCount() }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -63,7 +65,22 @@ fun HomeScreen(
         }
     }
 
-    if (isLoading) {
+    // Inicio se sirve entero de Room: la carga tarda unos milisegundos y no hay
+    // ninguna espera real que anunciar. El esqueleto solo aparece si la carga
+    // se alarga de verdad — primer arranque, cuando hay que sembrar el
+    // catalogo —; en el caso normal no llega a verse.
+    val cargandoDeVerdad = isLoading && competences.isEmpty()
+    // La llamada va fuera del `if`: dentro de una condición en cortocircuito el
+    // grupo desaparece de la composición y con él el temporizador, que volvía a
+    // empezar de cero en cada recomposición.
+    val mostrarEsqueleto = esperaVisible(cargandoDeVerdad)
+
+    if (cargandoDeVerdad && !mostrarEsqueleto) {
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+        return
+    }
+
+    if (cargandoDeVerdad) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -101,8 +118,11 @@ fun HomeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Alerta Premium de Racha en Peligro
-            if (userStats.currentStreakDays == 0) {
+            // Alerta Premium de Racha en Peligro. Dos condiciones: que las
+            // estadísticas ya hayan llegado —el valor por defecto trae la racha
+            // a cero y el aviso se asomaba un instante en cada entrada— y que
+            // haya de verdad una racha viva que perder hoy.
+            if (statsCargadas && userStats.rachaEnRiesgo(LocalDate.now().toString())) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -213,7 +233,10 @@ fun PracticeModeCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
+            // Superficie grande: en Material 3 el relleno amplio va en
+            // `primaryContainer`, no en `primary`. Con la paleta nueva el
+            // primario es un azul claro y el blanco encima se queda en 2:1.
+            containerColor = MaterialTheme.colorScheme.primaryContainer
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         onClick = onClick
@@ -229,7 +252,7 @@ fun PracticeModeCard(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.15f)),
+                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -242,12 +265,12 @@ fun PracticeModeCard(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
             }
         }
@@ -314,7 +337,7 @@ fun MainStatsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -333,7 +356,7 @@ fun MainStatsCard(
                 modifier = Modifier
                     .width(1.dp)
                     .height(40.dp),
-                color = Color.White.copy(alpha = 0.3f)
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
             )
 
             StatItem(
@@ -346,7 +369,7 @@ fun MainStatsCard(
                 modifier = Modifier
                     .width(1.dp)
                     .height(40.dp),
-                color = Color.White.copy(alpha = 0.3f)
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
             )
 
             StatItem(
@@ -372,12 +395,12 @@ fun StatItem(
             text = value,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onPrimaryContainer
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.8f),
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
             textAlign = TextAlign.Center
         )
     }
@@ -504,7 +527,7 @@ fun EmptyProgressCard(navController: NavController) {
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Ver Competencias", color = Color.White)
+                Text("Ver Competencias")
             }
         }
     }

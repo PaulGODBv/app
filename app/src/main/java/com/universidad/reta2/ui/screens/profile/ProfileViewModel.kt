@@ -49,7 +49,8 @@ class ProfileViewModel @Inject constructor(
                 userStatsRepository.getUserStats().collect { stats ->
                     _uiState.value = _uiState.value.copy(
                         totalQuestionsAnswered = stats.totalQuestionsAnswered,
-                        currentStreak = stats.currentStreakDays
+                        currentStreak = stats.currentStreakDays,
+                        maxStreak = stats.maxStreakDays
                     )
                 }
             } catch (e: Exception) {
@@ -204,6 +205,8 @@ data class ProfileUiState(
     val errorMessage: String = "",
     val successMessage: String = "",
     val totalQuestionsAnswered: Int = 0,
-    val currentStreak: Int = 0
+    val currentStreak: Int = 0,
+    /** Mejor racha alcanzada. Las insignias se miden contra esta, no contra la viva. */
+    val maxStreak: Int = 0
 )
 

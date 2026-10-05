@@ -8,6 +8,10 @@ data class SyncReportRequest(
     @SerializedName("total_questions_answered") val totalQuestionsAnswered: Int,
     @SerializedName("total_practice_time_seconds") val totalPracticeTimeSeconds: Int,
     @SerializedName("current_streak_days") val currentStreakDays: Int,
+    // La racha viva se reinicia; esta no. El panel la necesita para mostrar
+    // los logros de racha en el detalle del estudiante, que de otro modo
+    // tendria que adivinarla del historico de sincronizaciones.
+    @SerializedName("max_streak_days") val maxStreakDays: Int,
     @SerializedName("daily_practice_time_seconds") val dailyPracticeTimeSeconds: Int,
     @SerializedName("academic_program") val academicProgram: String = "",
     @SerializedName("app_version") val appVersion: String = "1.0",
