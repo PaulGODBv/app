@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Las imágenes de contexto de las preguntas no se citan nunca como
+  R.drawable.algo: CompetencyData guarda el NOMBRE ("imagen_sismos") y
+  QuestionContextComponents lo resuelve en ejecución con
+  resources.getIdentifier(nombre, "drawable", packageName). El reductor de
+  recursos no puede seguir ese camino, así que sin esta lista las borraría del
+  APK de release y la pregunta se quedaría con el icono de imagen rota.
+
+  Se conserva el grupo entero en lugar de enumerar los trece nombres de hoy,
+  porque cada imagen que se añada al banco tendría que acordarse de entrar en
+  esa lista. Los iconos de competencia sí se citan como R.drawable y no
+  necesitan estar aquí. Cuando las imágenes pasen a descargarse del panel
+  (TODO-3) este archivo deja de hacer falta.
+
+  No se activa tools:shrinkMode="strict": el modo laxo conserva además los
+  recursos que el reductor sospecha que se usan por nombre, y aquí interesa esa
+  red de seguridad.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/*" />
