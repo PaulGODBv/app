@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo de la ventana mientras el sistema arranca la app, antes de que
+         Compose pinte nada. Sin esta variante el arranque en frío enseñaba dos
+         segundos y medio de blanco antes del splash oscuro de Reta2. -->
+    <color name="fondo_arranque">#0E1116</color>
+</resources>
