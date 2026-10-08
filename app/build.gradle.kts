@@ -1,9 +1,35 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     alias(libs.plugins.hilt.android)
     kotlin("kapt")
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
+}
+
+/**
+ * Lee la clave de la API de `local.properties`, que no va a git.
+ *
+ * Antes era una constante en `ApiConfig.kt`, asi que viajaba en cada commit de
+ * un repositorio publico. Sacarla del codigo no la esconde del APK —sigue
+ * dentro, y quien descompile la encuentra— pero evita que se filtre otra vez
+ * por el historial, que es por donde se filtro.
+ */
+fun claveDeLaApi(): String {
+    val fichero = rootProject.file("local.properties")
+    val clave = if (fichero.exists()) {
+        Properties().apply { fichero.inputStream().use { load(it) } }
+            .getProperty("RETA2_API_KEY")
+            .orEmpty()
+    } else {
+        ""
+    }
+    require(clave.isNotBlank()) {
+        "Falta RETA2_API_KEY en local.properties. Sin ella la app no puede " +
+            "sincronizar con el panel. Pon el mismo valor que el .env del panel."
+    }
+    return clave
 }
 
 android {
@@ -21,6 +47,8 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        buildConfigField("String", "RETA2_API_KEY", "\"${claveDeLaApi()}\"")
     }
 
     buildTypes {
@@ -46,6 +74,8 @@ android {
 
     buildFeatures {
         compose = true
+        // Hace falta para BUILD_CONFIG_FIELD de la clave de la API.
+        buildConfig = true
     }
 
     composeOptions {
