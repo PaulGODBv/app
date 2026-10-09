@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.universidad.reta2.domain.repositories.UserStatsRepository
+import com.universidad.reta2.utils.Sonidos
+import com.universidad.reta2.utils.Vibracion
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
 import javax.inject.Inject
 
 @HiltViewModel
@@ -25,7 +30,9 @@ class QuestionViewModel @Inject constructor(
     private val updateProgressUseCase: UpdateProgressUseCase,
     private val competenceRepository: CompetenceRepository,
     private val getQuestionsUseCase: GetQuestionsUseCase,
-    private val repasoDeSesion: RepasoDeSesion
+    private val repasoDeSesion: RepasoDeSesion,
+    private val userStatsRepository: UserStatsRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     //  ESTADO SEGURO CON PROTECCIONES
@@ -49,6 +56,37 @@ class QuestionViewModel @Inject constructor(
      * revela al momento, el intento no se registra y el nivel no se completa
      * ni desbloquea nada.
      */
+    private companion object {
+        /**
+         * Lo que «Siguiente pregunta» tarda en habilitarse tras revelar la
+         * respuesta, en práctica.
+         *
+         * **No es un adorno: sin esto la aplicación se cierra.** Revelar la
+         * respuesta añade el bloque del porqué debajo de las opciones, y
+         * avanzar quita y vuelve a crear todos los hijos del contenedor
+         * —cada bloque va dentro de un `key(...)` que incluye el índice de la
+         * pregunta—. Si las dos cosas caen en el mismo fotograma, Compose
+         * intenta retirar un nodo que todavía no había llegado a engancharse y
+         * revienta con un `NullPointerException` en
+         * `LayoutNode.onChildRemoved`. La pila no trae ni una línea nuestra,
+         * así que desde el informe de fallo no hay forma de verlo.
+         *
+         * Medido en dispositivo el 09/10/2026: con 200 ms entre tocar la
+         * opción y tocar «Siguiente» se cierra; con 500 ms aguanta. 400 ms
+         * deja margen por encima del umbral sin que se note como un frenazo.
+         *
+         * **Es un cerrojo, no la cura.** La reparación de fondo es que el
+         * contenido deje de recrearse entero en cada pregunta, quitando el
+         * índice de esas claves para que Compose actualice en vez de
+         * reconstruir. Eso toca el corazón de la pantalla y no se hace a dos
+         * semanas de la entrega.
+         *
+         * Y de paso hace lo que debe: impedir que se salte de un golpe la
+         * explicación que se acaba de ganar.
+         */
+        const val MILIS_ANTES_DE_AVANZAR = 400L
+    }
+
     private var esPractica: Boolean = false
 
     fun fijarModo(practica: Boolean) {
@@ -153,8 +191,37 @@ class QuestionViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 selectedOptionId = optionId,
-                respuestaRevelada = it.esPractica
+                respuestaRevelada = it.esPractica,
+                // En práctica, «Siguiente» queda bloqueado un instante. Ver
+                // MILIS_ANTES_DE_AVANZAR.
+                puedeAvanzar = !it.esPractica
             )
+        }
+
+        if (estado.esPractica) {
+            viewModelScope.launch {
+                delay(MILIS_ANTES_DE_AVANZAR)
+                _uiState.update { it.copy(puedeAvanzar = true) }
+            }
+        }
+
+        // La vibración va AQUÍ y solo en práctica, no en nextQuestion(), y la
+        // razón importa: en evaluación el estudiante no sabe si acertó hasta
+        // el repaso final, así que una vibración distinta por acierto y por
+        // fallo le estaría cantando la respuesta pregunta por pregunta. En
+        // práctica la respuesta se revela al tocarla, y entonces la vibración
+        // no añade información: confirma la que ya está en pantalla.
+        if (estado.esPractica) {
+            val pregunta = estado.questions.getOrNull(estado.currentQuestionIndex)
+            if (pregunta != null) {
+                if (optionId == pregunta.correctOptionId) {
+                    Vibracion.acierto(context)
+                    Sonidos.acierto(context)
+                } else {
+                    Vibracion.fallo(context)
+                    Sonidos.fallo(context)
+                }
+            }
         }
     }
 
@@ -210,6 +277,16 @@ class QuestionViewModel @Inject constructor(
                 if (isActuallyLastQuestion) {
                     println("📤 LLAMANDO a UpdateProgressUseCase para COMPLETAR NIVEL...")
 
+                    // La racha se mide antes y después porque sube **una vez
+                    // al día**, en la primera actividad, y de eso depende si
+                    // se enseña la pantalla de racha o se va directo a
+                    // resultados. `getUserStatsOnce` y no el flujo: la caché
+                    // en memoria adelanta un valor y aquí hace falta el de la
+                    // base.
+                    val rachaAntes = runCatching {
+                        userStatsRepository.getUserStatsOnce().currentStreakDays
+                    }.getOrDefault(-1)
+
                     updateProgressUseCase(
                         questionId = currentQuestion.id,
                         isCorrect = isCorrect,
@@ -231,6 +308,34 @@ class QuestionViewModel @Inject constructor(
                     val progressPercentage = newScore * 100 / currentState.questions.size
                     val shouldUnlock = progressPercentage >= LevelRules.PASSING_PERCENTAGE
                     println("🔓 Condición desbloqueo: $progressPercentage% >= ${LevelRules.PASSING_PERCENTAGE}% → $shouldUnlock")
+
+                    // Veredicto de cierre, y en los DOS modos. Antes solo
+                    // sonaba al superar en evaluación, y eso dejaba dos
+                    // huecos: no superar terminaba en silencio —lo peor, porque
+                    // el silencio no se distingue de un fallo de la app— y una
+                    // sesión de práctica acababa sin remate.
+                    //
+                    // Aquí no se chiva nada: la sesión ya ha terminado y la
+                    // pantalla de resultados dice lo mismo un instante
+                    // después. Lo que no puede sonar, y no suena, es el
+                    // veredicto de cada respuesta en evaluación.
+                    //
+                    // En práctica el porcentaje no desbloquea, pero informa
+                    // igual: es el mismo 70 % de LevelRules en todas partes.
+                    if (shouldUnlock) {
+                        Vibracion.nivelSuperado(context)
+                        Sonidos.nivelSuperado(context)
+                    } else {
+                        Vibracion.nivelNoSuperado(context)
+                        Sonidos.nivelNoSuperado(context)
+                    }
+
+                    val rachaDespues = runCatching {
+                        userStatsRepository.getUserStatsOnce().currentStreakDays
+                    }.getOrDefault(rachaAntes)
+                    val subio = rachaAntes >= 0 && rachaDespues > rachaAntes
+                    println("🔥 Racha: $rachaAntes → $rachaDespues (sube: $subio)")
+                    _uiState.update { it.copy(subioLaRacha = subio) }
                 } else {
                     // Para preguntas que NO son la última, solo registrar el intento
                     updateProgressUseCase(
@@ -247,6 +352,21 @@ class QuestionViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 println("❌ Error actualizando progreso: ${e.message}")
+            } finally {
+                // Abre la puerta a navegar, y solo al terminar de escribir.
+                //
+                // Antes la pantalla navegaba al ver `isQuizCompleted`, que se
+                // pone FUERA de esta corrutina, y lo que evitaba la carrera
+                // era un `delay(100)` en la pantalla: si la escritura tardaba
+                // mas, resultados se abria sobre datos a medias. Con esta
+                // marca el orden esta garantizado.
+                //
+                // Va en `finally` a proposito: si la escritura falla, el
+                // estudiante tiene que llegar a resultados igualmente, no
+                // quedarse encallado en la ultima pregunta.
+                if (isActuallyLastQuestion) {
+                    _uiState.update { it.copy(listoParaResultados = true) }
+                }
             }
         }
 
@@ -256,6 +376,7 @@ class QuestionViewModel @Inject constructor(
                 currentQuestionIndex = it.currentQuestionIndex + 1,
                 selectedOptionId = null,
                 respuestaRevelada = false,
+                puedeAvanzar = true,
                 score = newScore,
                 streak = newStreak,
                 isQuizCompleted = isActuallyLastQuestion,
@@ -314,7 +435,13 @@ class QuestionViewModel @Inject constructor(
         val esPractica: Boolean = false,
         /** En práctica, si ya se reveló la respuesta de la pregunta actual. */
         val respuestaRevelada: Boolean = false,
+        /** Si «Siguiente pregunta» acepta pulsaciones (ver MILIS_ANTES_DE_AVANZAR). */
+        val puedeAvanzar: Boolean = true,
         val isQuizCompleted: Boolean = false,
+        /** Si la racha subió con esta sesión: decide si hay pantalla de racha. */
+        val subioLaRacha: Boolean = false,
+        /** El progreso ya está escrito y se puede navegar a resultados. */
+        val listoParaResultados: Boolean = false,
         val currentCompetence: Competence? = null
     ) {
         val hasValidCurrentQuestion: Boolean

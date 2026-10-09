@@ -73,6 +73,37 @@ sealed class Screen(val route: String) {
 
 
 
+    /**
+     * El latido de la racha, entre terminar un nivel y ver los resultados.
+     *
+     * Lleva los mismos argumentos que [Results] porque su unico destino es
+     * Results: no los usa, los reenvia. Pasarlos asi evita tener que guardar
+     * el resultado en algun sitio mientras se ensena la animacion.
+     *
+     * **Solo aparece el dia que la racha sube**, que es una vez al dia. Del
+     * segundo nivel en adelante se va directo a Results: una celebracion que
+     * se repite sin motivo deja de celebrar.
+     */
+    object Racha : Screen("racha/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}/{origin}") {
+        fun createRoute(
+            competenceId: Int,
+            levelId: Int,
+            score: Int,
+            totalQuestions: Int,
+            timeSpent: Int,
+            origin: String = "competences"
+        ) = "racha/$competenceId/$levelId/$score/$totalQuestions/$timeSpent/$origin"
+
+        val arguments = listOf(
+            navArgument("competenceId") { type = NavType.IntType },
+            navArgument("levelId") { type = NavType.IntType },
+            navArgument("score") { type = NavType.IntType },
+            navArgument("totalQuestions") { type = NavType.IntType },
+            navArgument("timeSpent") { type = NavType.IntType },
+            navArgument("origin") { type = NavType.StringType }
+        )
+    }
+
     object Results : Screen("results/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}/{origin}") {
         fun createRoute(
             competenceId: Int,

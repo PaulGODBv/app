@@ -93,7 +93,14 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+    // UN SOLO BOM para todo Compose, y de aqui depende que la aplicacion no
+    // se caiga. Antes convivian tres: este bloque fijaba el 2024.02.00,
+    // libs.versions.toml declaraba el 2024.09.00 y las pruebas el 2023.10.01.
+    // Ademas `foundation` iba clavado al 1.9.3 por fuera del BOM, asi que
+    // arrastraba ui, runtime y animation al 1.9.3 mientras material3 se
+    // quedaba en el 1.2.0 del BOM viejo: ano y medio de diferencia entre
+    // librerias que comparten la contabilidad interna de los nodos.
+    implementation(platform(libs.androidx.compose.bom))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -105,7 +112,7 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
     implementation(libs.play.services.dtdi)
     implementation("com.google.code.gson:gson:2.10.1")
-    implementation(libs.androidx.foundation)
+    implementation("androidx.compose.foundation:foundation")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     kapt("com.google.dagger:hilt-android-compiler:2.48")
 
@@ -136,7 +143,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

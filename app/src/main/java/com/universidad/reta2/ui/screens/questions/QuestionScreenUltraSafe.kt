@@ -100,18 +100,31 @@ fun QuestionScreenUltraSafe(
         }
     }
 
-    //  LAUNCHED EFFECT PARA NAVEGACIÓN A RESULTS
-    LaunchedEffect(uiState.isQuizCompleted) {
-        if (uiState.isQuizCompleted) {
-            println("🎯 Navegando a Results desde QuestionScreenUltraSafe")
+    // NAVEGACIÓN AL TERMINAR: a la pantalla de racha si la racha subió, y si
+    // no directo a resultados.
+    //
+    // Depende de `listoParaResultados` y no de `isQuizCompleted`: el segundo
+    // se pone fuera de la corrutina que guarda el progreso, así que llegaba
+    // antes de que estuviera escrito y lo que tapaba la carrera era un
+    // `delay(100)`. El primero lo pone la propia corrutina al terminar.
+    LaunchedEffect(uiState.listoParaResultados) {
+        if (uiState.listoParaResultados) {
             println("📊 Score final: ${uiState.score}/${uiState.questions.size}")
             println("⏱️ Tiempo total: ${uiState.timeElapsed}s")
-            println("📍 Origin: $origin")
+            println("📍 Origin: $origin  ·  racha subió: ${uiState.subioLaRacha}")
 
-            // Pequeño delay para asegurar procesamiento completo
-            delay(100)
-
-            navController.navigate(
+            val destino = if (uiState.subioLaRacha) {
+                // Solo el día que sube. Del segundo nivel en adelante la
+                // racha ya está contada y celebrarla otra vez sería ruido.
+                Screen.Racha.createRoute(
+                    competenceId = competencyId,
+                    levelId = levelId,
+                    score = uiState.score,
+                    totalQuestions = uiState.questions.size,
+                    timeSpent = uiState.timeElapsed,
+                    origin = origin
+                )
+            } else {
                 Screen.Results.createRoute(
                     competenceId = competencyId,
                     levelId = levelId,
@@ -120,7 +133,9 @@ fun QuestionScreenUltraSafe(
                     timeSpent = uiState.timeElapsed,
                     origin = origin
                 )
-            ) {
+            }
+
+            navController.navigate(destino) {
                 popUpTo(Screen.Questions.route) { inclusive = true }
             }
         }
@@ -328,15 +343,40 @@ private fun SafeQuestionContent(
     val currentQuestion = uiState.currentQuestion ?: return
     val scrollState = rememberScrollState()
 
+    // Al cambiar de pregunta, arriba del todo y de golpe. Sin esto la pregunta
+    // nueva heredaría el desplazamiento de la anterior y nacería empezada por
+    // la mitad.
+    LaunchedEffect(uiState.currentQuestionIndex) {
+        scrollState.scrollTo(0)
+    }
+
     // Al revelar, bajar hasta el porqué.
     //
     // Con una pregunta larga el panel nace por debajo del pliegue, y una
     // explicación que hay que ir a buscar no la lee nadie. Se desplaza al
     // final en vez de a una posición fija porque el alto depende del enunciado
     // y del número de opciones.
+    //
+    // **De golpe y no animado, y esto tumbaba la aplicación.** `animateScrollTo`
+    // dura unos cientos de milisegundos, y en ese rato se puede tocar
+    // «Siguiente pregunta». Entonces el contenedor cambia TODOS sus hijos
+    // —cada bloque va dentro de un `key(...)` que incluye el índice de la
+    // pregunta— mientras la animación sigue moviendo el mismo `ScrollState`,
+    // y Compose revienta al quitar los nodos con un
+    // `NullPointerException` en `LayoutNode.onChildRemoved`. La pila no trae
+    // ni una línea nuestra, asi que no se ve de dónde sale.
+    //
+    // Reproducido el 09/10/2026: responder y tocar «Siguiente» antes de un
+    // segundo mata la aplicación; esperando cuatro, no. Y avanzar rápido SIN
+    // responder tampoco la mata, porque sin revelar no hay animación. En
+    // evaluación nunca ocurrió por lo mismo: ahí no se revela nada.
+    //
+    // Un salto instantáneo no se puede interrumpir, así que la carrera deja de
+    // existir. Se pierde el deslizamiento suave; es un cambio que se nota
+    // menos que un cierre inesperado.
     LaunchedEffect(uiState.respuestaRevelada, uiState.currentQuestionIndex) {
         if (uiState.respuestaRevelada) {
-            scrollState.animateScrollTo(scrollState.maxValue)
+            scrollState.scrollTo(scrollState.maxValue)
         }
     }
 
@@ -452,7 +492,10 @@ private fun SafeQuestionContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = uiState.selectedOptionId != null,
+                // `puedeAvanzar` bloquea el botón un instante tras revelar la
+                // respuesta en práctica: revelar y avanzar en el mismo fotograma
+                // cerraba la aplicación (ver MILIS_ANTES_DE_AVANZAR).
+                enabled = uiState.selectedOptionId != null && uiState.puedeAvanzar,
                 shape = MaterialTheme.shapes.large,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,

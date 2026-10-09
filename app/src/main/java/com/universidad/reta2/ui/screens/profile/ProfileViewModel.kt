@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.data.preferences.SessionManager
 import com.universidad.reta2.domain.repositories.UserRepository
 import com.universidad.reta2.domain.repositories.UserStatsRepository
+import com.universidad.reta2.utils.Musica
+import com.universidad.reta2.utils.Sonidos
 import com.universidad.reta2.utils.PasswordHasher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,6 +31,43 @@ class ProfileViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     val themeMode = SessionManager.themeModeFlow
+
+    val vibracion = SessionManager.vibracionFlow
+    val efectos = SessionManager.efectosFlow
+    val musica = SessionManager.musicaFlow
+
+    fun setVibracion(activa: Boolean) = SessionManager.setVibracion(context, activa)
+
+    fun setEfectos(activos: Boolean) = SessionManager.setEfectos(context, activos)
+
+    val volumenMusica = SessionManager.volMusicaFlow
+    val volumenEfectos = SessionManager.volEfectosFlow
+
+    fun setVolumenMusica(v: Float) {
+        SessionManager.setVolumenMusica(context, v)
+        // Y en caliente, sobre lo que ya está sonando: ajustar a ciegas un
+        // volumen es justo lo que un deslizador evita.
+        Musica.ajustarVolumen(v)
+    }
+
+    fun setVolumenEfectos(v: Float) = SessionManager.setVolumenEfectos(context, v)
+
+    /**
+     * Suena una vez al soltar el deslizador de efectos, para oír dónde quedó.
+     *
+     * Al soltar y no mientras se arrastra: un efecto por cada paso del
+     * deslizador sería una ametralladora.
+     */
+    fun probarEfecto() = Sonidos.toque(context)
+
+    fun setMusica(activa: Boolean) {
+        SessionManager.setMusica(context, activa)
+        // Apagarla no basta con dejar de arrancarla: hay un MediaPlayer vivo
+        // sonando ahora mismo, y hay que soltarlo. Encenderla no necesita nada
+        // aquí: MainActivity observa el ajuste y la arranca si la pantalla de
+        // ese momento es de menú.
+        if (!activa) Musica.soltar()
+    }
 
     private val _eventChannel= MutableSharedFlow<ProfileEvent>()
     val eventChannel = _eventChannel.asSharedFlow()

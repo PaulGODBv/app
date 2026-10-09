@@ -14,6 +14,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.universidad.reta2.domain.LevelRules
+import com.universidad.reta2.utils.Sonidos
+import com.universidad.reta2.utils.Vibracion
 import javax.inject.Inject
 
 /**
@@ -40,7 +45,8 @@ import javax.inject.Inject
 class ArrastrarViewModel @Inject constructor(
     private val questionRepository: QuestionRepository,
     private val userStatsRepository: UserStatsRepository,
-    private val competenceRepository: CompetenceRepository
+    private val competenceRepository: CompetenceRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArrastrarUiState())
@@ -138,6 +144,10 @@ class ArrastrarViewModel @Inject constructor(
                 banco = (s.banco - palabra + listOfNotNull(anterior)).distinct()
             )
         }
+
+        // Confirma que la palabra se quedó donde se soltó. Solo sonido, sin
+        // vibración: ver el porqué en Sonidos.colocar().
+        Sonidos.colocar(context)
     }
 
     /** Toca un hueco lleno y la palabra vuelve al banco. */
@@ -161,6 +171,28 @@ class ArrastrarViewModel @Inject constructor(
         if (_uiState.value.comprobado) return
         cronometro?.cancel()
         _uiState.update { it.copy(comprobado = true) }
+
+        // Un solo veredicto para una sola acción: aquí no se responde hueco
+        // por hueco, se comprueba todo de golpe, así que un aviso por acierto
+        // sería un traqueteo sin significado.
+        //
+        // Se usa el mismo 70 % que el resto de la aplicación, en lugar de
+        // exigir el pleno, para que «superado» signifique lo mismo en todas
+        // partes. Practicar no desbloquea nada, pero el veredicto sí informa.
+        val estado = _uiState.value
+        val porcentaje = if (estado.huecos.isEmpty()) {
+            0
+        } else {
+            estado.aciertos * 100 / estado.huecos.size
+        }
+        if (porcentaje >= LevelRules.PASSING_PERCENTAGE) {
+            Vibracion.nivelSuperado(context)
+            Sonidos.nivelSuperado(context)
+        } else {
+            Vibracion.nivelNoSuperado(context)
+            Sonidos.nivelNoSuperado(context)
+        }
+
         contabilizar()
     }
 

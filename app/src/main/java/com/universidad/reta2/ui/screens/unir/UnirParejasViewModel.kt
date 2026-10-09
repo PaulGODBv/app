@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.universidad.reta2.utils.Sonidos
+import com.universidad.reta2.utils.Vibracion
 import javax.inject.Inject
 
 /**
@@ -34,7 +38,8 @@ import javax.inject.Inject
 class UnirParejasViewModel @Inject constructor(
     private val questionRepository: QuestionRepository,
     private val userStatsRepository: UserStatsRepository,
-    private val competenceRepository: CompetenceRepository
+    private val competenceRepository: CompetenceRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private companion object {
@@ -149,11 +154,23 @@ class UnirParejasViewModel @Inject constructor(
                     terminado = terminado
                 )
             }
-            if (terminado) cerrar()
+            // Acertar vibra corto; terminar el tablero, el patron largo.
+            // Aqui no hay riesgo de chivar nada: el verde ya esta en pantalla
+            // y unir solo existe en practica.
+            if (terminado) {
+                Vibracion.nivelSuperado(context)
+                Sonidos.nivelSuperado(context)
+                cerrar()
+            } else {
+                Vibracion.acierto(context)
+                Sonidos.acierto(context)
+            }
         } else {
             // Rojo breve y las dos siguen en juego: un fallo aquí informa, no
             // elimina. Es lo que separa practicar de evaluarse.
             _uiState.update { it.copy(fallo = questionId to palabra, fallos = it.fallos + 1) }
+            Vibracion.fallo(context)
+            Sonidos.fallo(context)
             trabajoDelFallo?.cancel()
             trabajoDelFallo = viewModelScope.launch {
                 delay(MILIS_DE_FALLO)

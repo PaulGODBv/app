@@ -12,6 +12,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
+import android.media.AudioManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.universidad.reta2.ui.navigation.Screen
@@ -22,6 +25,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.Icons
@@ -204,6 +210,92 @@ fun ProfileScreen(
                 }
             }
 
+            // ----- Sonido y vibración -----
+            // Tres ajustes y no uno: responden a cosas distintas. Los efectos
+            // y la vibración son respuesta a algo que hizo el estudiante y van
+            // encendidos; la música empieza sola, así que va apagada hasta que
+            // alguien la pida.
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Sonido y vibración",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    val vibracion by viewModel.vibracion.collectAsState()
+                    val efectos by viewModel.efectos.collectAsState()
+                    val musica by viewModel.musica.collectAsState()
+
+                    val volMusica by viewModel.volumenMusica.collectAsState()
+                    val volEfectos by viewModel.volumenEfectos.collectAsState()
+
+                    FilaDeAjuste(
+                        icono = Icons.Default.MusicNote,
+                        titulo = "Música de menú",
+                        detalle = "Solo en el menú; dentro de un nivel no suena",
+                        activo = musica,
+                        alCambiar = viewModel::setMusica
+                    )
+                    DeslizadorDeVolumen(
+                        valor = volMusica,
+                        habilitado = musica,
+                        alCambiar = viewModel::setVolumenMusica
+                    )
+
+                    FilaDeAjuste(
+                        icono = Icons.Default.VolumeUp,
+                        titulo = "Efectos de sonido",
+                        detalle = "Confirmación corta en cada respuesta",
+                        activo = efectos,
+                        alCambiar = viewModel::setEfectos
+                    )
+                    DeslizadorDeVolumen(
+                        valor = volEfectos,
+                        habilitado = efectos,
+                        alCambiar = viewModel::setVolumenEfectos,
+                        alSoltar = viewModel::probarEfecto
+                    )
+
+                    // La vibración no lleva deslizador: no tiene volumen, y en
+                    // los teléfonos sin control de amplitud ni siquiera tiene
+                    // intensidad. Ofrecer uno sería prometer lo que el
+                    // hardware no da.
+                    FilaDeAjuste(
+                        icono = Icons.Default.Vibration,
+                        titulo = "Vibración",
+                        detalle = "Al acertar, fallar y superar un nivel",
+                        activo = vibracion,
+                        alCambiar = viewModel::setVibracion
+                    )
+
+                    // Si el teléfono está en silencio no va a sonar nada,
+                    // aunque los interruptores estén encendidos. Decirlo aquí
+                    // ahorra pensar que la aplicación está rota.
+                    val contexto = LocalContext.current
+                    val enSilencio = remember {
+                        val audio = contexto.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                        audio?.ringerMode == AudioManager.RINGER_MODE_SILENT
+                    }
+                    if (enSilencio && (efectos || musica)) {
+                        Text(
+                            text = "El teléfono está en silencio, así que no sonará. " +
+                                "La vibración sí funciona.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             // ----- Cambio de Contraseña -----
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -347,6 +439,94 @@ private fun MessageCard(text: String, color: androidx.compose.ui.graphics.Color,
             color = textColor,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+
+/**
+ * Una fila de ajuste: icono, nombre, una línea de explicación e interruptor.
+ *
+ * El icono se apaga con el ajuste —color primario encendido, gris apagado—
+ * para que el estado se lea de un vistazo sin tener que mirar el interruptor,
+ * y la línea de detalle existe porque «Música de menú» no dice por sí sola
+ * que dentro de un nivel no suena, que es justo lo que alguien preguntaría.
+ */
+@Composable
+private fun FilaDeAjuste(
+    icono: androidx.compose.ui.graphics.vector.ImageVector,
+    titulo: String,
+    detalle: String,
+    activo: Boolean,
+    alCambiar: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icono,
+            contentDescription = null,
+            tint = if (activo) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = titulo, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = detalle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(checked = activo, onCheckedChange = alCambiar)
+    }
+}
+
+
+/**
+ * El volumen de una de las dos fuentes de sonido.
+ *
+ * Se atenúa y se bloquea cuando su interruptor está apagado, en lugar de
+ * esconderse: dejarlo a la vista enseña la relación —esto es el volumen de
+ * *eso*— y evita que la tarjeta cambie de alto al encender y apagar, que es lo
+ * que haría saltar el resto de la pantalla.
+ *
+ * El valor **no** se borra al apagar. Apagar y volver a encender devuelve el
+ * volumen que había, que es la diferencia entre un interruptor y un deslizador
+ * arrastrado a cero.
+ */
+@Composable
+private fun DeslizadorDeVolumen(
+    valor: Float,
+    habilitado: Boolean,
+    alCambiar: (Float) -> Unit,
+    alSoltar: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 36.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Slider(
+            value = valor,
+            onValueChange = alCambiar,
+            onValueChangeFinished = { if (habilitado) alSoltar?.invoke() },
+            enabled = habilitado,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "${(valor * 100).toInt()} %",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (habilitado) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.outline
+            },
+            modifier = Modifier.width(44.dp)
         )
     }
 }

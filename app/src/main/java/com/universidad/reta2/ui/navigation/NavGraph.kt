@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
+import com.universidad.reta2.ui.screens.racha.RachaScreen
 import com.universidad.reta2.ui.screens.login.LoginScreen
 import com.universidad.reta2.ui.screens.competencies.CompetenciesScreen
 import com.universidad.reta2.ui.screens.competenceDetail.CompetenceDetailScreen
@@ -206,6 +207,21 @@ fun NavGraph(
         }
 
         // ---------- Resultados ----------
+        composable(
+            route = Screen.Racha.route,
+            arguments = Screen.Racha.arguments
+        ) { backStackEntry ->
+            RachaScreen(
+                navController = navController,
+                competencyId = backStackEntry.arguments?.getInt("competenceId") ?: 0,
+                levelId = backStackEntry.arguments?.getInt("levelId") ?: 0,
+                score = backStackEntry.arguments?.getInt("score") ?: 0,
+                totalQuestions = backStackEntry.arguments?.getInt("totalQuestions") ?: 0,
+                timeSpent = backStackEntry.arguments?.getInt("timeSpent") ?: 0,
+                origin = backStackEntry.arguments?.getString("origin") ?: "competencies"
+            )
+        }
+
         composable(
             route = Screen.Results.route,
             arguments = Screen.Results.arguments
