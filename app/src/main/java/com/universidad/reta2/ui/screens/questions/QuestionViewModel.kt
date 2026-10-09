@@ -61,28 +61,18 @@ class QuestionViewModel @Inject constructor(
          * Lo que «Siguiente pregunta» tarda en habilitarse tras revelar la
          * respuesta, en práctica.
          *
-         * **No es un adorno: sin esto la aplicación se cierra.** Revelar la
-         * respuesta añade el bloque del porqué debajo de las opciones, y
-         * avanzar quita y vuelve a crear todos los hijos del contenedor
-         * —cada bloque va dentro de un `key(...)` que incluye el índice de la
-         * pregunta—. Si las dos cosas caen en el mismo fotograma, Compose
-         * intenta retirar un nodo que todavía no había llegado a engancharse y
-         * revienta con un `NullPointerException` en
-         * `LayoutNode.onChildRemoved`. La pila no trae ni una línea nuestra,
-         * así que desde el informe de fallo no hay forma de verlo.
+         * **Ya no sostiene nada, y conviene que eso quede claro.** Nació como
+         * cerrojo contra un cierre inesperado: revelar y avanzar en el mismo
+         * fotograma hacía que Compose fallara al retirar los nodos. Eso está
+         * arreglado de raíz —el contenido ya no se recrea en cada pregunta,
+         * ver el comentario de `QuestionScreenUltraSafe`— y se comprobó
+         * poniendo esta constante a cero: tres sesiones completas a máxima
+         * velocidad, sin un solo cierre.
          *
-         * Medido en dispositivo el 09/10/2026: con 200 ms entre tocar la
-         * opción y tocar «Siguiente» se cierra; con 500 ms aguanta. 400 ms
-         * deja margen por encima del umbral sin que se note como un frenazo.
-         *
-         * **Es un cerrojo, no la cura.** La reparación de fondo es que el
-         * contenido deje de recrearse entero en cada pregunta, quitando el
-         * índice de esas claves para que Compose actualice en vez de
-         * reconstruir. Eso toca el corazón de la pantalla y no se hace a dos
-         * semanas de la entrega.
-         *
-         * Y de paso hace lo que debe: impedir que se salte de un golpe la
-         * explicación que se acaba de ganar.
+         * Se conserva por lo único que aporta hoy, que es pedagógico: impedir
+         * que se salte de un golpe la explicación recién ganada, que es la
+         * razón de ser del modo práctica. Si estorba, se pone a cero y no pasa
+         * nada.
          */
         const val MILIS_ANTES_DE_AVANZAR = 400L
     }

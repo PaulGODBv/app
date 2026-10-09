@@ -392,57 +392,74 @@ private fun SafeQuestionContent(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // AQUI NO VA NINGUN key(...), Y ES IMPORTANTE QUE SIGA ASI.
+            //
+            // Cada bloque de esta columna estuvo envuelto en un `key(...)` que
+            // incluia el indice de la pregunta, asi que al avanzar cambiaban
+            // todas las claves y Compose tenia que DESTRUIR Y RECREAR el
+            // contenido entero en lugar de actualizarlo. Esa retirada masiva
+            // fallaba de dos maneras distintas, y costo entender que eran la
+            // misma cosa:
+            //
+            //  - A veces reventaba, con un `NullPointerException` en
+            //    `LayoutNode.onChildRemoved` y ni una linea nuestra en la pila.
+            //  - A veces **no quitaba los nodos viejos** y la pantalla pintaba
+            //    dos veces el contenido: dos barras de progreso con numeros
+            //    distintos —2/5 y 1/5— y dos preguntas a la vez, con una sola
+            //    barra superior y un solo boton. Eso fue lo que lo delato.
+            //
+            // Sin claves, Compose empareja por posicion y **actualiza en el
+            // sitio**: la misma barra cambia de numero, la misma tarjeta cambia
+            // de texto, y no hay ninguna retirada que pueda fallar.
+            //
+            // Las claves no aportaban nada: ningun bloque de aqui guarda estado
+            // propio que haya que reiniciar entre preguntas.
+
             //  RACHA Y BARRA DE PROGRESO
-            key("progress_${uiState.currentQuestionIndex}") {
-                ProgressSection(
-                    currentIndex = uiState.currentQuestionIndex,
-                    totalQuestions = uiState.questions.size,
-                    streak = uiState.streak
-                )
-            }
+            ProgressSection(
+                currentIndex = uiState.currentQuestionIndex,
+                totalQuestions = uiState.questions.size,
+                streak = uiState.streak
+            )
 
             //  CONTEXTO DE LA PREGUNTA CON PREVIEW
             if (currentQuestion.readingText.isNotEmpty() || currentQuestion.contextImage != null) {
-                key("context_${currentQuestion.id}_${uiState.currentQuestionIndex}") {
-                    QuestionContextCard(
-                        readingText = currentQuestion.readingText,
-                        // La URL del panel manda; el nombre de drawable es el respaldo
-                        // del contenido de arranque.
-                        contextImage = currentQuestion.contextImageUrl?.takeIf { it.isNotBlank() }
-                            ?: currentQuestion.contextImage?.takeIf { it.isNotBlank() },
-                        contextImageAlt = currentQuestion.contextImageAlt?.takeIf { it.isNotBlank() },
-                        onShowTextModal = onShowTextModal,
-                        onShowImageModal = onShowImageModal
-                    )
-                }
+                QuestionContextCard(
+                    readingText = currentQuestion.readingText,
+                    // La URL del panel manda; el nombre de drawable es el respaldo
+                    // del contenido de arranque.
+                    contextImage = currentQuestion.contextImageUrl?.takeIf { it.isNotBlank() }
+                        ?: currentQuestion.contextImage?.takeIf { it.isNotBlank() },
+                    contextImageAlt = currentQuestion.contextImageAlt?.takeIf { it.isNotBlank() },
+                    onShowTextModal = onShowTextModal,
+                    onShowImageModal = onShowImageModal
+                )
             }
 
             // PREGUNTA
-            key("question_${currentQuestion.id}_${uiState.currentQuestionIndex}") {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    shape = MaterialTheme.shapes.extraLarge
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                shape = MaterialTheme.shapes.extraLarge
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        Text(
-                            text = "Pregunta:",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Text(
-                            text = currentQuestion.text,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            lineHeight = MaterialTheme.typography.titleLarge.lineHeight * 1.1
-                        )
-                    }
+                    Text(
+                        text = "Pregunta:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        text = currentQuestion.text,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        lineHeight = MaterialTheme.typography.titleLarge.lineHeight * 1.1
+                    )
                 }
             }
 
@@ -451,15 +468,13 @@ private fun SafeQuestionContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 currentQuestion.options.forEach { option ->
-                    key("option_${option.id}_${uiState.currentQuestionIndex}") {
-                        SafeOptionItem(
-                            option = option,
-                            isSelected = uiState.selectedOptionId == option.id,
-                            revelada = uiState.respuestaRevelada,
-                            esLaCorrecta = option.id == currentQuestion.correctOptionId,
-                            onOptionSelected = onOptionSelected
-                        )
-                    }
+                    SafeOptionItem(
+                        option = option,
+                        isSelected = uiState.selectedOptionId == option.id,
+                        revelada = uiState.respuestaRevelada,
+                        esLaCorrecta = option.id == currentQuestion.correctOptionId,
+                        onOptionSelected = onOptionSelected
+                    )
                 }
             }
 
