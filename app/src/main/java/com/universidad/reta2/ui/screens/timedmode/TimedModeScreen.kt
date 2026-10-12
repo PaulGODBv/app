@@ -78,7 +78,10 @@ fun TimedModeScreen(
     // delante sin avisar: la flecha de la barra esta escondida en esa fase, asi
     // que era la unica salida y no preguntaba nada. Confirmar y, si acaso,
     // volver a la configuracion, que es lo que ya hacia `onBackPressed` aqui.
-    confirmarAntesDeSalir(activo = uiState.step == TimedModeStep.PLAYING) {
+    confirmarAntesDeSalir(
+        esPractica = false,
+        activo = uiState.step == TimedModeStep.PLAYING
+    ) {
         viewModel.resetMode()
     }
 

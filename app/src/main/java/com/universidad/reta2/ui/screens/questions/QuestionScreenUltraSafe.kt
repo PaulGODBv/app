@@ -154,6 +154,7 @@ fun QuestionScreenUltraSafe(
             navController = navController,
             uiState = uiState,
             viewModel = viewModel,
+            esPractica = esPractica,
             //isCompositionActive = isCompositionActive,
             onShowTextModal = {
                 uiState.currentQuestion?.readingText?.let { text ->
@@ -200,13 +201,16 @@ private fun SafeScaffold(
     navController: NavHostController,
     uiState: QuestionViewModel.QuestionUiState,
     viewModel: QuestionViewModel,
+    esPractica: Boolean,
     onShowTextModal: () -> Unit,
     onShowImageModal: (String) -> Unit,
 ) {
 
     // Salir a medias pierde la sesion entera, asi que no se sale sin preguntar.
     // Esto tapa tambien el gesto de retroceso del sistema.
-    val pedirSalida = confirmarAntesDeSalir { navController.popBackStack() }
+    val pedirSalida = confirmarAntesDeSalir(esPractica = esPractica) {
+        navController.popBackStack()
+    }
 
     Scaffold(
         topBar = {

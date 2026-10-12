@@ -38,7 +38,13 @@ import androidx.compose.runtime.setValue
  *     ...
  *     IconButton(onClick = pedirSalida) { Icon(ArrowBack, "Volver") }
  *
+ * El botón de quedarse dice «Seguir practicando» donde se está practicando y
+ * «Seguir» a secas donde no: en una evaluación y en el contrarreloj nadie está
+ * practicando, y ofrecer seguir haciendo algo que no se está haciendo
+ * desconcierta justo en el momento en que hay que decidir rápido.
+ *
  * @param onSalir qué hacer cuando el estudiante confirma que sí quiere irse.
+ * @param esPractica solo cambia esa palabra; no cambia ningún comportamiento.
  * @param activo si hay algo que perder ahora mismo. En falso, el retroceso del
  *   sistema vuelve a su comportamiento de siempre. Lo necesita el contrarreloj,
  *   que es un asistente de varios pasos y solo tiene una partida que perder
@@ -48,6 +54,7 @@ import androidx.compose.runtime.setValue
  */
 @Composable
 fun confirmarAntesDeSalir(
+    esPractica: Boolean = true,
     activo: Boolean = true,
     onSalir: () -> Unit
 ): () -> Unit {
@@ -76,7 +83,7 @@ fun confirmarAntesDeSalir(
             },
             dismissButton = {
                 TextButton(onClick = { preguntando = false }) {
-                    Text("Seguir practicando")
+                    Text(if (esPractica) "Seguir practicando" else "Seguir")
                 }
             }
         )
