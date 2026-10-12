@@ -26,6 +26,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.platform.LocalDensity
+import com.universidad.reta2.ui.navigation.Transiciones
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.ui.text.style.TextOverflow
@@ -638,8 +644,25 @@ private fun PorQueDeLaRespuesta(acerto: Boolean, explicacion: String) {
     val veredicto = Veredicto.colores
     val acento = if (acerto) veredicto.acierto else MaterialTheme.colorScheme.error
 
+    // Sube un poco al aparecer en vez de materializarse de golpe. Es texto que
+    // llega despues de responder, y empujar la columna sin aviso hace que se
+    // lea como un error de dibujo; subiendo se entiende que viene de la
+    // respuesta que se acaba de dar.
+    val contexto = LocalContext.current
+    val animar = remember { Transiciones.animacionesActivas(contexto) }
+    val entrada = remember { Animatable(if (animar) 0f else 1f) }
+    val subida = with(LocalDensity.current) { 10.dp.toPx() }
+    LaunchedEffect(Unit) {
+        if (animar) entrada.animateTo(1f, tween(240, easing = FastOutSlowInEasing))
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                alpha = entrada.value
+                translationY = (1f - entrada.value) * subida
+            },
         colors = CardDefaults.cardColors(
             containerColor = if (acerto) veredicto.aciertoContenedor
                              else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
@@ -698,6 +721,41 @@ private fun SafeOptionItem(
     val marcaFallo = revelada && isSelected && !esLaCorrecta
     val apagada = revelada && !marcaCorrecta && !marcaFallo
 
+    // El veredicto no se dice solo con color.
+    //
+    // Hasta ahora acertar y fallar se distinguian por el verde y el rojo, y
+    // por el icono. El color es justo lo que no separa un daltonico —y el rojo
+    // y el verde son el par que mas se confunde—, asi que la correcta da
+    // ademas un pulso corto y la fallida una sacudida lateral. Son gestos
+    // opuestos: uno crece, el otro se niega.
+    //
+    // En reposo vale 0. En el acierto sube a 1 y vuelve; en el fallo cruza de
+    // un lado al otro y se para.
+    val contexto = LocalContext.current
+    val animar = remember { Transiciones.animacionesActivas(contexto) }
+    val gesto = remember { Animatable(0f) }
+    val sacudida = with(LocalDensity.current) { 5.dp.toPx() }
+
+    LaunchedEffect(marcaCorrecta, marcaFallo) {
+        if (!animar) return@LaunchedEffect
+        when {
+            marcaCorrecta -> gesto.animateTo(0f, keyframes {
+                durationMillis = 340
+                0f at 0
+                1f at 130 using FastOutSlowInEasing
+                0f at 340
+            })
+            marcaFallo -> gesto.animateTo(0f, keyframes {
+                durationMillis = 260
+                0f at 0
+                -1f at 60
+                1f at 130
+                -0.4f at 195
+                0f at 260
+            })
+        }
+    }
+
     // Verde para acierto y rojo para fallo. El azul se queda para la selección
     // antes de revelar, que es estado y no veredicto: mezclar los dos era lo
     // que hacía falta distinguir.
@@ -712,6 +770,18 @@ private fun SafeOptionItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                // Solo toca lo visual: la tarjeta no cambia de sitio ni de
+                // tamano para el resto de la columna, asi que nada se mueve
+                // debajo mientras el gesto dura.
+                if (marcaCorrecta) {
+                    val escala = 1f + 0.045f * gesto.value
+                    scaleX = escala
+                    scaleY = escala
+                } else if (marcaFallo) {
+                    translationX = gesto.value * sacudida
+                }
+            }
             .clickable(
                 // Revelada deja de aceptar toques: la respuesta ya está dada.
                 enabled = !revelada,

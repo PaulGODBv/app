@@ -4,6 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.universidad.reta2.ui.components.EnCascada
+import com.universidad.reta2.ui.components.recordarCascada
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,6 +42,7 @@ fun CompetenceDetailScreen(
     viewModel: CompetenceDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val cascada = recordarCascada()
 
     // Nivel sobre el que se está eligiendo modo. Null = no hay hoja abierta.
     var nivelElegido by remember { mutableStateOf<Level?>(null) }
@@ -227,7 +231,8 @@ fun CompetenceDetailScreen(
                         )
                     }
 
-                    items(evaluacion) { level ->
+                    itemsIndexed(evaluacion) { indice, level ->
+                        EnCascada(indice, cascada) {
                         LevelCard(
                             level = level,
                             // Se abre la hoja también en los bloqueados: ahí
@@ -236,6 +241,7 @@ fun CompetenceDetailScreen(
                             // cierra la evaluación.
                             onLevelClick = { nivelElegido = level }
                         )
+                        }
                     }
                 }
             }

@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -48,28 +49,67 @@ fun NavGraph(
         }
     }
 
+    // Se pregunta una vez: apagar las animaciones del sistema exige salir de
+    // la aplicacion, asi que no hay nada que vigilar.
+    val contexto = LocalContext.current
+    val animar = remember { Transiciones.animacionesActivas(contexto) }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,
-        modifier = modifier
+        modifier = modifier,
+        // Por defecto, bajar en la jerarquia: la pantalla nueva entra desde la
+        // derecha y el boton de atras la saca por donde entro. Las pantallas
+        // que no son un "dentro" de nada —las pestanas de abajo, el arranque—
+        // lo sustituyen abajo por un fundido.
+        enterTransition = Transiciones.entrarDesdeLaDerecha(animar),
+        exitTransition = Transiciones.salirHaciaLaIzquierda(animar),
+        popEnterTransition = Transiciones.volverDesdeLaIzquierda(animar),
+        popExitTransition = Transiciones.salirHaciaLaDerecha(animar)
     ) {
         // Splash
-        composable(route = Screen.Splash.route) {
+        composable(
+            route = Screen.Splash.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            exitTransition = Transiciones.fundidoSalida(animar)
+        ) {
             SplashScreen(navController = navController)
         }
 
         // ---------- Login ----------
-        composable(route = Screen.Login.route) {
+        // El arranque no es una escalera: del splash al login, y del login al
+        // registro, no se esta bajando a ningun sitio. Se funden.
+        composable(
+            route = Screen.Login.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            exitTransition = Transiciones.fundidoSalida(animar),
+            popEnterTransition = Transiciones.fundidoEntrada(animar),
+            popExitTransition = Transiciones.fundidoSalida(animar)
+        ) {
             LoginScreen(navController = navController)
         }
 
         // ---------- Registro ----------
-        composable(route = Screen.Registration.route) {
+        composable(
+            route = Screen.Registration.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            exitTransition = Transiciones.fundidoSalida(animar),
+            popEnterTransition = Transiciones.fundidoEntrada(animar),
+            popExitTransition = Transiciones.fundidoSalida(animar)
+        ) {
             RegistrationScreen(navController = navController)
         }
 
         // ---------- Home ----------
-        composable(route = Screen.Home.route) {
+        // Pestana de la barra de abajo: fundido en las cuatro direcciones.
+        // Deslizar entre hermanas insinuaria un orden que no existe.
+        composable(
+            route = Screen.Home.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            exitTransition = Transiciones.fundidoSalida(animar),
+            popEnterTransition = Transiciones.fundidoEntrada(animar),
+            popExitTransition = Transiciones.fundidoSalida(animar)
+        ) {
             HomeScreen(navController = navController)
         }
 
@@ -79,7 +119,13 @@ fun NavGraph(
         }
 
         // ---------- Competencias ----------
-        composable(route = Screen.Competencies.route) {
+        composable(
+            route = Screen.Competencies.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            popEnterTransition = Transiciones.fundidoEntrada(animar),
+            // La salida NO se funde: desde aqui se baja a una competencia, y
+            // esa si es una escalera. Se deja la de por defecto.
+        ) {
             CompetenciesScreen(
                 onCompetenceClick = { competenceId ->
                     if (!isNavigating) {
@@ -190,12 +236,22 @@ fun NavGraph(
         }
 
         // ---------- Progreso ----------
-        composable(route = Screen.Progress.route) {
+        composable(
+            route = Screen.Progress.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            popEnterTransition = Transiciones.fundidoEntrada(animar)
+        ) {
             ProgressScreen(navController = navController)
         }
 
         // ---------- Perfil ----------
-        composable(route = Screen.Profile.route) {
+        composable(
+            route = Screen.Profile.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            exitTransition = Transiciones.fundidoSalida(animar),
+            popEnterTransition = Transiciones.fundidoEntrada(animar),
+            popExitTransition = Transiciones.fundidoSalida(animar)
+        ) {
             ProfileScreen(
                 navController = navController,
                 onBackClick = {

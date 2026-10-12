@@ -3,6 +3,10 @@ package com.universidad.reta2.ui.screens.competencies
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.universidad.reta2.ui.components.Cascada
+import com.universidad.reta2.ui.components.EnCascada
+import com.universidad.reta2.ui.components.recordarCascada
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -31,6 +35,7 @@ fun CompetenciesScreen(
     viewModel: CompetenciesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val cascada = recordarCascada()
 
     Scaffold(
         topBar = {
@@ -76,11 +81,13 @@ fun CompetenciesScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(uiState.competences) { competence ->
-                        CompetenceCard(
-                            competence = competence,
-                            onClick = { onCompetenceClick(competence.id) }
-                        )
+                    itemsIndexed(uiState.competences) { indice, competence ->
+                        EnCascada(indice, cascada) {
+                            CompetenceCard(
+                                competence = competence,
+                                onClick = { onCompetenceClick(competence.id) }
+                            )
+                        }
                     }
                 }
             }
