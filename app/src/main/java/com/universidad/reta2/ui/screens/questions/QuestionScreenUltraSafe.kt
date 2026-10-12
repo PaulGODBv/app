@@ -32,6 +32,7 @@ import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalDensity
 import com.universidad.reta2.ui.navigation.Transiciones
+import com.universidad.reta2.ui.components.confirmarAntesDeSalir
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.ui.text.style.TextOverflow
@@ -203,6 +204,10 @@ private fun SafeScaffold(
     onShowImageModal: (String) -> Unit,
 ) {
 
+    // Salir a medias pierde la sesion entera, asi que no se sale sin preguntar.
+    // Esto tapa tambien el gesto de retroceso del sistema.
+    val pedirSalida = confirmarAntesDeSalir { navController.popBackStack() }
+
     Scaffold(
         topBar = {
             SafeTopBar(
@@ -211,9 +216,7 @@ private fun SafeScaffold(
                 timeElapsed = uiState.timeElapsed,
                 isLoading = uiState.isLoading,
                 streak = uiState.streak,
-                onBackClick = {
-                        navController.popBackStack()
-                }
+                onBackClick = pedirSalida
             )
         }
     ) { paddingValues ->
