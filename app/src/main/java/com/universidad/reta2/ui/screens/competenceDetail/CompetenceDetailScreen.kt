@@ -197,10 +197,27 @@ fun CompetenceDetailScreen(
                     // Práctica y evaluación van en secciones aparte a
                     // propósito: son dos cosas distintas y mezclarlas en una
                     // sola lista perdía justo la diferencia que se pedía.
-                    // Los "Calentamiento" que creó TODO-22 quedan fuera de la
-                    // lista: con la práctica convertida en modo de cada nivel,
-                    // ya no hacen falta como nivel aparte.
+                    //
+                    // El "Calentamiento" sale FUERA de esta lista y encima de
+                    // ella, como escalón de entrada que no puntúa. No es un
+                    // nivel más de la escalera: no tiene número, ni candado,
+                    // ni porcentaje, y al tocarlo se va directo a practicar
+                    // sin preguntar el modo, porque nunca evalúa.
                     val evaluacion = competence.levels.filterNot { LevelRules.esDePractica(it.id) }
+
+                    uiState.nivelDePractica?.let { calentamiento ->
+                        item {
+                            TarjetaDeCalentamiento(
+                                onClick = {
+                                    onLevelClick(
+                                        calentamiento.id,
+                                        Screen.Questions.MODO_PRACTICA,
+                                        calentamiento.formatoPractica
+                                    )
+                                }
+                            )
+                        }
+                    }
 
                     item {
                         Text(
@@ -472,3 +489,65 @@ fun LevelCard(level: Level, esPractica: Boolean = false, onLevelClick: () -> Uni
     }
 }
 
+
+/**
+ * El escalón de entrada: preguntas cortas que no puntúan.
+ *
+ * Aparece **solo si el nivel de calentamiento tiene preguntas**, y por eso
+ * llenarlo desde el panel lo hace aparecer sin publicar versión de la app.
+ *
+ * Se distingue a propósito de las tarjetas de nivel: sin número, sin candado y
+ * sin porcentaje, porque no es un peldaño de la escalera. La línea de abajo
+ * dice lo único que hay que saber —que no cuenta— y existe porque si no, tener
+ * un calentamiento *y* un modo practicar en cada nivel se lee como dos caminos
+ * para lo mismo.
+ *
+ * El `clickable` va en su forma larga con `indication` explícita: este proyecto
+ * todavía provee el `PlatformRipple` de Material 2, y la forma corta exige un
+ * `IndicationNodeFactory` y tumba la pantalla al componerse.
+ */
+@Composable
+private fun TarjetaDeCalentamiento(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                indication = LocalIndication.current,
+                interactionSource = interactionSource,
+                onClick = onClick
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Bolt,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Calentamiento",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Preguntas cortas para entrar en calor. " +
+                        "No cuentan para tu progreso.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
