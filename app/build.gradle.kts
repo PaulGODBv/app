@@ -89,6 +89,23 @@ android {
     }
 }
 
+/**
+ * Room escribe el esquema de cada version en `app/schemas/`, y esos ficheros
+ * van a git.
+ *
+ * Sin esto no hay forma de saber que cambio entre dos versiones de la base
+ * salvo leyendo las entidades a mano, que es justo como se cuela una migracion
+ * olvidada. Con el esquema versionado, el cambio aparece en el diff de la
+ * revision igual que cualquier otro codigo, y ademas queda lo que hace falta
+ * para escribir pruebas de migracion el dia que se quieran.
+ */
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+}
+
+
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")

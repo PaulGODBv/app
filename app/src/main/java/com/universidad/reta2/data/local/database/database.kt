@@ -73,9 +73,18 @@ abstract class AppDatabase : RoomDatabase() {
 
 
 
+    /**
+     * Aqui solo viven las migraciones. **La base la construye `DatabaseModule`**,
+     * que es el unico builder de la aplicacion.
+     *
+     * Hubo un segundo builder aqui, un `getDatabase()` con su propio `INSTANCE`,
+     * que no llamaba nadie: la app siempre ha recibido la base por Hilt. Pero
+     * repetia la lista de migraciones, asi que cada vez que se anadia una habia
+     * que acordarse de registrarla **en los dos sitios**, y olvidarlo en el que
+     * si se usaba mandaba la base por la via destructiva. Se quito el 12/10/2026
+     * tras comprobar que no tenia ni una sola llamada.
+     */
     companion object {
-        @Volatile
-        private var INSTANCE: AppDatabase? = null
 
         /**
          * v9 → v10: dos columnas de máximo histórico en `user_stats`.
@@ -442,30 +451,5 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        fun getDatabase(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "reta2_database"
-                )
-                    .addMigrations(
-                        MIGRACION_9_10,
-                        MIGRACION_10_11,
-                        MIGRACION_11_12,
-                        MIGRACION_12_13,
-                        MIGRACION_13_14,
-                        MIGRACION_14_15,
-                        MIGRACION_15_16,
-                        MIGRACION_16_17,
-                        MIGRACION_17_18,
-                        MIGRACION_18_19
-                    )
-                    .fallbackToDestructiveMigration()
-                    .build()
-                INSTANCE = instance
-                instance
-            }
-        }
     }
 }

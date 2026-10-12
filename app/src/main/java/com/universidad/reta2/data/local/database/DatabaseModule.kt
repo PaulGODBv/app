@@ -23,9 +23,8 @@ object DatabaseModule {
             AppDatabase::class.java,
             "reta2_database"
         )
-            // La app se sirve de este builder, no del de AppDatabase.getDatabase().
-            // Si la migración se registra solo en uno de los dos, el otro cae en
-            // la vía destructiva y borra el progreso sin avisar.
+            // El unico builder de la aplicacion. Las migraciones se declaran en
+            // AppDatabase y se registran aqui, en un solo sitio.
             .addMigrations(
                 AppDatabase.MIGRACION_9_10,
                 AppDatabase.MIGRACION_10_11,
@@ -38,7 +37,25 @@ object DatabaseModule {
                 AppDatabase.MIGRACION_17_18,
                 AppDatabase.MIGRACION_18_19
             )
-            .fallbackToDestructiveMigration()
+            // **Solo al BAJAR de version, nunca al subir.**
+            //
+            // Antes era `fallbackToDestructiveMigration()` a secas, que es
+            // «si no se como migrar, borro y empiezo de cero». Eso no es un
+            // respaldo: es perder la cuenta, el progreso y la racha de un
+            // estudiante sin que nadie se entere. Ya paso una vez, en la v9,
+            // cuando `password` paso a `password_hash` y todo el mundo tuvo
+            // que registrarse otra vez.
+            //
+            // Ahora, si falta una migracion al subir de version, Room lanza
+            // una excepcion. Es ruidoso a proposito: revienta en desarrollo,
+            // que es donde se arregla, en vez de borrar en silencio en el
+            // telefono de alguien. La base queda intacta.
+            //
+            // La bajada de version se mantiene destructiva porque no hay nada
+            // mejor que hacer: una base escrita por una version mas nueva no
+            // se puede leer hacia atras, y solo ocurre instalando a mano un
+            // APK anterior, cosa que un estudiante no hace.
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }
 
