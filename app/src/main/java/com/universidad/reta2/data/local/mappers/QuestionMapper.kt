@@ -32,6 +32,7 @@ object QuestionMapper {
         contextImage = entity.contextImage,
         contextImageUrl = entity.contextImageUrl,
         contextImageAlt = entity.contextImageAlt,
+        contextImageEsFigura = entity.contextImageEsFigura,
         competenceId = entity.competenceId,
         levelId = entity.levelId
     )
@@ -52,6 +53,7 @@ object QuestionMapper {
             readingText = domain.readingText,
             contextImageUrl = domain.contextImageUrl,
             contextImageAlt = domain.contextImageAlt,
+            contextImageEsFigura = domain.contextImageEsFigura,
             contextImage = domain.contextImage,
             remoteUpdatedAt = remoteUpdatedAt,
             isActive = isActive

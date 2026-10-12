@@ -47,6 +47,10 @@ data class QuestionEntity(
     @ColumnInfo(name = "context_image_alt")
     val contextImageAlt: String? = null,
 
+    // Si la imagen se tine con el color del tema (ver MIGRACION_16_17).
+    @ColumnInfo(name = "context_image_es_figura", defaultValue = "1")
+    val contextImageEsFigura: Boolean = true,
+
     // Nombre de drawable del contenido de arranque, cuando la pregunta no
     // viene del panel.
     @ColumnInfo(name = "context_image")

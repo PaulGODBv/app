@@ -33,7 +33,8 @@ object DatabaseModule {
                 AppDatabase.MIGRACION_12_13,
                 AppDatabase.MIGRACION_13_14,
                 AppDatabase.MIGRACION_14_15,
-                AppDatabase.MIGRACION_15_16
+                AppDatabase.MIGRACION_15_16,
+                AppDatabase.MIGRACION_16_17
             )
             .fallbackToDestructiveMigration()
             .build()

@@ -37,6 +37,11 @@ data class RemoteQuestionDto(
     @SerializedName("reading_text") val readingText: String? = null,
     @SerializedName("context_image_url") val contextImageUrl: String? = null,
     @SerializedName("context_image_alt") val contextImageAlt: String? = null,
+    // Si la app debe tenir la imagen con el color del tema. Cierto para
+    // tablas y esquemas; falso para fotografias e historietas, donde el
+    // blanco significa algo y un tinte plano las destruiria. Por defecto
+    // cierto, que es como se comportaban las imagenes anteriores.
+    @SerializedName("context_image_es_figura") val contextImageEsFigura: Boolean = true,
     @SerializedName("context_image") val contextImage: String? = null,
     @SerializedName("is_active") val isActive: Boolean = true,
     @SerializedName("updated_at") val updatedAt: String? = null

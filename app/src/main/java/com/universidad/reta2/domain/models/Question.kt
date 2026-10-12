@@ -22,6 +22,16 @@ data class Question(
     val contextImageAlt: String? = null,
 
     /**
+     * Si la imagen se pinta tenida con el color del tema.
+     *
+     * Cierto para tablas y esquemas, que asi parecen parte de la app en
+     * lugar del recorte de una guia. **Falso para fotografias e
+     * historietas**: ahi el blanco significa algo —el interior de un
+     * bocadillo, una cara— y tenir en plano las deja irreconocibles.
+     */
+    val contextImageEsFigura: Boolean = true,
+
+    /**
      * Competencia y nivel a los que pertenece.
      *
      * Vienen en la propia pregunta para que nadie tenga que deducirlos

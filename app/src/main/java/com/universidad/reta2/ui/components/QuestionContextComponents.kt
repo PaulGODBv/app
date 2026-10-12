@@ -77,10 +77,16 @@ internal fun modeloDeImagen(imagen: String?): Any? {
  * del APK, imagenes opacas sin matiz: tenirlas con `SrcIn` las convertiria en
  * un rectangulo de color liso. `modeloDeImagen` devuelve `String` para lo del
  * panel e `Int` para lo empaquetado, y esa es la distincion que se usa aqui.
+ *
+ * **Y solo si de verdad es una figura.** El panel marca cada imagen con
+ * `es_figura`, y lo que no lo es —una fotografia, una vineta— llega sin matiz y
+ * se pinta tal cual. Tenir una historieta en plano la deja irreconocible: el
+ * blanco de los bocadillos y de las caras desaparece y los personajes se
+ * vuelven manchas.
  */
 @Composable
-private fun filtroDeFigura(modelo: Any?, tinta: Color): ColorFilter? =
-    if (modelo is String) ColorFilter.tint(tinta, BlendMode.SrcIn) else null
+private fun filtroDeFigura(modelo: Any?, tinta: Color, esFigura: Boolean = true): ColorFilter? =
+    if (esFigura && modelo is String) ColorFilter.tint(tinta, BlendMode.SrcIn) else null
 
 // ── CARD DE CONTEXTO ──────────────────────────────────────────
 // Reutilizable en QuestionScreen y TimedModeScreen
@@ -90,6 +96,7 @@ internal fun QuestionContextCard(
     readingText: String,
     contextImage: String?,
     contextImageAlt: String? = null,
+    contextImageEsFigura: Boolean = true,
     onShowTextModal: () -> Unit,
     onShowImageModal: (String) -> Unit
 ) {
@@ -176,6 +183,7 @@ internal fun QuestionContextCard(
                         LoadContextImage(
                             imageName = contextImage,
                             alt = contextImageAlt,
+                            esFigura = contextImageEsFigura,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(120.dp)
@@ -255,6 +263,7 @@ internal fun QuestionContextCard(
                             LoadContextImage(
                                 imageName = contextImage,
                                 alt = contextImageAlt,
+                                esFigura = contextImageEsFigura,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(100.dp)
@@ -274,6 +283,42 @@ internal fun QuestionContextCard(
                                 Spacer(Modifier.width(8.dp))
                                 Text("Ampliar imagen")
                             }
+                        }
+                    }
+                }
+
+                // Solo imagen, sin texto de lectura.
+                //
+                // Hasta la vineta de Mafalda no existia este caso: todas las
+                // preguntas con imagen traian ademas un pasaje, asi que las dos
+                // ramas de arriba bastaban y el `else` se tragaba en silencio
+                // cualquier otra combinacion. Una pregunta cuyo contexto es
+                // SOLO la imagen caia ahi y no se pintaba nada: la pregunta
+                // llegaba sin lo unico que permite responderla.
+                contextImage != null -> {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        LoadContextImage(
+                            imageName = contextImage,
+                            alt = contextImageAlt,
+                            esFigura = contextImageEsFigura,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
+                        )
+                        OutlinedButton(
+                            onClick = { onShowImageModal(contextImage) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ZoomIn,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Ampliar imagen")
                         }
                     }
                 }
@@ -376,7 +421,8 @@ internal fun ImageContextModal(
     offset: Offset,
     onScaleChange: (Float) -> Unit,
     onOffsetChange: (Offset) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    esFigura: Boolean = true
 ) {
     val modelo = modeloDeImagen(imageName)
 
@@ -453,7 +499,8 @@ internal fun ImageContextModal(
                             AsyncImage(
                                 colorFilter = filtroDeFigura(
                                     modelo,
-                                    MaterialTheme.colorScheme.onSurface
+                                    MaterialTheme.colorScheme.onSurface,
+                                    esFigura
                                 ),
                                 model = modelo,
                                 contentDescription = "Imagen de contexto: $imageName",
@@ -527,7 +574,8 @@ internal fun LoadContextImage(
     imageName: String,
     alt: String? = null,
     modifier: Modifier = Modifier,
-    tinta: Color = MaterialTheme.colorScheme.onPrimaryContainer
+    tinta: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    esFigura: Boolean = true
 ) {
     val modelo = modeloDeImagen(imageName)
 
@@ -543,7 +591,7 @@ internal fun LoadContextImage(
                 contentDescription = alt ?: "Imagen de contexto",
                 modifier = modifier.clip(MaterialTheme.shapes.medium),
                 contentScale = ContentScale.Fit,
-                colorFilter = filtroDeFigura(modelo, tinta)
+                colorFilter = filtroDeFigura(modelo, tinta, esFigura)
             )
             // Pie de figura. La URL no sirve de pie —saldria "Https: media
             // question-context…"—, asi que solo se pinta el texto alternativo

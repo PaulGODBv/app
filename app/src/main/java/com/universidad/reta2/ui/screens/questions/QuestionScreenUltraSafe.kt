@@ -423,7 +423,9 @@ private fun SafeQuestionContent(
             )
 
             //  CONTEXTO DE LA PREGUNTA CON PREVIEW
-            if (currentQuestion.readingText.isNotEmpty() || currentQuestion.contextImage != null) {
+            if (currentQuestion.readingText.isNotEmpty() ||
+                currentQuestion.contextImageUrl?.isNotBlank() == true ||
+                currentQuestion.contextImage?.isNotBlank() == true) {
                 QuestionContextCard(
                     readingText = currentQuestion.readingText,
                     // La URL del panel manda; el nombre de drawable es el respaldo
@@ -431,6 +433,7 @@ private fun SafeQuestionContent(
                     contextImage = currentQuestion.contextImageUrl?.takeIf { it.isNotBlank() }
                         ?: currentQuestion.contextImage?.takeIf { it.isNotBlank() },
                     contextImageAlt = currentQuestion.contextImageAlt?.takeIf { it.isNotBlank() },
+                    contextImageEsFigura = currentQuestion.contextImageEsFigura,
                     onShowTextModal = onShowTextModal,
                     onShowImageModal = onShowImageModal
                 )

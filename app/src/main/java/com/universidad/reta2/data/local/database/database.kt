@@ -55,7 +55,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     // v15: cuándo se practicó cada nivel por última vez (ver MIGRACION_14_15).
     //
     // v16: los intentos viejos apuntan al banco actual (ver MIGRACION_15_16).
-    version = 16
+    //
+    // v17: si la imagen de contexto se tine o se muestra tal cual
+    //      (ver MIGRACION_16_17).
+    version = 17
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -177,6 +180,32 @@ abstract class AppDatabase : RoomDatabase() {
          * coinciden— pero acota el cambio a la fila que se quiere tocar en vez de
          * a cualquiera que comparta numero.
          */
+        /**
+         * v16 → v17: distinguir una figura de una fotografia.
+         *
+         * Las imagenes de contexto se pintaban todas igual: el panel les
+         * quitaba el papel y la app les ponia encima el color del tema con
+         * `SrcIn`. Para una tabla o un esquema es justo lo que se quiere, y fue
+         * lo que resolvio aquello de que una imagen de la guia «parece un
+         * pantallazo».
+         *
+         * Pero el banco tiene ahora cosas que no son figuras: una vineta de
+         * Mafalda y una fotografia de un anuncio. Ahi el blanco **significa
+         * algo** —el interior de un bocadillo, una cara— y quitarlo deja la
+         * imagen en negativo, con los personajes convertidos en manchas.
+         *
+         * Por defecto 1, que es como se comportaban las doce imagenes que ya
+         * existian: todas son figuras de linea y deben seguir tinendose.
+         */
+        val MIGRACION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE questions " +
+                        "ADD COLUMN context_image_es_figura INTEGER NOT NULL DEFAULT 1"
+                )
+            }
+        }
+
         val MIGRACION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -358,7 +387,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRACION_12_13,
                         MIGRACION_13_14,
                         MIGRACION_14_15,
-                        MIGRACION_15_16
+                        MIGRACION_15_16,
+                        MIGRACION_16_17
                     )
                     .fallbackToDestructiveMigration()
                     .build()

@@ -203,6 +203,7 @@ private fun RemoteQuestionDto.aEntidad(levelIdLocal: Int) = QuestionEntity(
     // cual hacia que la pantalla creyera que si la hay y pintara el hueco con
     // "Imagen no encontrada". Vacio es ausencia, y aqui se traduce a null.
     contextImageUrl = contextImageUrl?.takeIf { it.isNotBlank() },
+    contextImageEsFigura = contextImageEsFigura,
     contextImageAlt = contextImageAlt?.takeIf { it.isNotBlank() },
     contextImage = contextImage?.takeIf { it.isNotBlank() },
     remoteUpdatedAt = updatedAt,
