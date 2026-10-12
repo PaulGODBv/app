@@ -1,5 +1,6 @@
 package com.universidad.reta2.data.remote
 
+import com.universidad.reta2.data.remote.dto.CompetenceDto
 import com.universidad.reta2.data.remote.dto.LevelContentResponse
 import com.universidad.reta2.data.remote.dto.SyncReportRequest
 import com.universidad.reta2.data.remote.dto.SyncReportResponse
@@ -18,6 +19,16 @@ interface Reta2ApiService {
     suspend fun getRanking(
         @Query("username") username: String
     ): Response<RankingResponse>
+
+    /**
+     * El catalogo de competencias y niveles.
+     *
+     * Se pide antes que el contenido, porque es lo que dice **que niveles
+     * hay**. Antes esa lista era una constante en el codigo, asi que un nivel
+     * nuevo en el panel no llegaba hasta publicar version.
+     */
+    @GET("competences/")
+    suspend fun getCatalogo(): Response<List<CompetenceDto>>
 
     /**
      * Contenido de un nivel tal y como lo publica el panel.

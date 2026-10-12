@@ -5,6 +5,7 @@ import coil.ImageLoader
 import coil.request.ImageRequest
 import com.universidad.reta2.data.local.dao.LevelDao
 import com.universidad.reta2.data.local.dao.QuestionDao
+import com.universidad.reta2.data.local.entities.LevelEntity
 import com.universidad.reta2.data.local.entities.QuestionEntity
 import com.universidad.reta2.data.local.entities.QuestionOptionEntity
 import com.universidad.reta2.data.remote.NetworkChecker
@@ -25,9 +26,10 @@ import javax.inject.Singleton
  * actualiza Room. Asi una practica no depende de que haya cobertura, que es
  * justo lo que se pedia del modo offline.
  *
- * No borra nada. Una pregunta que el panel retira se marca inactiva: el
- * progreso del estudiante apunta a su id, y borrar la fila dejaria intentos
- * huerfanos y cuentas de progreso que no cuadran.
+ * No borra nada. Una pregunta que el panel retira se marca inactiva y un nivel
+ * que retira se marca no publicado: el progreso del estudiante apunta a sus
+ * ids, y borrar la fila dejaria intentos huerfanos y cuentas de progreso que no
+ * cuadran.
  */
 @Singleton
 class ContentSyncRepository @Inject constructor(
@@ -97,6 +99,126 @@ class ContentSyncRepository @Inject constructor(
         val huboCambios: Boolean get() = preguntasGuardadas > 0
     }
 
+
+    /**
+     * Descubre el catalogo del panel y crea en Room los niveles que falten.
+     *
+     * Es el paso que cierra TODO-1. Antes la lista de niveles era una
+     * constante del codigo, asi que **dar de alta un nivel en el panel no
+     * llegaba a ningun telefono** hasta publicar una version nueva de la app,
+     * con su migracion de Room. Ahora la lista se pregunta.
+     *
+     * Devuelve la traduccion id-del-panel → id-local, que es lo que necesita
+     * [sincronizar] para guardar las preguntas contra la clave foranea
+     * correcta. Si el catalogo no se puede pedir, devuelve null y el que llama
+     * sigue con lo que ya sabia: quedarse sin catalogo no debe dejar al
+     * estudiante sin sincronizar lo de siempre.
+     *
+     * **Que se escribe y que no.** Del panel vienen el nombre, la descripcion y
+     * el formato de practica. El bloqueo, el progreso y si esta completado NO
+     * se tocan: eso se lo gano el estudiante jugando, y refrescarlo desde el
+     * catalogo le borraria lo que tenia desbloqueado. Por eso un nivel que ya
+     * existe se actualiza con [LevelDao.refrescarDesdeElPanel] y no
+     * reinsertandolo entero.
+     */
+    suspend fun sincronizarCatalogo(): Map<Int, Int>? {
+        val respuesta = runCatching { apiService.getCatalogo() }.getOrNull()
+        val competencias = respuesta?.body()
+        if (respuesta == null || !respuesta.isSuccessful || competencias == null) {
+            println("⚠️ No se pudo leer el catalogo; se sigue con los niveles conocidos")
+            return null
+        }
+
+        val mapa = mutableMapOf<Int, Int>()
+        var creados = 0
+
+        for (competencia in competencias) {
+            for (nivel in competencia.levels) {
+                // 1. Si ya lo conocemos por su id del panel, ese manda.
+                val porDjango = levelDao.getLevelPorDjangoId(nivel.id)
+                if (porDjango != null) {
+                    mapa[nivel.id] = porDjango.id
+                    levelDao.refrescarDesdeElPanel(
+                        porDjango.id, nivel.name, nivel.description, nivel.formatoPractica
+                    )
+                    continue
+                }
+
+                // 2. Si no, puede ser uno sembrado desde `CompetencyData` que
+                //    aun no tiene django_id. Se le propone el id que le toca
+                //    por la formula y, si existe, se adopta.
+                val idLocal = idLocalDeNivel(competencia.id, nivel.order)
+                val existente = levelDao.getLevelPorId(idLocal)
+                if (existente != null) {
+                    levelDao.adoptarDjangoId(idLocal, nivel.id)
+                    levelDao.refrescarDesdeElPanel(
+                        idLocal, nivel.name, nivel.description, nivel.formatoPractica
+                    )
+                    mapa[nivel.id] = idLocal
+                    continue
+                }
+
+                // 3. Nivel nuevo. Se crea.
+                runCatching {
+                    levelDao.insertLevel(
+                        LevelEntity(
+                            id = idLocal,
+                            competenceId = competencia.id,
+                            djangoId = nivel.id,
+                            name = nivel.name,
+                            description = nivel.description,
+                            // Nace bloqueado si el panel lo dice. Un nivel nuevo
+                            // en medio de una escalera ya recorrida no debe
+                            // regalarse ni cerrar el paso: el desbloqueo lo
+                            // gobierna el progreso, como siempre.
+                            isLocked = nivel.bloqueadoPorDefecto,
+                            formatoPractica = nivel.formatoPractica
+                        )
+                    )
+                }.onSuccess {
+                    creados++
+                    mapa[nivel.id] = idLocal
+                    println("✅ Nivel nuevo del panel: ${nivel.name} (Django ${nivel.id} → $idLocal)")
+                }.onFailure {
+                    // Lo mas probable: su competencia no existe en Room. Las
+                    // cinco del Icfes estan sembradas, asi que esto solo pasa
+                    // si alguien crea una sexta en el panel — y eso si necesita
+                    // version nueva de la app, por el icono y el color.
+                    println("⚠️ No se pudo crear el nivel ${nivel.id}: ${it.message}")
+                }
+            }
+        }
+
+        // Y la direccion contraria: lo que el panel ya no publica deja de
+        // ofrecerse. No se borra —el progreso del estudiante apunta al id del
+        // nivel— solo se baja de la lista, asi que si vuelve, vuelve entero.
+        //
+        // El `isNotEmpty` no es cosmetico: si un dia la peticion contestara 200
+        // con una lista vacia, sin esta guarda la app se quedaria sin un solo
+        // nivel visible. Una respuesta vacia se trata como no haber preguntado.
+        if (mapa.isNotEmpty()) {
+            val idsDelPanel = mapa.keys.toList()
+            levelDao.publicarLosQueEstan(idsDelPanel)
+            levelDao.despublicarLosQueFaltan(idsDelPanel)
+        }
+
+        if (creados > 0) println("📘 Catalogo: $creados nivel(es) nuevo(s)")
+        return mapa
+    }
+
+    /**
+     * El id local que le corresponde a un nivel del panel.
+     *
+     * Es la misma formula que `generateLevelId`: competencia por cien mas el
+     * numero de nivel. Un `order` de cero da un id terminado en 00, que es lo
+     * que `LevelRules.esDePractica` reconoce como calentamiento.
+     *
+     * **Solo se usa al crear o al adoptar.** Una vez el nivel tiene su
+     * `django_id`, la correspondencia sale de ahi y reordenar en el panel deja
+     * de afectarle.
+     */
+    private fun idLocalDeNivel(competenceId: Int, order: Int) = competenceId * 100 + order
+
     /**
      * Sincroniza los niveles indicados.
      *
@@ -110,13 +232,24 @@ class ContentSyncRepository @Inject constructor(
             return Resultado(motivo = "Sin conexión")
         }
 
+        // El catalogo manda: dice que niveles hay y cual es el id local de cada
+        // uno. Si no se puede leer, se cae a la tabla de siempre y a la lista
+        // que venga por parametro, que es como funcionaba antes.
+        val descubierto = sincronizarCatalogo()
+        val traduccion = descubierto ?: NIVEL_DJANGO_A_APP
+        val aSincronizar = if (descubierto != null) {
+            descubierto.keys.sorted()
+        } else {
+            idsDeNivel
+        }
+
         var niveles = 0
         var preguntas = 0
         var errores = 0
         val urlsNuevas = mutableListOf<String>()
 
-        for (levelId in idsDeNivel) {
-            val idLocal = NIVEL_DJANGO_A_APP[levelId]
+        for (levelId in aSincronizar) {
+            val idLocal = traduccion[levelId]
             if (idLocal == null) {
                 // Un nivel que la app no conoce: se ignora en vez de romper la
                 // sincronizacion entera.

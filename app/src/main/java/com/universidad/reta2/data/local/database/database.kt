@@ -58,7 +58,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     //
     // v17: si la imagen de contexto se tine o se muestra tal cual
     //      (ver MIGRACION_16_17).
-    version = 17
+    //
+    // v18: cada nivel guarda su id del panel (ver MIGRACION_17_18).
+    // v19: y si el panel lo sigue publicando (ver MIGRACION_18_19).
+    version = 19
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -197,6 +200,72 @@ abstract class AppDatabase : RoomDatabase() {
          * Por defecto 1, que es como se comportaban las doce imagenes que ya
          * existian: todas son figuras de linea y deben seguir tinendose.
          */
+        /**
+         * v17 → v18: cada nivel recuerda su id del panel.
+         *
+         * Hasta aqui la correspondencia entre los dos lados vivia en una
+         * constante del codigo, `NIVEL_DJANGO_A_APP`, y de ella salia tambien
+         * la lista de niveles a sincronizar. Consecuencia: **dar de alta un
+         * nivel en el panel no llegaba a ningun telefono** hasta publicar una
+         * version nueva de la app.
+         *
+         * Guardar el id del panel en la fila permite que la sincronizacion
+         * descubra los niveles en vez de traerlos escritos, y crear los que
+         * falten.
+         *
+         * **Por que el id del panel y no la formula.** El id local se calcula
+         * como `competencia * 100 + order`, y esa formula reproduce hoy las
+         * dieciocho parejas sin una sola discrepancia. Pero el `order` es
+         * reordenable desde el panel: insertar un nivel en medio correria los
+         * de abajo y, con un id derivado, los intentos ya registrados pasarian
+         * a apuntar a otro nivel. Eso es exactamente lo que ocurrio cuando el
+         * banco cambio de numeracion, y costo media docena de sintomas raros
+         * entender que pasaba (ver MIGRACION_15_16). El id del panel no se
+         * mueve.
+         *
+         * Se rellenan las dieciocho parejas que ya existen. Un nivel que no
+         * este aqui se queda a null y lo adopta la primera sincronizacion.
+         */
+        /**
+         * v18 → v19: `publicado`, para poder retirar un nivel sin borrarlo.
+         *
+         * Con el catalogo ya descubriendose desde el panel, el panel manda en
+         * las dos direcciones: un nivel que se da de alta aparece, y uno que
+         * se retira tiene que dejar de aparecer. Borrar la fila no vale —el
+         * progreso apunta a su id—, asi que se marca.
+         *
+         * Nace a 1 para todos: lo que ya habia estaba publicado.
+         */
+        val MIGRACION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE levels ADD COLUMN publicado INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+        val MIGRACION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE levels ADD COLUMN django_id INTEGER")
+                db.execSQL("UPDATE levels SET django_id = 1 WHERE id = 101")
+                db.execSQL("UPDATE levels SET django_id = 2 WHERE id = 102")
+                db.execSQL("UPDATE levels SET django_id = 3 WHERE id = 103")
+                db.execSQL("UPDATE levels SET django_id = 4 WHERE id = 201")
+                db.execSQL("UPDATE levels SET django_id = 5 WHERE id = 202")
+                db.execSQL("UPDATE levels SET django_id = 6 WHERE id = 203")
+                db.execSQL("UPDATE levels SET django_id = 7 WHERE id = 301")
+                db.execSQL("UPDATE levels SET django_id = 8 WHERE id = 302")
+                db.execSQL("UPDATE levels SET django_id = 9 WHERE id = 303")
+                db.execSQL("UPDATE levels SET django_id = 10 WHERE id = 304")
+                db.execSQL("UPDATE levels SET django_id = 11 WHERE id = 401")
+                db.execSQL("UPDATE levels SET django_id = 12 WHERE id = 402")
+                db.execSQL("UPDATE levels SET django_id = 13 WHERE id = 403")
+                db.execSQL("UPDATE levels SET django_id = 14 WHERE id = 100")
+                db.execSQL("UPDATE levels SET django_id = 15 WHERE id = 200")
+                db.execSQL("UPDATE levels SET django_id = 16 WHERE id = 300")
+                db.execSQL("UPDATE levels SET django_id = 17 WHERE id = 400")
+                db.execSQL("UPDATE levels SET django_id = 18 WHERE id = 501")
+            }
+        }
+
         val MIGRACION_16_17 = object : Migration(16, 17) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -388,7 +457,9 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRACION_13_14,
                         MIGRACION_14_15,
                         MIGRACION_15_16,
-                        MIGRACION_16_17
+                        MIGRACION_16_17,
+                        MIGRACION_17_18,
+                        MIGRACION_18_19
                     )
                     .fallbackToDestructiveMigration()
                     .build()
