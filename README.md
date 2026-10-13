@@ -1,178 +1,203 @@
-# Reta2
+# Reta2 — Aplicación Android
 
-Paul Mateo Contreras Arias - 01220371027
+Paul Mateo Contreras Arias — 01220371027
 
-Resumen
--------
-Aplicación educativa Android escrita en Kotlin con Jetpack Compose que ofrece prácticas por competencias, preguntas y modos de juego (incluido un modo contrarreloj). Las preguntas están actualmente embebidas (hardcodeadas) en la aplicación mediante CompetencyData.
+Aplicación educativa Android, en Kotlin con Jetpack Compose, para preparar las
+competencias genéricas del examen **Saber Pro** mediante micro-aprendizaje:
+sesiones de cinco preguntas que caben en cualquier rato muerto. Complementa el
+programa **Ruta del Mejor Saber** de la Universidad de Santander.
 
-Estructura de carpetas (resumen)
---------------------------------
-- app/src/main/java/com/universidad/reta2/
-  - data/
-    - local/ — entidades Room, DAOs y mappers
-    - repositories/ — implementaciones de repositorios que consumen los datos locales o estáticos
-    - source/ — CompetencyData: datos de competencias, niveles y preguntas hardcodeados
-    - preferences/ — SessionManager (SharedPreferences)
-  - domain/
-    - models/ — modelos de dominio (User, Question, Competence, Level, QuestionOption, UserStats...)
-    - repositories/ — interfaces de repositorios (QuestionRepository, UserRepository, ProgressRepository, etc.)
-    - usecases/ — casos de uso que encapsulan lógica de negocio (GetQuestionsUseCase, UpdateProgressUseCase...)
-  - ui/
-    - screens/ — pantallas composables por funcionalidad (home, questions, timedmode, registration, splash, profile, progress...)
-    - navigation/ — NavGraph y definición de rutas (Screen.kt)
-  - di/ — módulos Hilt para inyección de dependencias
-  - utils/ — utilidades transversales (PasswordHasher: hash de contraseñas)
+**Panel de gestión y API:** [PaulGODBv/panel-gestion](https://github.com/PaulGODBv/panel-gestion)
 
-Uso de repositorios
--------------------
-- QuestionRepository: interfaz para obtener preguntas. Implementado por QuestionRepositoryImpl y utiliza CompetencyData como fuente principal de preguntas.
-- UserRepository / UserStatsRepository / ProgressRepository: encapsulan operaciones sobre usuarios, estadísticas y progreso. Implementaciones usan DAOs y mappers para persistencia local.
-- CompetenceRepository: expone competencias y niveles y compone información para la UI.
+**Mínimo:** Android 7.0 (API 24) · **Objetivo:** API 34
 
-Base de datos de preguntas
--------------------------
-Las preguntas se mantienen en memoria en el archivo CompetencyData (hardcode). Esto simplifica pruebas y desarrollo. El repositorio de preguntas está preparado para consumir datos desde CompetencyData, y el flujo de selección (priorizar preguntas no correctamente respondidas) está implementado en QuestionRepositoryImpl + GetQuestionsUseCase.
+---
 
-Estructura de la base de datos (Room)
------------------------------------
-Entidades registradas en AppDatabase (versión actual: 9):
-- UserEntity (table: users)
-  - username: String (PK)
-  - email: String
-  - password_hash: String — hash SHA-256 con salt, nunca la contraseña en claro
-  - student_code: String
-  - student_program: String
-  - created_at: Long
-- UserStatsEntity
-- CompetenceEntity
-- LevelEntity
-- QuestionEntity
-- QuestionOptionEntity
-- QuestionAttemptEntity
-- LevelProgressEntity
+## Qué hace
 
-Modelos principales (domain/models)
-----------------------------------
-- User: username, email, passwordHash, studentCode, studentProgram
-- Question: id, text, options (QuestionOption), correctOptionId, readingText, contextImage, etc.
-- QuestionOption: id, text
-- Competence: id, name, list de Level
-- Level: id, name, description, isLocked, etc.
-- UserStats: estadística del usuario (preguntas respondidas, tiempo, racha...)
+- **Cinco competencias**: Lectura Crítica, Razonamiento Cuantitativo,
+  Competencias Ciudadanas, Inglés y Comunicación Escrita.
+- **Dos modos por nivel.** *Práctica* corrige en el momento, explica el porqué y
+  no cuenta para el progreso; *evaluación* es la que desbloquea el nivel
+  siguiente, con el umbral del 70 %.
+- **Tres formatos de práctica**: opción múltiple, unir parejas y completar
+  arrastrando palabras. El formato lo decide el nivel, no la pregunta: el mismo
+  banco se presenta de las tres maneras sin duplicar un solo dato.
+- **Contrarreloj** sobre las preguntas que ya existen.
+- **Racha diaria**, que cuenta días de práctica y no aciertos: fallar no rompe
+  nada.
+- **Funciona sin conexión.** La red solo hace falta para traer contenido nuevo
+  y enviar los reportes.
 
-Implementaciones y mapeadores
------------------------------
-- Mappers en data/local/mappers convierten entre entidades Room (UserEntity, UserStatsEntity, etc.) y modelos de dominio.
-- Repositorios en data/repositories implementan las interfaces de domain/repositories y ofrecen la lógica de selección, filtrado y transformaciones necesarias por la UI y los usecases.
+## De dónde salen las preguntas
 
-Inyección de dependencias
--------------------------
-- Hilt se usa para DI. Los módulos están en di/ (RepositoryModule, UseCaseModule, etc.).
-- Proveedores típicos: AppDatabase/DAOs, mappers, repositorios, casos de uso.
+**Del panel, no del código.** `CompetencyData` sigue existiendo, pero solo como
+*contenido de arranque*: lo que la app trae de fábrica para poder practicar
+desde el minuto cero, antes de la primera sincronización. A partir de ahí la
+fuente de verdad es el panel.
 
-Seguridad de credenciales
--------------------------
-Las contraseñas no se guardan ni se comparan en texto plano. `utils/PasswordHasher.kt` genera un salt aleatorio de 16 bytes por contraseña y persiste el resultado con el formato:
+Desde octubre de 2026 también el **catálogo** se descubre: la app pide
+`GET /api/competences/` y de ahí saca qué competencias y niveles existen, en vez
+de llevarlos escritos en una constante. Dar de alta un nivel en el panel ya no
+exige publicar una versión de la app.
+
+Cada nivel guarda el id que tiene en el panel (`levels.django_id`), que es la
+identidad estable entre los dos lados. Derivarlo de su posición habría hecho que
+reordenar los niveles en el panel renumerara a todo el mundo y dejara los
+intentos ya registrados apuntando a otro sitio.
+
+## Estructura
+
+```
+app/src/main/java/com/universidad/reta2/
+├── data/
+│   ├── local/          entidades Room, DAOs, mappers y migraciones
+│   ├── remote/         Retrofit, DTO y ApiConfig
+│   ├── repositories/   implementaciones; ContentSyncRepository baja el banco
+│   ├── source/         CompetencyData: contenido de arranque
+│   └── preferences/    SessionManager (SharedPreferences)
+├── domain/
+│   ├── models/         User, Question, Competence, Level, UserStats…
+│   ├── repositories/   interfaces
+│   ├── usecases/       GetQuestionsUseCase, UpdateProgressUseCase…
+│   └── LevelRules.kt   umbral de aprobación, en un solo sitio
+├── ui/
+│   ├── screens/        una carpeta por pantalla, con su ViewModel
+│   ├── components/     piezas compartidas
+│   ├── navigation/     NavGraph, Screen y Transiciones
+│   └── theme/          color, tipografía y Veredicto
+├── di/                 módulos Hilt
+└── utils/              PasswordHasher, Sonidos, Musica, Vibracion
+```
+
+## Base de datos (Room)
+
+**Versión actual: 19.** Entidades: `UserEntity`, `UserStatsEntity`,
+`CompetenceEntity`, `LevelEntity`, `QuestionEntity`, `QuestionOptionEntity`,
+`QuestionAttemptEntity`, `LevelProgressEntity`.
+
+Las migraciones son **explícitas y no destructivas**. El constructor usa
+`fallbackToDestructiveMigrationOnDowngrade()`: si falta una migración al subir
+de versión, Room lanza una excepción y la base queda intacta — revienta en
+desarrollo, que es donde se arregla, en vez de borrar en silencio la cuenta y la
+racha de un estudiante. Ya pasó una vez, en la v9, cuando `password` pasó a
+`password_hash`.
+
+El esquema de cada versión se exporta a `app/schemas/` y va a git, para que un
+cambio de la base se vea en el diff.
+
+## Seguridad de credenciales
+
+Las contraseñas no se guardan ni se comparan en texto plano.
+`utils/PasswordHasher.kt` genera un salt aleatorio de 16 bytes por contraseña y
+persiste el resultado como:
 
 ```
 sha256$<salt en hexadecimal>$<hash en hexadecimal>
 ```
 
-- `hashPassword(password)` — crea un salt nuevo y devuelve la cadena completa.
-- `verifyPassword(password, storedHash)` — recalcula con el salt guardado y compara en tiempo constante (`MessageDigest.isEqual`).
-- `isHashed(value)` — valida el formato; `UserRepositoryImpl` lo usa como última barrera para no escribir texto plano en Room.
-
-Dónde interviene:
-
 | Flujo | Comportamiento |
 | --- | --- |
 | Registro | `RegistrationViewModel` hashea antes de construir el `User` |
 | Inicio de sesión | `LoginViewModel` compara con `verifyPassword`, no con `==` |
-| Cambio de contraseña | Perfil exige la contraseña actual, la verifica contra el hash y solo entonces guarda el hash de la nueva; si no coincide muestra «Contraseña actual incorrecta» |
-| Sesión y sincronización | `SessionManager` no guarda credenciales y los DTO no envían la contraseña al servidor |
+| Cambio de contraseña | Exige la actual, la verifica y solo entonces guarda la nueva |
+| Sincronización | `SessionManager` no guarda credenciales y los DTO no envían la contraseña |
 
-El salt por usuario evita tablas precalculadas y que dos cuentas con la misma clave compartan hash. SHA-256 sigue siendo una función rápida: para un despliegue real se recomienda migrar a PBKDF2 o Argon2, cambio acotado a la función privada `computeHash()`.
+El salt por usuario evita tablas precalculadas y que dos cuentas con la misma
+clave compartan hash. SHA-256 sigue siendo una función rápida: para un
+despliegue real conviene migrar a PBKDF2 o Argon2, cambio acotado a la función
+privada `computeHash()`.
 
-Tecnologías usadas
-------------------
-- Kotlin
-- Jetpack Compose (UI declarativa)
-- Android Architecture Components: ViewModel, Room, Navigation (compose)
-- Hilt (inyección de dependencias)
-- Coroutines y Flow para asincronía y streams reactivos
+### La clave de la API
 
-Notas operativas
-----------------
-- La base de datos Room está configurada con fallbackToDestructiveMigration() por simplicidad de desarrollo; actualizar la versión (ahora v9) provocará recreación del DB en dispositivos con versiones previas. Para producción se debe añadir migraciones no destructivas.
-- La versión 9 renombró la columna `password` como `password_hash`. Al recrearse la base se eliminaron las contraseñas en texto plano de instalaciones anteriores: los usuarios previos deben registrarse de nuevo.
-- CompetencyData contiene el contenido de preguntas; migrar a una fuente externa (archivo JSON o servidor) es posible implementando un repositorio distinto.
-- El modo contrarreloj (TimedMode) y la selección aleatoria priorizan preguntas no resueltas correctamente; la selección nunca pedirá más preguntas que las disponibles.
+No está en el código. Se lee de `local.properties`, que no se versiona, y entra
+por `buildConfigField`:
 
-Cómo ejecutar
---------------
-1. Abrir el proyecto en Android Studio
-2. Construir el proyecto (Gradle) y ejecutar en un emulador o dispositivo
+```properties
+RETA2_API_KEY=la-clave-que-comparte-con-el-panel
+```
 
-Ejecutar tests y comandos Gradle
---------------------------------
-Desde la línea de comandos (en la raíz del proyecto):
+Sin ella la compilación funciona pero la API rechaza todas las peticiones. Una
+clave anterior quedó expuesta en el historial de git y fue rotada.
 
-- Compilar la app (debug):
-  - Linux / macOS: `./gradlew assembleDebug`
-  - Windows: `gradlew.bat assembleDebug` o `gradlew assembleDebug`
+## Decisiones que conviene conocer antes de tocar el código
 
-- Ejecutar tests unitarios locales:
-  - `./gradlew testDebugUnitTest` (o `gradlew.bat testDebugUnitTest` en Windows)
+**La app juega siempre contra Room.** La red solo actualiza Room; ninguna
+pantalla espera a una respuesta HTTP. Es lo que sostiene el modo sin conexión.
 
-- Ejecutar pruebas instrumentadas (requieren emulador/dispositivo conectado):
-  - `./gradlew connectedAndroidTest`
+**Nada se borra, se desactiva.** Una pregunta que el panel retira se marca
+inactiva y un nivel que retira se marca no publicado. El progreso del estudiante
+apunta a sus ids, y borrar la fila dejaría intentos huérfanos.
 
-- Ejecutar lint:
-  - `./gradlew lint`
+**La música suena en el menú y nunca dentro de un nivel.** Los pasajes de
+Lectura Crítica llegan a 2 100 caracteres, y una melodía reconocible compite con
+la comprensión lectora justo cuando es lo único que se está midiendo.
 
-En Android Studio:
-- Importa el proyecto y usa los botones Run / Debug para ejecutar la app en un emulador o dispositivo.
-- Ejecuta tests con el panel de Test (Run > Run 'All Tests' o clic derecho sobre un paquete/test).
+**El veredicto no depende solo del color.** Acertar y fallar se distinguían por
+el verde y el rojo —el par que más confunde un daltónico—; ahora la opción
+correcta da un pulso y la fallada una sacudida.
 
-Diagrama de arquitectura (ASCII)
---------------------------------
-La siguiente representación muestra las capas principales y ejemplos de archivos para cada una:
+**El movimiento cuenta la jerarquía.** Bajar a un nivel entra deslizando desde
+la derecha y el botón de atrás lo saca por donde entró; cambiar de pestaña se
+funde, porque entre hermanas no hay jerarquía que contar. Todo en
+`ui/navigation/Transiciones.kt`, y respeta el ajuste de «quitar animaciones» del
+sistema, que Compose no respeta solo.
 
- UI (Compose)                           ViewModel
- -------------------------------------------------------------
- - ui/screens/home/HomeScreen.kt        - ui/screens/home/HomeViewModel.kt
- - ui/screens/questions/QuestionScreen  - ui/screens/questions/QuestionViewModel.kt
- - ui/screens/timedmode/TimedModeScreen - ui/screens/timedmode/TimedModeViewModel.kt
+**Salir de un cuestionario pregunta antes.** Las respuestas se registran al
+terminar la sesión, no una a una: salir a medias pierde la sesión entera.
 
-               ↓
- Use Cases / Business Logic
- -------------------------------------------------------------
- - domain/usecases/GetQuestionsUseCase.kt
- - domain/usecases/UpdateProgressUseCase.kt
+## Tecnologías
 
-               ↓
- Repositories (interfaces)  →  Implementaciones
- -------------------------------------------------------------
- - domain/repositories/QuestionRepository.kt
- - data/repositories/QuestionRepositoryImpl.kt
- - domain/repositories/UserRepository.kt
- - data/repositories/UserRepositoryImpl.kt
+Kotlin · Jetpack Compose · Room · Navigation Compose · Hilt · Retrofit · Coil ·
+Coroutines y Flow
 
-               ↓
- Data sources
- -------------------------------------------------------------
- - Local DB (Room)
-   - app/src/main/java/.../data/local/entities/*.kt
-   - app/src/main/java/.../data/local/dao/*.kt (ProgressDao, UserDao...)
-   - app/src/main/java/.../data/local/database/database.kt
+## Cómo ejecutar
 
- - Static source
-   - app/src/main/java/.../data/source/CompetencyData.kt (Preguntas hardcodeadas)
+1. Abrir el proyecto en Android Studio.
+2. Crear `local.properties` con `RETA2_API_KEY`.
+3. Levantar el panel en la misma red y apuntar `ApiConfig` a su IP.
+4. Ejecutar en un emulador o dispositivo.
 
-Inyección de dependencias
--------------------------
-- Hilt configura la creación de repositorios, DAOs y usecases. Módulos relevantes:
-  - di/RepositotyModule.kt
-  - di/UseCaseModule.kt
+Desde la línea de comandos:
 
+```bash
+./gradlew assembleDebug        # compilar
+./gradlew testDebugUnitTest    # pruebas unitarias
+./gradlew connectedAndroidTest # pruebas instrumentadas (requiere dispositivo)
+./gradlew lint
+```
+
+Para la versión de publicación:
+
+```bash
+./gradlew assembleRelease
+```
+
+El APK resultante **hay que firmarlo** antes de distribuirlo; sin firma Android
+lo rechaza. Conviene archivar el `mapping.txt` de cada APK distribuido: sin él
+no se puede leer una traza de error de una versión con R8.
+
+## Arquitectura
+
+```
+ UI (Compose)                    →  ViewModel
+ ui/screens/**/XScreen.kt           ui/screens/**/XViewModel.kt
+                   ↓
+ Casos de uso
+ domain/usecases/GetQuestionsUseCase.kt, UpdateProgressUseCase.kt
+                   ↓
+ Repositorios (interfaz → implementación)
+ domain/repositories/*.kt  →  data/repositories/*Impl.kt
+                   ↓
+ Datos
+ · Room            data/local/{entities,dao,database}
+ · API             data/remote/{Reta2ApiService,dto}
+ · Arranque        data/source/CompetencyData.kt
+```
+
+La inyección la configura Hilt en `di/` (`RepositotyModule.kt`,
+`UseCaseModule.kt`, `DatabaseModule.kt`).
+
+## Licencia
+
+Proyecto académico — Universidad de Santander (UDES).
