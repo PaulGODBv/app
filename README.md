@@ -120,6 +120,39 @@ RETA2_API_KEY=la-clave-que-comparte-con-el-panel
 Sin ella la compilación funciona pero la API rechaza todas las peticiones. Una
 clave anterior quedó expuesta en el historial de git y fue rotada.
 
+### La URL del panel
+
+Tampoco está en el código, y depende de la compilación:
+
+- **`release`** habla por **HTTPS** con el panel desplegado. La URL está en
+  `app/build.gradle.kts` y no sale de `local.properties` a propósito: un APK que
+  se reparte no puede depender de un fichero que vive en una sola máquina.
+- **`debug`** habla con lo que diga `RETA2_BASE_URL`, y con producción si no se
+  pone nada.
+
+```properties
+RETA2_BASE_URL=http://192.168.1.10:8000/api/
+```
+
+Tiene que terminar en barra —Retrofit lo exige— y la compilación falla con ese
+mensaje si falta, en vez de romper al construir el cliente.
+
+Hasta el 14/10/2026 esto era una constante en `ApiConfig.kt` con la IP de la LAN
+y cinco IPs más comentadas debajo, una por red. Cambiar de sitio significaba
+editar código versionado, así que las IPs acabaron en el repositorio.
+
+### El tráfico en claro, solo en desarrollo
+
+`usesCleartextTraffic` vive en `app/src/debug/AndroidManifest.xml`, que solo se
+fusiona en las compilaciones de desarrollo: ahí hace falta para hablar con el
+`runserver` del panel, que sirve por HTTP y no tiene certificado. **El APK de
+`release` queda sin ese permiso y Android le rechaza cualquier HTTP.**
+
+Estuvo en el manifiesto principal hasta el 14/10/2026, y mientras estuvo valía
+para cualquier APK: la cabecera `X-API-Key` viajaba legible por la red y se podía
+capturar con un analizador sin descompilar nada. Rotar la clave no lo arreglaba,
+porque el problema no era la clave sino el transporte.
+
 ## Decisiones que conviene conocer antes de tocar el código
 
 **La app juega siempre contra Room.** La red solo actualiza Room; ninguna
@@ -155,7 +188,9 @@ Coroutines y Flow
 
 1. Abrir el proyecto en Android Studio.
 2. Crear `local.properties` con `RETA2_API_KEY`.
-3. Levantar el panel en la misma red y apuntar `ApiConfig` a su IP.
+3. Para hablar con el panel desplegado, nada más: la compilación `debug` ya
+   apunta ahí. Para hablar con el panel de tu máquina, levantarlo en la misma red
+   y añadir `RETA2_BASE_URL` con su IP.
 4. Ejecutar en un emulador o dispositivo.
 
 Desde la línea de comandos:

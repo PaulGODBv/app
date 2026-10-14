@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Trafico en claro, y SOLO en las compilaciones de desarrollo.
+
+    `android:usesCleartextTraffic="true"` estuvo en el manifiesto principal
+    hasta el 14/10/2026, cuando el panel empezo a servir por HTTPS. Alli dentro
+    valia para cualquier APK, incluido el que se reparte: permitia hablar en
+    claro con cualquier servidor, y con ello la cabecera `X-API-Key` viajaba
+    legible por la red y se podia capturar con un analizador sin descompilar
+    nada. Eso es lo que el despliegue venia a cerrar.
+
+    Aqui sigue hecha falta: para probar contra el panel de la maquina de
+    desarrollo, que corre `runserver` por HTTP en la IP de la LAN y no tiene
+    certificado. Este manifiesto solo se fusiona en `debug`, asi que el APK de
+    `release` queda sin el permiso y Android le rechaza cualquier HTTP.
+
+    Se anade sin `tools:replace` a proposito: el manifiesto principal ya no
+    declara el atributo, asi que no hay conflicto que resolver.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:usesCleartextTraffic="true" />
+
+</manifest>

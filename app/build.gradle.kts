@@ -16,20 +16,48 @@ plugins {
  * dentro, y quien descompile la encuentra— pero evita que se filtre otra vez
  * por el historial, que es por donde se filtro.
  */
-fun claveDeLaApi(): String {
+fun propiedadLocal(nombre: String): String {
     val fichero = rootProject.file("local.properties")
-    val clave = if (fichero.exists()) {
-        Properties().apply { fichero.inputStream().use { load(it) } }
-            .getProperty("RETA2_API_KEY")
-            .orEmpty()
-    } else {
-        ""
-    }
+    if (!fichero.exists()) return ""
+    return Properties().apply { fichero.inputStream().use { load(it) } }
+        .getProperty(nombre)
+        .orEmpty()
+        .trim()
+}
+
+fun claveDeLaApi(): String {
+    val clave = propiedadLocal("RETA2_API_KEY")
     require(clave.isNotBlank()) {
         "Falta RETA2_API_KEY en local.properties. Sin ella la app no puede " +
             "sincronizar con el panel. Pon el mismo valor que el .env del panel."
     }
     return clave
+}
+
+/**
+ * El panel al que habla la app, que ya no es el mismo en las dos compilaciones.
+ *
+ * En `release` es siempre el dominio de produccion, por HTTPS. No sale de
+ * `local.properties` a proposito: un APK que se reparte no puede depender de un
+ * fichero que vive en una sola maquina, y el dominio no es ningun secreto.
+ *
+ * En `debug` se puede apuntar al panel de la maquina de desarrollo poniendo
+ * `RETA2_BASE_URL` en `local.properties`. Eso sustituye a la lista de IPs
+ * comentadas que habia en `ApiConfig.kt`: cada red daba una IP distinta, asi
+ * que cambiarla significaba editar codigo versionado y acabar commiteando la
+ * IP de casa. Si no se pone nada, el `debug` habla con produccion.
+ */
+val urlDeProduccion =
+    "https://reta2panel.graymeadow-2656f405.mexicocentral.azurecontainerapps.io/api/"
+
+fun urlDeDesarrollo(): String {
+    val url = propiedadLocal("RETA2_BASE_URL")
+    require(url.isBlank() || url.endsWith("/")) {
+        "RETA2_BASE_URL tiene que terminar en barra: Retrofit lo exige en " +
+            "baseUrl y, si falta, revienta al construir el cliente. " +
+            "Ejemplo: http://192.168.1.10:8000/api/"
+    }
+    return url.ifBlank { urlDeProduccion }
 }
 
 android {
@@ -59,6 +87,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            buildConfigField("String", "RETA2_BASE_URL", "\"$urlDeProduccion\"")
+        }
+
+        debug {
+            buildConfigField("String", "RETA2_BASE_URL", "\"${urlDeDesarrollo()}\"")
         }
     }
 
