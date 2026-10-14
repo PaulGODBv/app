@@ -4,6 +4,7 @@ import com.universidad.reta2.ui.components.shimmerEffect
 import com.universidad.reta2.ui.components.esperaVisible
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -187,9 +188,27 @@ private fun ProgressSuccessContentSafe(
         // su espera no bloquee lo que ya esta listo.
         item {
             when {
-                ranking != null -> RankingCard(ranking = ranking)
+                // Dos cosas distintas que antes caian en la misma rama. El
+                // panel puede contestar bien y con la lista vacia —es el
+                // estado del primer dia del piloto, cuando nadie ha
+                // sincronizado todavia—, y entonces `ranking != null` era
+                // cierto y RankingCard pintaba la copa, el titulo y nada
+                // debajo: un titulo huerfano sobre un hueco.
+                ranking != null && ranking.top10.isNotEmpty() ->
+                    RankingCard(ranking = ranking)
+
+                ranking != null -> RankingVacio()
+
                 rankingCargando -> RankingSkeleton()
+
                 rankingFallo -> RankingNoDisponible()
+
+                // Sin sesion el ViewModel deja los tres a falso, y antes no
+                // encajaba ninguna rama: la tarjeta desaparecia entera y sin
+                // decir por que. No es lo mismo que un fallo de red, pero
+                // para quien mira es lo mismo —el ranking no esta— y es mejor
+                // que un hueco.
+                else -> RankingNoDisponible()
             }
         }
 
@@ -547,6 +566,101 @@ private fun RankingNoDisponible() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun RankingVacio() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Ranking Global",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            // Las tres plazas del podio, reservadas y vacias. Se eligio esto en
+            // vez de una frase sola por dos razones: ensena que va a aparecer
+            // ahi, y mantiene el alto de la tarjeta igual que RankingSkeleton y
+            // que el ranking de verdad, asi que la pantalla no da un salto
+            // cuando llegue el primero.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PlazaLibre(posicion = 1, colorMedalla = Color(0xFFFFD700))
+                PlazaLibre(posicion = 2, colorMedalla = Color(0xFFC0C0C0))
+                PlazaLibre(posicion = 3, colorMedalla = Color(0xFFCD7F32))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Nadie ha entrado al ranking. El primer puesto está libre.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/**
+ * Una fila del podio sin nadie dentro.
+ *
+ * Repite la geometria de [RankingItem] —28 dp para la posicion, 32 dp de
+ * avatar, 12 dp de separacion, el nombre ocupando el resto y los puntos al
+ * final— para que las filas no se muevan cuando el hueco se llene.
+ *
+ * El avatar va con borde y sin relleno, y el nombre y los puntos son rayas, no
+ * barras grises: una barra gris en el sitio de un texto se lee como «todavia
+ * cargando», y eso es lo que dice el esqueleto. Aqui no se esta cargando nada.
+ */
+@Composable
+private fun PlazaLibre(posicion: Int, colorMedalla: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "$posicion",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = colorMedalla.copy(alpha = 0.35f),
+            modifier = Modifier.width(28.dp)
+        )
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "—",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outlineVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "— pts",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }
 
