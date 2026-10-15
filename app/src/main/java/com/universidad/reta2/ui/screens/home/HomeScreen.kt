@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.universidad.reta2.R
+import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -185,6 +187,7 @@ fun HomeScreen(
             item {
                 PracticeModeCard(
                     emoji = "⏱",
+                    icono = R.mipmap.ic_contrarreloj,
                     title = "Contrarreloj",
                     description = "Responde el mayor número de preguntas antes de que se acabe el tiempo",
                     onClick = { navController.navigate(Screen.TimedMode.route) }
@@ -227,7 +230,13 @@ fun PracticeModeCard(
     emoji: String,
     title: String,
     description: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    /**
+     * Icono propio, si lo hay. Cuando se pasa, sustituye al emoji: un emoji se
+     * dibuja con la fuente del sistema y cambia de forma entre fabricantes, asi
+     * que el mismo modo se ve distinto en cada telefono.
+     */
+    icono: Int? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -252,13 +261,28 @@ fun PracticeModeCard(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)),
+                    .background(
+                        // El icono trae su propio fondo; pintar otro detras
+                        // solo asomaria por las esquinas.
+                        if (icono != null) Color.Transparent
+                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = emoji,
-                    style = MaterialTheme.typography.headlineSmall
-                )
+                if (icono != null) {
+                    // Con Coil: es un <adaptive-icon> y `painterResource` no
+                    // sabe cargarlos — revienta al dibujar, no al compilar.
+                    AsyncImage(
+                        model = icono,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(
+                        text = emoji,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
