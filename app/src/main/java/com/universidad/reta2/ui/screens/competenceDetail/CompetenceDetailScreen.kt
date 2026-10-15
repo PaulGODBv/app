@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
+import coil.compose.AsyncImage
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -412,13 +414,26 @@ fun LevelCard(level: Level, esPractica: Boolean = false, onLevelClick: () -> Uni
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                // Icono del nivel
+                // Icono del nivel.
+                //
+                // El dibujo propio solo aparece cuando el nivel esta abierto y
+                // no es de practica: bloqueado manda el candado —la señal de
+                // «aqui todavia no» pesa mas que el adorno, y asi el dibujo se
+                // gana al desbloquear— y la practica manda el rayo, que la
+                // distingue de la evaluacion. Donde no hay arte todavia, se
+                // queda la estrella de siempre.
+                val iconoPropio =
+                    if (!esPractica && !level.isLocked) iconoDeNivel(level.id) else null
+
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(MaterialTheme.shapes.small)
                         .background(
                             when {
+                                // El dibujo trae su propio fondo: pintar otro
+                                // detras solo asomaria por las esquinas.
+                                iconoPropio != null -> Color.Transparent
                                 esPractica -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                                 level.isLocked -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                                 else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
@@ -426,23 +441,44 @@ fun LevelCard(level: Level, esPractica: Boolean = false, onLevelClick: () -> Uni
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = when {
-                            esPractica -> Icons.Filled.Bolt
-                            level.isLocked -> Icons.Filled.Lock
-                            else -> Icons.Filled.Star
-                        },
-                        contentDescription = when {
-                            esPractica -> "Nivel de práctica"
-                            level.isLocked -> "Nivel bloqueado"
-                            else -> "Nivel disponible"
-                        },
-                        tint = if (level.isLocked && !esPractica)
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        else
-                            MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    if (iconoPropio != null) {
+                        // Con Coil y no con `painterResource`. Los iconos de
+                        // nivel se hicieron con el Image Asset de Android
+                        // Studio, asi que son `<adaptive-icon>`: un XML con
+                        // capa de fondo y de frente. `painterResource` solo
+                        // sabe de vectores y mapas de bits, y revienta con
+                        //
+                        //   IllegalArgumentException: Only VectorDrawables and
+                        //   rasterized asset types are supported
+                        //
+                        // No es un fallo que se vea al compilar ni en una
+                        // vista previa: ocurre al dibujar, en el telefono, y
+                        // tumba la pantalla entera. Coil pasa por el sistema
+                        // de recursos y le da igual el tipo de drawable.
+                        AsyncImage(
+                            model = iconoPropio,
+                            contentDescription = "Nivel disponible",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = when {
+                                esPractica -> Icons.Filled.Bolt
+                                level.isLocked -> Icons.Filled.Lock
+                                else -> Icons.Filled.Star
+                            },
+                            contentDescription = when {
+                                esPractica -> "Nivel de práctica"
+                                level.isLocked -> "Nivel bloqueado"
+                                else -> "Nivel disponible"
+                            },
+                            tint = if (level.isLocked && !esPractica)
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            else
+                                MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
 
                 Column(
