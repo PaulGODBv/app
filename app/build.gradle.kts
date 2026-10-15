@@ -78,8 +78,15 @@ android {
         // panel desplegado, ya no escribe la clave ni las respuestas en el log,
         // la racha se deriva de los intentos (Room v20) y cada nivel tiene su
         // icono. La 1 solo existio en los telefonos de desarrollo.
-        versionCode = 2
-        versionName = "1.1.0"
+        //
+        // 3 = un parche, y de los que importan: el catalogo no se sincronizaba
+        // en la primera sesion, asi que un estudiante recien registrado jugaba
+        // con el catalogo escrito en el codigo. Se vio en una prueba del
+        // piloto, donde «Feelings» abria el cuestionario de evaluacion en vez
+        // de la pantalla de unir parejas. Como cada estudiante del piloto se
+        // registra por primera vez, les pasaba a todos.
+        versionCode = 3
+        versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
