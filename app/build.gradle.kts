@@ -79,8 +79,53 @@ android {
         buildConfigField("String", "RETA2_API_KEY", "\"${claveDeLaApi()}\"")
     }
 
+    /**
+     * La firma de release, leida de `local.properties`, que no va a git.
+     *
+     * Es **opcional a proposito**. Quien clone el repositorio sin el keystore
+     * tiene que poder compilar: `assembleDebug` le funciona y `assembleRelease`
+     * le saca un APK sin firmar, con un aviso. Exigirlo convertiria el keystore
+     * del autor en un requisito para construir, que es justo lo contrario de lo
+     * que debe ser un secreto.
+     *
+     *     RETA2_KEYSTORE=C:/ruta/a/reta2-release.jks
+     *     RETA2_KEYSTORE_PASSWORD=...
+     *     RETA2_KEY_ALIAS=reta2
+     *     RETA2_KEY_PASSWORD=...
+     *
+     * **El fichero .jks se guarda fuera del repositorio y con copia aparte.**
+     * Android identifica una app por su firma: si se pierde esa clave, la
+     * siguiente version es, para el sistema, una aplicacion distinta, y no hay
+     * forma de actualizar la que ya tengan instalada los estudiantes. No es un
+     * secreto que se pueda rotar como la clave de la API.
+     */
+    signingConfigs {
+        create("release") {
+            val ruta = propiedadLocal("RETA2_KEYSTORE")
+            if (ruta.isNotBlank()) {
+                storeFile = file(ruta)
+                storePassword = propiedadLocal("RETA2_KEYSTORE_PASSWORD")
+                keyAlias = propiedadLocal("RETA2_KEY_ALIAS").ifBlank { "reta2" }
+                keyPassword = propiedadLocal("RETA2_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Si no hay keystore configurado se deja sin firmar, pero se dice:
+            // un APK sin firmar no se instala, y descubrirlo al ir a repartirlo
+            // cuesta mas que leer una linea aqui.
+            signingConfig = if (propiedadLocal("RETA2_KEYSTORE").isNotBlank()) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "AVISO: sin RETA2_KEYSTORE en local.properties, el APK de " +
+                        "release sale SIN FIRMAR y no se puede instalar."
+                )
+                null
+            }
+
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
