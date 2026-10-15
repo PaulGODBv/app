@@ -26,6 +26,10 @@ class CompetenceDetailViewModel @Inject constructor(
 
     fun loadCompetenceDetail(competenceId: Int) {
         viewModelScope.launch {
+            // Tambien al recargar: si se vuelve a esta pantalla con otra
+            // competencia, el estado trae la anterior y sin esto se enseñaria
+            // la vieja mientras llega la nueva.
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 println("🔄 Cargando detalle de competencia $competenceId")
                 val competence = competenceRepository.getCompetenceById(competenceId)
@@ -79,7 +83,21 @@ data class CompetenceDetailUiState(
      * una versión nueva de la app.
      */
     val nivelDePractica: Level? = null,
-    val isLoading: Boolean = false,
+    /**
+     * Arranca en `true`, y no es un detalle.
+     *
+     * Empezaba en `false`, asi que en la primera composicion —antes de que
+     * `loadCompetenceDetail` trajera nada— el estado era «no estoy cargando y
+     * no tengo competencia», que la pantalla lee como **«Competencia no
+     * encontrada»**. Se veia poco mas de medio segundo al entrar en cualquier
+     * competencia: el tiempo justo para que parezca que algo va mal.
+     *
+     * Ademas nadie lo ponia nunca en `true` —solo en `false`, en dos sitios—,
+     * asi que la rama del indicador de carga era codigo muerto que no podia
+     * ejecutarse. Entrar aqui en `true` la devuelve a la vida y hace que el
+     * «no encontrada» signifique lo que dice: se busco y no estaba.
+     */
+    val isLoading: Boolean = true,
     val error: String? = null
 )
 
