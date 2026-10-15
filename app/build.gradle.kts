@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.Properties
 
 plugins {
@@ -68,8 +69,17 @@ android {
         applicationId = "com.universidad.reta2"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        // Android se niega a instalar encima una version con codigo igual o
+        // menor, y lo hace sin un mensaje que apunte a la causa: el estudiante
+        // ve «no se pudo instalar» y nada mas. Sube SIEMPRE antes de repartir
+        // un APK nuevo, aunque el cambio sea de una linea.
+        //
+        // 2 = primera version que se reparte de verdad: habla por HTTPS con el
+        // panel desplegado, ya no escribe la clave ni las respuestas en el log,
+        // la racha se deriva de los intentos (Room v20) y cada nivel tiene su
+        // icono. La 1 solo existio en los telefonos de desarrollo.
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -103,6 +113,15 @@ android {
         create("release") {
             val ruta = propiedadLocal("RETA2_KEYSTORE")
             if (ruta.isNotBlank()) {
+                // Un .properties de Java trata la barra invertida como
+                // ESCAPE. Android Studio escribe la ruta con barras
+                // simples y al leerla Java se las come: lo que llega es
+                // "C:UsersPaul..." y no existe. Se avisa aqui porque el
+                // error de Gradle sin esto habla de un fichero que no se
+                // parece a lo escrito y no apunta a la causa.
+                require(File(ruta).isFile) {
+                    "No existe el keystore en: $ruta. Si en local.properties pusiste barras invertidas, cambialas por barras normales: un .properties de Java las trata como escape y se las come."
+                }
                 storeFile = file(ruta)
                 storePassword = propiedadLocal("RETA2_KEYSTORE_PASSWORD")
                 keyAlias = propiedadLocal("RETA2_KEY_ALIAS").ifBlank { "reta2" }

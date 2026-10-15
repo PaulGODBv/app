@@ -204,6 +204,44 @@ Desde la línea de comandos:
 ./gradlew lint
 ```
 
+### La firma
+
+El APK de release se firma con un keystore propio que **no está en el
+repositorio** y cuya ruta y contraseñas se leen de `local.properties`:
+
+```properties
+RETA2_KEYSTORE=C:/ruta/al/reta2-release.jks
+RETA2_KEYSTORE_PASSWORD=...
+RETA2_KEY_ALIAS=reta2
+RETA2_KEY_PASSWORD=...
+```
+
+Las barras van **normales**, no invertidas: un `.properties` de Java trata la
+barra invertida como escape y se la come, y la ruta que llega no existe. Si
+falta la configuración, `assembleRelease` saca un APK sin firmar y lo avisa en
+consola; sin esa advertencia, el problema aparece al ir a repartirlo.
+
+**Huella del certificado de publicación** (SHA-256), para comprobar que un APK
+descargado es el auténtico:
+
+```
+50:12:0C:E1:73:B7:92:96:12:03:E4:F1:84:0D:FD:F6:A4:C2:47:F9:C3:4B:1A:20:2E:02:87:FF:48:17:D2:92
+```
+
+```bash
+apksigner verify --print-certs app-release.apk
+```
+
+> **El keystore no se puede perder ni rotar.** Android identifica una app por su
+> firma: sin esa clave, la siguiente versión es para el sistema una aplicación
+> distinta y no hay forma de actualizar la que ya tengan instalada los
+> estudiantes. Guárdalo fuera del repositorio y con copia aparte.
+
+> **Un APK firmado no se instala encima de uno de desarrollo.** Las firmas no
+> coinciden y Android responde `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; hay que
+> desinstalar primero, lo que borra el progreso local de ese teléfono. A un
+> estudiante no le afecta —instala de cero—, pero al desarrollador sí.
+
 Para la versión de publicación:
 
 ```bash
