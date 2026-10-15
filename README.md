@@ -24,8 +24,10 @@ programa **Ruta del Mejor Saber** de la Universidad de Santander.
   arrastrando palabras. El formato lo decide el nivel, no la pregunta: el mismo
   banco se presenta de las tres maneras sin duplicar un solo dato.
 - **Contrarreloj** sobre las preguntas que ya existen.
-- **Racha diaria**, que cuenta días de práctica y no aciertos: fallar no rompe
-  nada.
+- **Racha diaria**, que cuenta días en que se respondió algo y no aciertos:
+  fallar no rompe nada. **Se deriva de los intentos, no se guarda en un
+  contador**, así que se puede recalcular y auditar — y un día sin responder
+  nada no cuenta, aunque se haya abierto la app.
 - **Funciona sin conexión.** La red solo hace falta para traer contenido nuevo
   y enviar los reportes.
 
@@ -72,7 +74,7 @@ app/src/main/java/com/universidad/reta2/
 
 ## Base de datos (Room)
 
-**Versión actual: 19.** Entidades: `UserEntity`, `UserStatsEntity`,
+**Versión actual: 20.** Entidades: `UserEntity`, `UserStatsEntity`,
 `CompetenceEntity`, `LevelEntity`, `QuestionEntity`, `QuestionOptionEntity`,
 `QuestionAttemptEntity`, `LevelProgressEntity`.
 
