@@ -1,5 +1,6 @@
 package com.universidad.reta2.ui.screens.registration
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,6 +18,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.universidad.reta2.data.source.ProgramasUdes
 import com.universidad.reta2.ui.navigation.Screen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -78,24 +80,14 @@ fun RegistrationScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
-            value = uiState.email,
-            onValueChange = { viewModel.onEmailChange(it) },
-            label = { Text("Correo electrónico") },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Email,
-                imeAction = ImeAction.Next
-            ),
-            isError = uiState.errorMessage.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Campo nuevo: Código estudiantil
+        // El código va ANTES que el correo, y no es un capricho de orden: el
+        // correo se rellena solo a partir de él, y para entender por qué
+        // aparece escrito hay que haber visto antes de dónde sale.
         OutlinedTextField(
             value = uiState.studentCode,
             onValueChange = { viewModel.onStudentCodeChange(it) },
             label = { Text("Código estudiantil") },
+            supportingText = { Text("11 dígitos") },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Next
@@ -106,11 +98,56 @@ fun RegistrationScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Campo nuevo: Programa académico
+        // El correo institucional ES el código más el dominio, así que pedirlo
+        // aparte era pedir dos veces el mismo dato. Sigue siendo editable:
+        // bloquearlo dejaría tirado a quien tenga una dirección distinta.
+        OutlinedTextField(
+            value = uiState.email,
+            onValueChange = { viewModel.onEmailChange(it) },
+            label = { Text("Correo electrónico") },
+            supportingText = {
+                Text(
+                    if (uiState.correoEditadoAMano) "Debe terminar en @mail.udes.edu.co"
+                    else "Se completa solo con tu código. Puedes cambiarlo."
+                )
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            isError = uiState.errorMessage.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ----- Programa académico -----
+        //
+        // Sugiere mientras se escribe, en vez de desplegar una lista: son 49
+        // programas y recorrerlos con el dedo es peor que teclear tres letras.
+        // Escribiendo «softw» quedan dos.
+        //
+        // Antes esto era un campo libre, y por eso en el panel convivían
+        // «Ingeniería de software» e «Ingeniería de Software» como si fueran
+        // dos carreras distintas.
+        val sugerencias = if (uiState.esOtroPrograma) emptyList()
+                          else ProgramasUdes.sugerencias(uiState.studentProgram)
+        val yaEsDelCatalogo = ProgramasUdes.exacto(uiState.studentProgram) != null
+
         OutlinedTextField(
             value = uiState.studentProgram,
             onValueChange = { viewModel.onStudentProgramChange(it) },
-            label = { Text("Programa académico") },
+            label = {
+                Text(if (uiState.esOtroPrograma) "Escribe tu programa" else "Programa académico")
+            },
+            supportingText = {
+                Text(
+                    when {
+                        uiState.esOtroPrograma -> "Fuera del catálogo de Bucaramanga"
+                        yaEsDelCatalogo -> "Programa de la UDES"
+                        else -> "Escribe y elige de la lista"
+                    }
+                )
+            },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next
@@ -118,6 +155,43 @@ fun RegistrationScreen(
             isError = uiState.errorMessage.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         )
+
+        // Las sugerencias van EN LÍNEA y no flotando sobre el campo: en un
+        // teléfono un menú anclado tapa justo lo que se está escribiendo.
+        if (sugerencias.isNotEmpty() && !yaEsDelCatalogo) {
+            Surface(
+                tonalElevation = 2.dp,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    sugerencias.forEach { programa ->
+                        Text(
+                            text = programa,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.elegirPrograma(programa) }
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // La salida para quien no esté en el catálogo —otra sede, un programa
+        // recién abierto—. Sin esto, exigir la lista deja gente fuera.
+        TextButton(
+            onClick = {
+                if (uiState.esOtroPrograma) viewModel.volverAlCatalogo()
+                else viewModel.activarOtroPrograma()
+            }
+        ) {
+            Text(
+                if (uiState.esOtroPrograma) "Buscar en la lista de la UDES"
+                else "Mi programa no está en la lista"
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 

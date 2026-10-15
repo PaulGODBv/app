@@ -2,6 +2,7 @@ package com.universidad.reta2.ui.screens.registration
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.universidad.reta2.data.source.ProgramasUdes
 import com.universidad.reta2.domain.models.User
 import com.universidad.reta2.domain.repositories.UserRepository
 import com.universidad.reta2.utils.PasswordHasher
@@ -31,6 +32,8 @@ class RegistrationViewModel @Inject constructor(
     fun onEmailChange(email: String) {
         _uiState.value = _uiState.value.copy(
             email = email,
+            // A partir de aqui el correo es suyo y el codigo deja de tocarlo.
+            correoEditadoAMano = true,
             errorMessage = ""
         )
     }
@@ -52,8 +55,23 @@ class RegistrationViewModel @Inject constructor(
     fun onStudentCodeChange(studentCode: String) {
         // Solo permitir dígitos y máximo 11 caracteres
         if (studentCode.length <= 11 && studentCode.all { it.isDigit() }) {
-            _uiState.value = _uiState.value.copy(
+            val estado = _uiState.value
+
+            /* El correo institucional ES el código más el dominio, así que
+             * pedirlo aparte era pedir dos veces el mismo dato y dar una
+             * ocasión más de equivocarse. Se rellena solo mientras el
+             * estudiante no lo haya tocado; si lo toca, manda él. */
+            val correo = if (estado.correoEditadoAMano) {
+                estado.email
+            } else if (studentCode.isEmpty()) {
+                ""
+            } else {
+                studentCode + INSTITUTIONAL_EMAIL_DOMAIN
+            }
+
+            _uiState.value = estado.copy(
                 studentCode = studentCode,
+                email = correo,
                 errorMessage = ""
             )
         }
@@ -62,6 +80,33 @@ class RegistrationViewModel @Inject constructor(
     fun onStudentProgramChange(studentProgram: String) {
         _uiState.value = _uiState.value.copy(
             studentProgram = studentProgram,
+            errorMessage = ""
+        )
+    }
+
+    /** Al tocar una sugerencia: queda el nombre exacto del catálogo. */
+    fun elegirPrograma(programa: String) {
+        _uiState.value = _uiState.value.copy(
+            studentProgram = programa,
+            esOtroPrograma = false,
+            errorMessage = ""
+        )
+    }
+
+    /** «Otro programa»: se vacía el campo y se deja escribir a mano. */
+    fun activarOtroPrograma() {
+        _uiState.value = _uiState.value.copy(
+            studentProgram = "",
+            esOtroPrograma = true,
+            errorMessage = ""
+        )
+    }
+
+    /** Volver al catálogo desde «Otro programa». */
+    fun volverAlCatalogo() {
+        _uiState.value = _uiState.value.copy(
+            studentProgram = "",
+            esOtroPrograma = false,
             errorMessage = ""
         )
     }
@@ -138,6 +183,16 @@ class RegistrationViewModel @Inject constructor(
                 )
                 RegistrationResult.EmptyStudentProgram
             }
+            /* Si no ha declarado que el suyo es una excepción, lo escrito
+             * tiene que ser un programa del catálogo, tal cual. Es lo que
+             * garantiza que dos estudiantes de la misma carrera manden la
+             * MISMA cadena, que es de lo que iba todo esto. */
+            !state.esOtroPrograma && ProgramasUdes.exacto(state.studentProgram) == null -> {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Elige tu programa de la lista, o toca «Otro programa»"
+                )
+                RegistrationResult.InvalidStudentProgram
+            }
             else -> {
                 try {
                     // Verificar si el usuario ya existe
@@ -155,7 +210,13 @@ class RegistrationViewModel @Inject constructor(
                             // Se hashea aquí: a la capa de datos nunca llega texto plano.
                             passwordHash = passwordHasher.hashPassword(state.password),
                             studentCode = state.studentCode,
-                            studentProgram = state.studentProgram
+                            /* Se guarda la grafia del catalogo, no la que se
+                             * tecleo. Quien escriba «ingenieria de software»
+                             * en minusculas y toque la sugerencia ya lleva el
+                             * nombre bueno, pero esto lo garantiza tambien si
+                             * alguna vez se afloja la validacion de arriba. */
+                            studentProgram = ProgramasUdes.exacto(state.studentProgram)
+                                ?: state.studentProgram.trim()
                         )
 
                         val success = userRepository.createUser(user)
@@ -211,7 +272,26 @@ data class RegistrationUiState(
     val studentProgram: String = "", // Nuevo
     val errorMessage: String = "",
     val successMessage: String = "",
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+
+    /**
+     * Si el estudiante ha tocado el correo con sus propias manos.
+     *
+     * Mientras valga false, el correo se rellena solo con el codigo. En cuanto
+     * lo edite deja de hacerlo, porque sobrescribir lo que alguien acaba de
+     * escribir es de las cosas que mas enfadan de un formulario.
+     */
+    val correoEditadoAMano: Boolean = false,
+
+    /**
+     * Si ha elegido «Otro programa» y esta escribiendo uno libre.
+     *
+     * Existe para no dejar fuera a nadie: el catalogo son los programas de
+     * Bucaramanga, y alguien de otra sede o de un programa recien abierto
+     * tiene que poder registrarse igual. Lo que escriba ahi no esta
+     * normalizado y el panel lo tratara como lo que es: una excepcion.
+     */
+    val esOtroPrograma: Boolean = false
 )
 
 sealed class RegistrationResult {
@@ -228,5 +308,6 @@ sealed class RegistrationResult {
     object EmptyStudentCode : RegistrationResult()
     object InvalidStudentCode : RegistrationResult()
     object EmptyStudentProgram : RegistrationResult() // Nuevo
+    object InvalidStudentProgram : RegistrationResult()
     data class Error(val message: String) : RegistrationResult()
 }
