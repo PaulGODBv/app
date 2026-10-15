@@ -204,6 +204,34 @@ Desde la línea de comandos:
 ./gradlew lint
 ```
 
+### Publicar una versión
+
+```bash
+.\scripts\preparar-release.ps1
+```
+
+No publica: comprueba y construye, y se **niega a seguir** si algo no cuadra.
+Publicar son cinco pasos manuales y cuatro pueden salir mal en silencio, así que
+el script mira lo que nadie miraba:
+
+| Comprueba | Porque si no |
+| --- | --- |
+| El árbol está limpio | el APK no correspondería a ningún commit y nadie podría reproducirlo |
+| El commit está empujado | la etiqueta apuntaría a algo que nadie más tiene |
+| El `versionCode` supera al de la última etiqueta | Android se niega a instalar encima y el estudiante solo ve «no se pudo instalar» |
+| Salió `app-release.apk`, no el sin firmar | un APK sin firmar no se instala |
+| La firma es la de publicación | con la de depuración —la misma en todas las máquinas— cualquiera podría publicar una actualización de la app |
+| El APK declara la misma versión que el código | es como se caza una compilación vieja |
+| El `mapping.txt` existe | se sobrescribe en cada compilación: el de *ese* APK solo existe en ese momento |
+
+Al final imprime las órdenes con los valores ya puestos. **Adjunta los dos
+ficheros al Release**, no solo el APK.
+
+> Existe por lo que pasó en la v1.1.0: la etiqueta quedó apuntando a un commit
+> donde `versionCode` todavía era 1 y el proyecto ni siquiera sabía firmar,
+> mientras el APK publicado venía de tres commits más adelante. Nadie se enteró,
+> porque nada lo miraba. La etiqueta se corrigió después.
+
 ### La firma
 
 El APK de release se firma con un keystore propio que **no está en el
