@@ -61,6 +61,35 @@ interface UserStatsDao {
     """)
     suspend fun getWeeklyProgress(username: String): List<DailyProgress>
 
+    /**
+     * Los dias en que hubo actividad, sin repetir y del mas reciente al mas
+     * antiguo, en fecha **local**.
+     *
+     * Es de donde sale la racha desde la v20. Antes la racha era un contador en
+     * `user_stats` que solo se tocaba al escribir: no se podia recalcular, ni
+     * auditar, ni corregir si se desviaba. Y se desviaba — terminar un nivel
+     * vacio sumaba un dia sin responder nada.
+     *
+     * No lleva filtro de `es_practica` a proposito: practicar es usar la app, y
+     * para la racha cuenta igual. El filtro esta donde importa, en lo que
+     * calcula el progreso del nivel.
+     */
+    @Query("""
+        SELECT DISTINCT date(attempted_at / 1000, 'unixepoch', 'localtime')
+        FROM question_attempts
+        WHERE username = :username
+        ORDER BY 1 DESC
+    """)
+    fun diasConActividad(username: String): Flow<List<String>>
+
+    @Query("""
+        SELECT DISTINCT date(attempted_at / 1000, 'unixepoch', 'localtime')
+        FROM question_attempts
+        WHERE username = :username
+        ORDER BY 1 DESC
+    """)
+    suspend fun diasConActividadAhora(username: String): List<String>
+
     // Crear estadísticas iniciales si no existen
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun createInitialStats(stats: UserStatsEntity)

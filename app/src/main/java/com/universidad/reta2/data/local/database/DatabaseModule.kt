@@ -35,7 +35,8 @@ object DatabaseModule {
                 AppDatabase.MIGRACION_15_16,
                 AppDatabase.MIGRACION_16_17,
                 AppDatabase.MIGRACION_17_18,
-                AppDatabase.MIGRACION_18_19
+                AppDatabase.MIGRACION_18_19,
+                AppDatabase.MIGRACION_19_20
             )
             // **Solo al BAJAR de version, nunca al subir.**
             //

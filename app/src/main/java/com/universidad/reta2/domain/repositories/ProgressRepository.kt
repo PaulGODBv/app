@@ -13,7 +13,10 @@ interface ProgressRepository {
         questionId: Int,
         isCorrect: Boolean,
         timeSpentSeconds: Int,
-        levelId: Int=1
+        levelId: Int = 1,
+        // Por defecto evaluacion, que es lo unico que se registraba antes de la
+        // v20: asi, quien no lo pase sigue escribiendo lo mismo que escribia.
+        esPractica: Boolean = false
     )
 
     // Obtener progreso de un nivel específico

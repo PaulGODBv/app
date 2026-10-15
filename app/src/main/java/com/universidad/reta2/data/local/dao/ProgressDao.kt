@@ -34,6 +34,7 @@ interface ProgressDao {
         AVG(time_spent_seconds) as averageTime
     FROM question_attempts 
     WHERE username = :username AND level_id = :levelId
+    AND es_practica = 0
     GROUP BY level_id
 """)
     suspend fun getLevelStats(username: String, levelId: Int): LevelStats?
@@ -47,6 +48,7 @@ interface ProgressDao {
         SELECT question_id 
         FROM question_attempts 
         WHERE username = :username AND level_id = :levelId AND is_correct = 0
+        AND es_practica = 0
         GROUP BY question_id
     """)
     suspend fun getIncorrectQuestions(username: String, levelId: Int): List<Int>
@@ -56,6 +58,7 @@ interface ProgressDao {
         FROM question_attempts 
         WHERE username = :username 
         AND is_correct = 1 
+        AND es_practica = 0
         AND level_id = :levelId
     """)
     suspend fun getCorrectlyAnsweredQuestionIds(
@@ -68,6 +71,7 @@ interface ProgressDao {
         FROM question_attempts 
         WHERE username = :username 
         AND is_correct = 1 
+        AND es_practica = 0
         AND level_id IN (:levelIds)
     """)
     suspend fun getUniqueCorrectQuestionCountForLevels(username: String, levelIds: List<Int>): Int
@@ -88,6 +92,7 @@ interface ProgressDao {
         FROM question_attempts
         WHERE username = :username
         AND is_correct = 1
+        AND es_practica = 0
         AND level_id IN (:levelIds)
         AND question_id IN (:questionIds)
     """)

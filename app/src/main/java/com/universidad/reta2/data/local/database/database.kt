@@ -61,7 +61,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     //
     // v18: cada nivel guarda su id del panel (ver MIGRACION_17_18).
     // v19: y si el panel lo sigue publicando (ver MIGRACION_18_19).
-    version = 19
+    //
+    // v20: la practica tambien deja fila en question_attempts, marcada
+    //      (ver MIGRACION_19_20).
+    version = 20
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -245,6 +248,28 @@ abstract class AppDatabase : RoomDatabase() {
          *
          * Nace a 1 para todos: lo que ya habia estaba publicado.
          */
+        /**
+         * La practica deja rastro fechado, sin cambiar lo que ya se calcula.
+         *
+         * `question_attempts` era la unica tabla con fecha por intento, pero
+         * solo la escribia la evaluacion. La practica movia contadores en
+         * `user_stats` y nada mas, asi que la racha no se podia recalcular ni
+         * auditar y un dia de practica no aparecia en el grafico semanal.
+         *
+         * El valor por defecto es 0 —evaluacion— para las filas que ya
+         * existen, que es lo que eran: hasta ahora aqui no entraba otra cosa.
+         * Asi, todo lo que filtra por `es_practica = 0` sigue contando
+         * exactamente lo mismo que antes de esta migracion.
+         */
+        val MIGRACION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE question_attempts " +
+                        "ADD COLUMN es_practica INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         val MIGRACION_18_19 = object : Migration(18, 19) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE levels ADD COLUMN publicado INTEGER NOT NULL DEFAULT 1")

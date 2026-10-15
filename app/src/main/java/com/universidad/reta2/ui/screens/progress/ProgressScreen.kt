@@ -349,7 +349,13 @@ fun MainStatsCardSafe(practiceTime: String, totalQuestions: Int, streakDays: Int
             Divider(modifier = Modifier.width(1.dp).height(40.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f))
             StatItemSafe(label = "Preguntas", value = totalQuestions.toString(), modifier = Modifier.weight(1f))
             Divider(modifier = Modifier.width(1.dp).height(40.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f))
-            StatItemSafe(label = "Racha", value = "$streakDays días", modifier = Modifier.weight(1f))
+            // «1 días» se veia mal desde siempre, pero no se veia: hasta que la
+            // racha paso a derivarse nunca valia 1 en una pantalla real.
+            StatItemSafe(
+                label = "Racha",
+                value = "$streakDays ${if (streakDays == 1) "día" else "días"}",
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

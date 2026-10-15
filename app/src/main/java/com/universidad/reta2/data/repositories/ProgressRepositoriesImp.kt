@@ -46,7 +46,8 @@ class ProgressRepositoryImpl @Inject constructor(
         questionId: Int,
         isCorrect: Boolean,
         timeSpentSeconds: Int,
-        levelId: Int
+        levelId: Int,
+        esPractica: Boolean
     ) {
         val username = getCurrentUserName()
 
@@ -58,7 +59,8 @@ class ProgressRepositoryImpl @Inject constructor(
             questionId = questionId,
             levelId = levelId,
             isCorrect = isCorrect,
-            timeSpentSeconds = timeSpentSeconds
+            timeSpentSeconds = timeSpentSeconds,
+            esPractica = esPractica
         )
 
         progressDao.insertQuestionAttempt(attempt)

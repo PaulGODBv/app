@@ -12,6 +12,7 @@ import com.universidad.reta2.domain.services.StatsInitializer
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
@@ -28,16 +29,25 @@ class UserStatsRepositoriesImp @Inject constructor(
 
     override fun getUserStats(): Flow<UserStats> {
         val username = getCurrentUsername()
-        return userStatsDao.getUserStats(username)
-            .map { entity -> entity?.let { UserStatsMapper.toDomain(it) } ?: UserStats() }
-            .map { alDia(it) }
+        // Dos fuentes: lo guardado y los dias con actividad. La racha sale de
+        // los segundos, asi que una respuesta nueva reemite por si sola y el
+        // numero sube sin que nadie tenga que avisar.
+        return combine(
+            userStatsDao.getUserStats(username)
+                .map { entity -> entity?.let { UserStatsMapper.toDomain(it) } ?: UserStats() },
+            userStatsDao.diasConActividad(username)
+        ) { stats, dias -> alDia(stats, dias) }
             .onEach { estadisticasCache.guardar(username, it) }
             // Lo ultimo que se supo va por delante: sin esto la tarjeta de
             // Inicio nace en cero y salta a las cifras buenas unos cientos de
             // milisegundos despues. Room confirma o corrige acto seguido.
-            // Se vuelve a pasar por `conTiempoDelDia` porque lo guardado pudo
-            // quedar de ayer si la app lleva abierta desde antes de medianoche.
-            .onStart { estadisticasCache.obtener(username)?.let { emit(alDia(it)) } }
+            //
+            // Aqui no se deriva la racha —haria falta consultar la base, y esto
+            // es justo lo que se emite para no esperarla—: se usa la ultima
+            // derivada, que es la que vio el usuario al cerrar. El tiempo del
+            // dia si se corrige, porque lo guardado pudo quedar de ayer si la
+            // app lleva abierta desde antes de medianoche.
+            .onStart { estadisticasCache.obtener(username)?.let { emit(conTiempoDelDia(it)) } }
     }
 
     /**
@@ -57,10 +67,18 @@ class UserStatsRepositoriesImp @Inject constructor(
         else stats.copy(dailyPracticeTime = 0)
 
     /**
-     * La racha tenia el mismo problema que el tiempo del dia, y peor: solo se
-     * recalculaba al escribir. Quien practicaba tres dias seguidos y luego
-     * dejaba de entrar seguia viendo «Racha 3 dias» indefinidamente, y el
-     * numero caia a 1 sin explicacion en cuanto volvia a jugar.
+     * **La racha se deriva, no se guarda** (desde la v20).
+     *
+     * Era un contador en `user_stats` que solo se tocaba al escribir, y eso
+     * traia dos problemas. El visible: quien practicaba tres dias seguidos y
+     * dejaba de entrar seguia viendo «Racha 3 dias» indefinidamente. El grave:
+     * no se podia recalcular ni auditar, asi que cuando se desviaba no habia
+     * forma de saber por que ni de corregirlo. Y se desviaba — terminar un
+     * nivel vacio sumaba un dia entero sin responder nada.
+     *
+     * Ahora sale de las fechas de `question_attempts`, donde desde la v20
+     * tambien escribe la practica. Un dia sin responder nada no deja fila, asi
+     * que no puede contar: el fallo deja de ser representable.
      *
      * La regla es la misma que aplica [shouldIncrementStreak] al escribir, solo
      * que mirada desde la lectura:
@@ -72,22 +90,29 @@ class UserStatsRepositoriesImp @Inject constructor(
      * Igual que con el tiempo, no se toca lo guardado: la siguiente practica lo
      * reescribe y mientras tanto la pantalla dice la verdad.
      */
-    private fun conRachaDelDia(stats: UserStats): UserStats {
-        if (stats.lastPracticeDate.isEmpty()) {
-            return stats.copy(currentStreakDays = 0)
-        }
+    private fun rachaDesde(dias: List<String>): Int {
+        val fechas = dias
+            .mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }
+            .distinct()
+            .sortedDescending()
+
+        if (fechas.isEmpty()) return 0
 
         val hoy = LocalDate.parse(getCurrentDate())
-        val ultima = try {
-            LocalDate.parse(stats.lastPracticeDate)
-        } catch (e: Exception) {
-            // Fecha ilegible: se trata como si no hubiera racha en lugar de
-            // tumbar la pantalla entera por un dato corrupto.
-            return stats.copy(currentStreakDays = 0)
-        }
+        val ultima = fechas.first()
 
-        val sigueViva = ultima == hoy || ultima.plusDays(1) == hoy
-        return if (sigueViva) stats else stats.copy(currentStreakDays = 0)
+        // Practicó hoy -> viva. Practicó ayer -> viva, aún puede mantenerla hoy.
+        // Antes -> se rompió.
+        if (ultima != hoy && ultima.plusDays(1) != hoy) return 0
+
+        var racha = 1
+        var anterior = ultima
+        for (fecha in fechas.drop(1)) {
+            if (fecha.plusDays(1) != anterior) break
+            racha++
+            anterior = fecha
+        }
+        return racha
     }
 
     /**
@@ -119,12 +144,16 @@ class UserStatsRepositoriesImp @Inject constructor(
     }
 
     /** Las dos correcciones de fecha que se aplican a todo lo que se lee. */
-    private fun alDia(stats: UserStats): UserStats = conRachaDelDia(conTiempoDelDia(stats))
+    private fun alDia(stats: UserStats, dias: List<String>): UserStats =
+        conTiempoDelDia(stats).copy(currentStreakDays = rachaDesde(dias))
 
     override suspend fun getUserStatsOnce(): UserStats {
         val username = getCurrentUsername()
         statsInitializer.initializeUserStats(username)
-        return alDia(UserStatsMapper.toDomain(userStatsDao.getUserStatsSync(username)))
+        return alDia(
+            UserStatsMapper.toDomain(userStatsDao.getUserStatsSync(username)),
+            userStatsDao.diasConActividadAhora(username)
+        )
     }
 
     override suspend fun updateUserStats(stats: UserStats) {

@@ -42,15 +42,20 @@ class UpdateProgressUseCase @Inject constructor(
             println("   - levelScore: $levelScore")
             println("   - totalQuestions: $totalQuestions")
 
-            //1. Registrar la respuesta individual (solo en evaluación)
-            if (!esPractica) {
-                progressRepository.recordQuestionAttempt(
-                    questionId = questionId,
-                    isCorrect = isCorrect,
-                    timeSpentSeconds = timeSpent,
-                    levelId = levelId
-                )
-            }
+            // 1. Registrar la respuesta individual, practicando o no.
+            //
+            // Antes la practica no escribia aqui, y era a proposito: sus
+            // aciertos entrarian en el porcentaje del nivel. Desde la v20 esa
+            // separacion la hace la columna `es_practica` —todo lo que calcula
+            // progreso filtra por ella—, asi que ya no hace falta pagarla
+            // perdiendo el rastro fechado de la practica.
+            progressRepository.recordQuestionAttempt(
+                questionId = questionId,
+                isCorrect = isCorrect,
+                timeSpentSeconds = timeSpent,
+                levelId = levelId,
+                esPractica = esPractica
+            )
 
             // 2. Actualizar estadísticas del usuario
             val currentStats = userStatsRepository.getUserStatsOnce()
