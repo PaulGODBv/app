@@ -67,6 +67,15 @@ class ContentSyncRepository @Inject constructor(
             // Comunicación Escrita, la quinta competencia.
             18 to 501,
         )
+        /**
+         * Todos los niveles que hay que bajarse, por su id del panel.
+         *
+         * Vive aqui y no en cada pantalla que la necesita: la pedian el splash
+         * y ahora tambien Inicio, y dos copias de la misma lista es como se
+         * cuela un nivel que una de las dos no pide. Se deriva del mapa de
+         * traduccion, asi que anadir un nivel sigue siendo tocar un solo sitio.
+         */
+        val TODOS_LOS_NIVELES: List<Int> get() = NIVEL_DJANGO_A_APP.keys.sorted()
     }
 
     /**
@@ -79,14 +88,56 @@ class ContentSyncRepository @Inject constructor(
      */
     private val alcance = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Lanza la sincronizacion y no espera: el que llama sigue su camino. */
+    /**
+     * Si ya se bajo el catalogo con exito en esta ejecucion de la aplicacion.
+     *
+     * No se guarda en disco a proposito: al abrir la app otra vez conviene
+     * volver a mirar que publico el panel. Lo que evita es repetir la bajada
+     * dentro de la misma sesion, ahora que se pide desde dos sitios.
+     *
+     * **Solo se marca al tener exito.** Un intento que fallo por falta de red
+     * debe poder reintentarse; si se marcara igualmente, el estudiante se
+     * quedaria con el catalogo viejo hasta cerrar y abrir la aplicacion.
+     */
+    private val yaSincronizado = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Evita que dos llamadas casi simultaneas lancen dos bajadas. */
+    private val enMarcha = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * Lanza la sincronizacion y no espera: el que llama sigue su camino.
+     *
+     * **Se pide desde el splash y desde Inicio, y eso no es redundancia.**
+     * El splash solo la lanzaba cuando YA habia sesion al arrancar, asi que un
+     * estudiante que acababa de registrarse no pasaba por ahi: jugaba toda su
+     * primera sesion con el catalogo escrito en el codigo. Se vio en una prueba
+     * del piloto — «Feelings» abria el cuestionario de evaluacion en vez de la
+     * pantalla de unir parejas, porque el formato de practica sembrado es
+     * "opcion" y el del panel es "unir"—, y se arreglaba solo al abrir la app
+     * por segunda vez, que es lo que lo hacia dificil de reproducir.
+     *
+     * Pedirlo desde Inicio cubre todas las puertas de entrada —registro, inicio
+     * de sesion y vuelta de un usuario conocido— sin tener que acordarse de
+     * anadirlo en cada una.
+     */
     fun sincronizarEnSegundoPlano(idsDeNivel: List<Int>) {
+        if (yaSincronizado.get()) return
+        if (!enMarcha.compareAndSet(false, true)) return
+
         alcance.launch {
-            val r = sincronizar(idsDeNivel)
-            println(
-                "📚 Contenido: ${r.nivelesSincronizados} niveles, " +
-                    "${r.preguntasGuardadas} preguntas, ${r.nivelesConError} con error"
-            )
+            try {
+                val r = sincronizar(idsDeNivel)
+                println(
+                    "📚 Contenido: ${r.nivelesSincronizados} niveles, " +
+                        "${r.preguntasGuardadas} preguntas, ${r.nivelesConError} con error"
+                )
+                // Sin motivo y con algun nivel al dia: se dio por bueno.
+                if (r.motivo == null && r.nivelesSincronizados > 0) {
+                    yaSincronizado.set(true)
+                }
+            } finally {
+                enMarcha.set(false)
+            }
         }
     }
 

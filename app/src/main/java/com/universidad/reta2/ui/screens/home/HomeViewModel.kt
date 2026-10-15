@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.universidad.reta2.domain.models.Competence
 import com.universidad.reta2.domain.repositories.CompetenceRepository
 import com.universidad.reta2.domain.usecases.GetUserStatsUseCase
+import com.universidad.reta2.data.repositories.ContentSyncRepository
 import com.universidad.reta2.domain.models.UserStats
 import com.universidad.reta2.data.preferences.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +26,7 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val competenceRepository: CompetenceRepository,
     private val getUserStatsUseCase: GetUserStatsUseCase,
+    private val contentSyncRepository: ContentSyncRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -67,6 +69,22 @@ class HomeViewModel @Inject constructor(
         // esto se resuelve en milisegundos y el esqueleto ya no llega a salir.
         loadCompetences()
         loadUserStats()
+
+        // Traer lo que publico el panel, si no se ha traido ya en esta sesion.
+        //
+        // El splash solo lo hacia cuando YA habia sesion al arrancar, asi que
+        // un estudiante recien registrado no pasaba por ahi y jugaba toda su
+        // primera sesion con el catalogo escrito en el codigo. Se vio en una
+        // prueba del piloto: «Feelings» abria el cuestionario de evaluacion en
+        // vez de la pantalla de unir parejas, y se arreglaba solo al abrir la
+        // app por segunda vez — por eso costaba reproducirlo.
+        //
+        // Aqui cubre todas las puertas: registro, inicio de sesion y vuelta.
+        // El repositorio lleva su propia guarda, asi que a quien ya sincronizo
+        // en el splash esto no le cuesta nada.
+        contentSyncRepository.sincronizarEnSegundoPlano(
+            ContentSyncRepository.TODOS_LOS_NIVELES
+        )
     }
 
     private fun loadUserData() {
