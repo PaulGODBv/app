@@ -115,6 +115,26 @@ object ProgramasUdes {
             .replace(Regex("\\s+"), " ")
 
     /**
+     * Abreviaturas que NO son el principio de la palabra que abrevian.
+     *
+     * Casi ninguna hace falta: «admin», «ing», «lic», «vet», «tec» y «neg» ya
+     * encuentran lo suyo porque son el comienzo de «administracion»,
+     * «ingenieria», «licenciatura», «veterinaria», «tecnologia» y «negocios».
+     * Aqui solo entra lo que se escribe saltandose letras de en medio.
+     *
+     * «Admon» esta porque es lo que uno de los estudiantes del piloto habia
+     * escrito de verdad. Sin esto, esa misma persona teclearia «Admon», no
+     * veria nada y acabaria en «Otro programa» — que es exactamente el
+     * problema que este catalogo viene a quitar.
+     *
+     * Esto solo afecta a la BUSQUEDA. Lo que se guarda es siempre el nombre
+     * del catalogo, nunca la abreviatura.
+     */
+    private val ABREVIATURAS = mapOf(
+        "admon" to "administracion"
+    )
+
+    /**
      * Los programas que casan con lo tecleado, de mas a menos relevante.
      *
      * Primero los que EMPIEZAN por lo escrito y despues los que lo contienen
@@ -129,7 +149,9 @@ object ProgramasUdes {
         val busqueda = normalizar(escrito)
         if (busqueda.isEmpty()) return emptyList()
 
-        val palabras = busqueda.split(" ").filter { it.isNotEmpty() }
+        val palabras = busqueda.split(" ")
+            .filter { it.isNotEmpty() }
+            .map { ABREVIATURAS[it] ?: it }
         val empiezan = mutableListOf<String>()
         val contienen = mutableListOf<String>()
 

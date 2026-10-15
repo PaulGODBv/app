@@ -85,8 +85,15 @@ android {
         // piloto, donde «Feelings» abria el cuestionario de evaluacion en vez
         // de la pantalla de unir parejas. Como cada estudiante del piloto se
         // registra por primera vez, les pasaba a todos.
-        versionCode = 3
-        versionName = "1.1.1"
+        //
+        // 4 = el programa academico deja de escribirse a mano. El registro
+        // ofrece los 49 programas de la UDES Bucaramanga y sugiere mientras se
+        // escribe, con una salida para quien no este en la lista; y el correo
+        // se rellena solo con el codigo, que es de donde sale. Sube la menor y
+        // no el parche porque cambia como se registra la gente, no arregla
+        // algo que estuviera roto.
+        versionCode = 4
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
