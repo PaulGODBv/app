@@ -70,7 +70,11 @@ $versionName = $Matches[1]
 
 $ultima = git tag -l 'v*' | Sort-Object -Property { [version]($_ -replace '^v') } | Select-Object -Last 1
 if ($ultima) {
-    $gradleViejo = git show "${ultima}:app/build.gradle.kts"
+    # Out-String y no la salida tal cual: `git show` devuelve un ARRAY de
+    # lineas, y en PowerShell `-match` sobre un array filtra elementos sin
+    # rellenar $Matches, que entonces conserva lo que tuviera de antes. Costo
+    # un fallo raro: $Matches[1] valia "1.1.0" al intentar leer un numero.
+    $gradleViejo = (git show "${ultima}:app/build.gradle.kts") | Out-String
     if ($gradleViejo -match 'versionCode\s*=\s*(\d+)') {
         $anterior = [int]$Matches[1]
         if ($versionCode -le $anterior) {
