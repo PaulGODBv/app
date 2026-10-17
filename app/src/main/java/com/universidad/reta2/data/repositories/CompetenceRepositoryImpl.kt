@@ -269,7 +269,11 @@ class CompetenceRepositoryImpl @Inject constructor(
                             // parejas, aunque el panel lo haya dicho y Room lo
                             // tenga guardado.
                             formatoPractica = entity.formatoPractica,
-                            ultimaPractica = progressDao.ultimaVezQueTocoElNivel(username, levelId)
+                            // `MAX()` sobre cero filas devuelve null, que aqui
+                            // significa «no lo ha tocado nunca». El modelo ya
+                            // tiene nombre para eso: 0.
+                            ultimaPractica = progressDao
+                                .ultimaVezQueTocoElNivel(username, levelId) ?: 0L
                         )
                     )
                 }

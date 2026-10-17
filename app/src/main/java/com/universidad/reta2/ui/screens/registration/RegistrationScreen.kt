@@ -111,7 +111,7 @@ fun RegistrationScreen(
         when (uiState.paso) {
             1 -> PasoQuienEres(uiState, viewModel)
             2 -> PasoLoAcademico(uiState, viewModel)
-            else -> PasoLaClave(uiState, viewModel, focusManager::clearFocus)
+            else -> PasoLaClave(uiState, viewModel) { focusManager.clearFocus() }
         }
 
         if (uiState.errorMessage.isNotEmpty()) {

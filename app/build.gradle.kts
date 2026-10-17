@@ -92,8 +92,8 @@ android {
         // se rellena solo con el codigo, que es de donde sale. Sube la menor y
         // no el parche porque cambia como se registra la gente, no arregla
         // algo que estuviera roto.
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
