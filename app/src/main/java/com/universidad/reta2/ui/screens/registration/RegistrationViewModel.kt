@@ -111,6 +111,59 @@ class RegistrationViewModel @Inject constructor(
         )
     }
 
+    /**
+     * Avanza si lo del paso actual esta bien; si no, lo dice y se queda.
+     *
+     * Validar por pasos y no solo al final es la mitad de la gracia de
+     * partirlo: enterarse en el paso tres de que el codigo del paso uno estaba
+     * mal obliga a volver, y entonces los pasos estorban en vez de ayudar.
+     */
+    fun irAlPasoSiguiente() {
+        val estado = _uiState.value
+        val fallo = errorDelPaso(estado)
+        if (fallo != null) {
+            _uiState.value = estado.copy(errorMessage = fallo)
+            return
+        }
+        _uiState.value = estado.copy(
+            paso = (estado.paso + 1).coerceAtMost(PASOS),
+            errorMessage = ""
+        )
+    }
+
+    fun volverAlPasoAnterior() {
+        val estado = _uiState.value
+        _uiState.value = estado.copy(
+            paso = (estado.paso - 1).coerceAtLeast(1),
+            errorMessage = ""
+        )
+    }
+
+    /** Lo que falta en el paso en que se esta, o null si esta completo. */
+    private fun errorDelPaso(estado: RegistrationUiState): String? = when (estado.paso) {
+        1 -> when {
+            estado.username.isBlank() ->
+                "El nombre de usuario no puede estar vacío"
+            estado.studentCode.isEmpty() ->
+                "El código estudiantil no puede estar vacío"
+            estado.studentCode.length != 11 ->
+                "El código estudiantil debe tener 11 dígitos"
+            else -> null
+        }
+        2 -> when {
+            estado.email.isBlank() ->
+                "El correo electrónico no puede estar vacío"
+            !isValidEmail(estado.email) ->
+                "Usa tu correo institucional, el que termina en $INSTITUTIONAL_EMAIL_DOMAIN"
+            estado.studentProgram.isBlank() ->
+                "El programa académico no puede estar vacío"
+            !estado.esOtroPrograma && ProgramasUdes.exacto(estado.studentProgram) == null ->
+                "Elige tu programa de la lista, o toca «Otro programa»"
+            else -> null
+        }
+        else -> null
+    }
+
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(
             errorMessage = "",
@@ -205,8 +258,12 @@ class RegistrationViewModel @Inject constructor(
                         RegistrationResult.UserExists
                     } else {
                         val user = User(
-                            username = state.username,
-                            email = state.email,
+                            /* Recortado antes de guardar. El teclado de Android
+                             * mete un espacio al final con mas facilidad de la
+                             * que parece, y un nombre con un espacio invisible
+                             * deja a su duenio fuera de su propia cuenta. */
+                            username = state.username.trim(),
+                            email = state.email.trim(),
                             // Se hashea aquí: a la capa de datos nunca llega texto plano.
                             passwordHash = passwordHasher.hashPassword(state.password),
                             studentCode = state.studentCode,
@@ -223,7 +280,8 @@ class RegistrationViewModel @Inject constructor(
 
                         if (success) {
                             _uiState.value = _uiState.value.copy(
-                                successMessage = "Usuario registrado exitosamente"
+                                successMessage = "Usuario registrado exitosamente",
+                                registroCompletado = true
                             )
                             RegistrationResult.Success
                         } else {
@@ -260,6 +318,9 @@ class RegistrationViewModel @Inject constructor(
 
     companion object {
         const val INSTITUTIONAL_EMAIL_DOMAIN = "@mail.udes.edu.co"
+
+        /** Cuantos pasos tiene el registro. La barra de arriba divide por el. */
+        const val PASOS = 3
     }
 }
 
@@ -282,6 +343,27 @@ data class RegistrationUiState(
      * escribir es de las cosas que mas enfadan de un formulario.
      */
     val correoEditadoAMano: Boolean = false,
+
+    /**
+     * En cual de los tres pasos esta.
+     *
+     * El formulario entero eran seis campos de golpe, y seis campos en una
+     * pantalla de telefono se leen como un tramite. Partido en tres, cada
+     * pantalla hace UNA pregunta y la barra de arriba dice cuanto falta: lo
+     * que cansa de un formulario largo no es rellenarlo, es no saber donde
+     * acaba.
+     */
+    val paso: Int = 1,
+
+    /**
+     * Cuenta creada. Deja de ser un formulario y pasa a ser una confirmacion
+     * con su boton.
+     *
+     * Antes aqui habia una espera de tres segundos que llevaba al login sola.
+     * Un temporizador decide por el usuario y le quita el cierre de la tarea:
+     * ahora termina el, cuando pulsa.
+     */
+    val registroCompletado: Boolean = false,
 
     /**
      * Si ha elegido «Otro programa» y esta escribiendo uno libre.

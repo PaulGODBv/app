@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -66,11 +70,29 @@ fun LoginScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
+        /* El ojo importa mas aqui que en el registro: al entrar uno escribe a
+         * ciegas una clave que ya no recuerda del todo, y sin poder mirarla la
+         * unica salida es borrar y repetir. */
+        var verClave by remember { mutableStateOf(false) }
+
         OutlinedTextField(
             value = uiState.password,
             onValueChange = { viewModel.onPasswordChange(it) },
             label = { Text("Contraseña") },
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (verClave) VisualTransformation.None
+                                   else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { verClave = !verClave }) {
+                    Icon(
+                        imageVector = if (verClave) Icons.Filled.VisibilityOff
+                                      else Icons.Filled.Visibility,
+                        // Lo que hara al pulsarlo, no el estado: es lo que
+                        // anuncia un lector de pantalla al llegar al boton.
+                        contentDescription = if (verClave) "Ocultar la contraseña"
+                                             else "Ver la contraseña"
+                    )
+                }
+            },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             isError = uiState.errorMessage.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
