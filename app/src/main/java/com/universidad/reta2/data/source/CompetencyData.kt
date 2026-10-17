@@ -1322,7 +1322,17 @@ object CompetencyData {
                     ),
                     correctOptionId = 4,
                     explanation = "Al buscar \"justificaciones\" para la violencia, el funcionario minimiza la responsabilidad de los agresores.",
-                    readingText = "El Fondo Monetario Internacional (FMI) enfatizó que en América Latina se evidencian altas tasas de participación laboral y resaltó la necesidad de una mayor innovación tecnológica como principal reto para el desarrollo económico.\n\nEn respuesta, una analista económica sostuvo que \"el verdadero problema en esta región es que el 50% de las mujeres en edad de trabajar —en promedio más educadas que los hombres— se dedican a la economía del cuidado, es decir, a la atención del hogar, sin ningún tipo de salario o reconocimiento económico ni social\"."
+                    // Este pasaje estaba equivocado desde el primer commit:
+                    // traia el del FMI, el mismo de la pregunta 1018, que no
+                    // habla de ningun funcionario ni de ningun estudio. Sin el
+                    // bueno, las cuatro opciones mencionan un estudio que no
+                    // aparece por ninguna parte y el item no se puede responder.
+                    //
+                    // Recuperado del cuadernillo oficial del ICFES, "Modulo de
+                    // Competencias ciudadanas - Saber Pro 2018", el 16/10/2026.
+                    readingText = "Un estudio reveló que el 30 % de las mujeres en Colombia son víctimas de violencia física. A partir de este estudio varias organizaciones feministas solicitaron el endurecimiento de las penas para las personas que ejercían violencia contra las mujeres.
+
+Ante esta petición un funcionario del Gobierno señaló que el estudio no era confiable, porque no consideraba los distintos contextos de estas agresiones y que era muy importante tener en cuenta la justificación de los hechos."
                 ),
                 Question(
                     id = 1016,
