@@ -101,4 +101,22 @@ interface ProgressDao {
         levelIds: List<Int>,
         questionIds: List<Int>
     ): Int
+
+    /**
+     * Cuando ESTE usuario toco por ultima vez este nivel.
+     *
+     * Antes salia de `levels.last_practiced_at`, que es una columna del
+     * catalogo y por tanto del TELEFONO: al entrar con otra cuenta, «sigue
+     * practicando» enseniaba los niveles de la cuenta anterior. Aqui sale de
+     * los intentos, que si llevan nombre.
+     *
+     * Cuenta la practica: para «donde lo dejaste» practicar es haberlo
+     * tocado, aunque no puntue.
+     */
+    @Query("""
+        SELECT MAX(attempted_at)
+        FROM question_attempts
+        WHERE username = :username AND level_id = :levelId
+    """)
+    suspend fun ultimaVezQueTocoElNivel(username: String, levelId: Int): Long?
 }

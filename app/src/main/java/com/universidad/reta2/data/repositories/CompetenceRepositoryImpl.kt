@@ -194,49 +194,82 @@ class CompetenceRepositoryImpl @Inject constructor(
                 // Usamos map suspendido (con bucle for) porque los DAOs son suspend
                 val levelsWithRealProgress = mutableListOf<Level>()
 
+                /* TODO lo que sigue se saca de las tablas que llevan
+                 * `username`, y NADA de las columnas `is_locked`,
+                 * `is_completed`, `progress` y `last_practiced_at` de la tabla
+                 * `levels`.
+                 *
+                 * Esas cuatro columnas son estado del usuario guardado en el
+                 * catalogo, que es del telefono: por eso, al cerrar sesion y
+                 * entrar con otra cuenta, aparecian desbloqueados los niveles
+                 * de la cuenta anterior y «sigue practicando» enseniaba sus
+                 * competencias, mientras los numeros —que si van por usuario—
+                 * salian en cero. Dos verdades para el mismo dato.
+                 *
+                 * Siguen en la tabla, porque aqui no se borra nada, pero ya no
+                 * las lee nadie. */
+
+                // El nivel anterior de EVALUACION, para saber que abre cual.
+                // El calentamiento no entra: no desbloquea nada y nunca esta
+                // cerrado, asi que se salta en la cadena.
+                val cadena = levelEntities.filterNot { LevelRules.esDePractica(it.id) }
+
                 for (entity in levelEntities) {
                     val levelId = entity.id
 
-                    // 1. DENOMINADOR (preguntas que hoy tiene el nivel)
-                    val idsDelNivel = questionRepository
-                        .getQuestionsByCompetenceAndLevel(competenceId, levelId)
-                        .map { it.id }
-                    val totalQuestionsInLevel = idsDelNivel.size
-
-                    // 2. NUMERADOR (aciertos, solo de esas preguntas)
-                    //
-                    // Aqui se vio el 137 %: el nivel tiene 8 preguntas y habia
-                    // 11 intentos acertados, la mayoria apuntando a ids que
-                    // dejaron de existir al traer el banco del panel.
-                    val correctQuestionsInLevel = if (idsDelNivel.isEmpty()) 0
-                    else progressDao.contarAciertosDeEstasPreguntas(
-                        username, listOf(levelId), idsDelNivel
-                    )
-
-                    // 3. CALCULAR
-                    val calculatedProgress = if (totalQuestionsInLevel > 0) {
-                        (correctQuestionsInLevel.toFloat() / totalQuestionsInLevel.toFloat())
+                    /* El progreso del nivel es el de su ULTIMA SESION, el
+                     * mismo numero que vio en la pantalla de resultados.
+                     *
+                     * Antes se contaban los aciertos distintos sobre TODAS las
+                     * preguntas del nivel, y eran dos medidas distintas con el
+                     * mismo nombre: una sesion son cinco preguntas y un nivel
+                     * tiene ocho, asi que acertar el 70 % de la sesion dejaba
+                     * el nivel en el 50 %. El estudiante pasaba de nivel y
+                     * acto seguido veia que habia bajado. */
+                    val sesion = progressDao.getLevelProgress(username, competenceId, levelId)
+                    val calculatedProgress = if (sesion != null && sesion.totalQuestions > 0) {
+                        (sesion.score.toFloat() / sesion.totalQuestions.toFloat())
                             .coerceIn(0f, 1f)
                     } else {
                         0f
                     }
 
-                    // 4. CREAR EL MODELO DE DOMINIO CON DATOS REALES
+                    /* Superado es superado para siempre. Se mira la marca
+                     * guardada y no el porcentaje de arriba: si no, una sesion
+                     * peor volveria a cerrar un nivel que ya estaba abierto, y
+                     * quitarle a alguien algo que ya se habia ganado es la
+                     * peor cosa que puede hacer una app de estudio. */
+                    val superado = sesion?.isCompleted == true
+
+                    /* Abierto si es el primero de la escalera, o si el
+                     * anterior esta superado. La practica nunca esta cerrada. */
+                    val posicion = cadena.indexOfFirst { it.id == levelId }
+                    val bloqueado = when {
+                        LevelRules.esDePractica(levelId) -> false
+                        posicion <= 0 -> false
+                        else -> {
+                            val anterior = cadena[posicion - 1]
+                            progressDao.getLevelProgress(
+                                username, competenceId, anterior.id
+                            )?.isCompleted != true
+                        }
+                    }
+
                     levelsWithRealProgress.add(
                         Level(
                             id = entity.id,
                             name = entity.name,
                             description = entity.description,
                             questions = emptyList(),
-                            isLocked = entity.isLocked,
-                            isCompleted = (calculatedProgress == 1f), // Se considera completo si es 100%
-                            progress = calculatedProgress, // Usamos el progreso real
+                            isLocked = bloqueado,
+                            isCompleted = superado,
+                            progress = calculatedProgress,
                             // Sin esto el nivel llega con el formato por
                             // defecto y la practica nunca enruta al tablero de
                             // parejas, aunque el panel lo haya dicho y Room lo
                             // tenga guardado.
                             formatoPractica = entity.formatoPractica,
-                            ultimaPractica = entity.ultimaPractica
+                            ultimaPractica = progressDao.ultimaVezQueTocoElNivel(username, levelId)
                         )
                     )
                 }
