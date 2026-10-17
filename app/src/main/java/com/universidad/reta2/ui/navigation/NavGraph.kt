@@ -274,7 +274,8 @@ fun NavGraph(
                 score = backStackEntry.arguments?.getInt("score") ?: 0,
                 totalQuestions = backStackEntry.arguments?.getInt("totalQuestions") ?: 0,
                 timeSpent = backStackEntry.arguments?.getInt("timeSpent") ?: 0,
-                origin = backStackEntry.arguments?.getString("origin") ?: "competencies"
+                origin = backStackEntry.arguments?.getString("origin") ?: "competencies",
+                esPractica = backStackEntry.arguments?.getBoolean("practica") ?: false
             )
         }
 
@@ -288,7 +289,7 @@ fun NavGraph(
             val totalQuestions = backStackEntry.arguments?.getInt("totalQuestions") ?: 0
             val timeSpent = backStackEntry.arguments?.getInt("timeSpent") ?: 0
             val origin = backStackEntry.arguments?.getString("origin") ?: "competencies"
-
+            val esPractica = backStackEntry.arguments?.getBoolean("practica") ?: false
 
             key("results_${competenceId}_${levelId}_${score}") {
                 ResultsScreen(
@@ -298,7 +299,8 @@ fun NavGraph(
                     score = score,
                     totalQuestions = totalQuestions,
                     timeSpent = timeSpent,
-                    origin = origin
+                    origin = origin,
+                    esPractica = esPractica
                 )
             }
         }

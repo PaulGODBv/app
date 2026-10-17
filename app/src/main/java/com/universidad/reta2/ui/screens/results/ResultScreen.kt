@@ -69,6 +69,7 @@ fun ResultsScreen(
     totalQuestions: Int,
     timeSpent: Int,
     origin: String,
+    esPractica: Boolean = false,
     viewModel: ResultsViewModel = hiltViewModel()
 ) {
 
@@ -384,7 +385,14 @@ fun ResultsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                val canGoToNext = passed && nextLevelId != null
+                /* Practicar no desbloquea nada —lo garantiza
+                 * UpdateProgressUseCase, que ni llama al desbloqueo cuando
+                 * `esPractica`—, asi que ofrecer «Siguiente nivel» aqui era un
+                 * boton que mentia: llevaba a un nivel que seguia cerrado.
+                 *
+                 * Al practicar se repite el mismo nivel, que es de lo que va
+                 * practicar. */
+                val canGoToNext = passed && nextLevelId != null && !esPractica
 
                 Button(
                     onClick = {
@@ -416,7 +424,11 @@ fun ResultsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (canGoToNext) "Siguiente nivel" else "Reintentar nivel",
+                        text = when {
+                            canGoToNext -> "Siguiente nivel"
+                            esPractica -> "Practicar otra vez"
+                            else -> "Reintentar nivel"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

@@ -129,7 +129,8 @@ fun QuestionScreenUltraSafe(
                     score = uiState.score,
                     totalQuestions = uiState.questions.size,
                     timeSpent = uiState.timeElapsed,
-                    origin = origin
+                    origin = origin,
+                    esPractica = esPractica
                 )
             } else {
                 Screen.Results.createRoute(
@@ -138,7 +139,8 @@ fun QuestionScreenUltraSafe(
                     score = uiState.score,
                     totalQuestions = uiState.questions.size,
                     timeSpent = uiState.timeElapsed,
-                    origin = origin
+                    origin = origin,
+                    esPractica = esPractica
                 )
             }
 

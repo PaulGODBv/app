@@ -84,15 +84,26 @@ sealed class Screen(val route: String) {
      * segundo nivel en adelante se va directo a Results: una celebracion que
      * se repite sin motivo deja de celebrar.
      */
-    object Racha : Screen("racha/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}/{origin}") {
+    /**
+     * El `practica` de esta ruta y de la de resultados va como argumento de
+     * consulta —con `?`— y no como tramo: asi las rutas viejas sin el
+     * parametro siguen resolviendo, y no hay que tocar cada sitio que navegue.
+     *
+     * Viaja hasta el final del recorrido porque la pantalla de resultados
+     * tiene que saberlo. Sin el ofrecia «Siguiente nivel» despues de una
+     * practica, y practicar no desbloquea nada: el boton llevaba al nivel
+     * siguiente sin que estuviera abierto.
+     */
+    object Racha : Screen("racha/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}/{origin}?practica={practica}") {
         fun createRoute(
             competenceId: Int,
             levelId: Int,
             score: Int,
             totalQuestions: Int,
             timeSpent: Int,
-            origin: String = "competences"
-        ) = "racha/$competenceId/$levelId/$score/$totalQuestions/$timeSpent/$origin"
+            origin: String = "competences",
+            esPractica: Boolean = false
+        ) = "racha/$competenceId/$levelId/$score/$totalQuestions/$timeSpent/$origin?practica=$esPractica"
 
         val arguments = listOf(
             navArgument("competenceId") { type = NavType.IntType },
@@ -100,19 +111,21 @@ sealed class Screen(val route: String) {
             navArgument("score") { type = NavType.IntType },
             navArgument("totalQuestions") { type = NavType.IntType },
             navArgument("timeSpent") { type = NavType.IntType },
-            navArgument("origin") { type = NavType.StringType }
+            navArgument("origin") { type = NavType.StringType },
+            navArgument("practica") { type = NavType.BoolType; defaultValue = false }
         )
     }
 
-    object Results : Screen("results/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}/{origin}") {
+    object Results : Screen("results/{competenceId}/{levelId}/{score}/{totalQuestions}/{timeSpent}/{origin}?practica={practica}") {
         fun createRoute(
             competenceId: Int,
             levelId: Int,
             score: Int,
             totalQuestions: Int,
             timeSpent: Int,
-            origin: String = "competences"
-        ) = "results/$competenceId/$levelId/$score/$totalQuestions/$timeSpent/$origin"
+            origin: String = "competences",
+            esPractica: Boolean = false
+        ) = "results/$competenceId/$levelId/$score/$totalQuestions/$timeSpent/$origin?practica=$esPractica"
 
         val arguments = listOf(
             navArgument("competenceId") { type = NavType.IntType },
@@ -120,7 +133,8 @@ sealed class Screen(val route: String) {
             navArgument("score") { type = NavType.IntType },
             navArgument("totalQuestions") { type = NavType.IntType },
             navArgument("timeSpent") { type = NavType.IntType },
-            navArgument("origin") { type = NavType.StringType }
+            navArgument("origin") { type = NavType.StringType },
+            navArgument("practica") { type = NavType.BoolType; defaultValue = false }
         )
     }
 }

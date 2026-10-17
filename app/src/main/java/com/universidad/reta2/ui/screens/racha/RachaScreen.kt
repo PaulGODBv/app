@@ -83,6 +83,7 @@ fun RachaScreen(
     totalQuestions: Int,
     timeSpent: Int,
     origin: String,
+    esPractica: Boolean = false,
     viewModel: RachaViewModel = hiltViewModel()
 ) {
     val estado by viewModel.uiState.collectAsState()
@@ -173,7 +174,8 @@ fun RachaScreen(
                         score = score,
                         totalQuestions = totalQuestions,
                         timeSpent = timeSpent,
-                        origin = origin
+                        origin = origin,
+                        esPractica = esPractica
                     )
                 ) {
                     // Esta pantalla no vuelve: desde resultados, atrás tiene
