@@ -92,8 +92,14 @@ android {
         // se rellena solo con el codigo, que es de donde sale. Sube la menor y
         // no el parche porque cambia como se registra la gente, no arregla
         // algo que estuviera roto.
-        versionCode = 5
-        versionName = "1.3.0"
+        //
+        // 5 = «Sobre Reta2» en Perfil: quien hizo la aplicacion y como se le
+        // escribe, que lo pidio el profesor. Sube el parche y no la menor
+        // porque no cambia nada de lo que el estudiante hace con la app:
+        // anade una tarjeta que se lee. Va con el arreglo del pasaje de la
+        // 1015, que dejaba el arbol sin compilar.
+        versionCode = 6
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
