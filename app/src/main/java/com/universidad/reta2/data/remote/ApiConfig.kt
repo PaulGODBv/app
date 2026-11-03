@@ -7,9 +7,9 @@ object ApiConfig {
      * El panel al que habla la app.
      *
      * Hasta el 14/10/2026 esto era una constante con la IP de la LAN y, debajo,
-     * cinco IPs mas comentadas —casa, datos, la sala de informatica, dos wifis
+     * cinco IP mas comentadas —casa, datos, la sala de informatica, dos wifis
      * del campus—. Cambiar de red significaba editar codigo versionado, asi que
-     * las IPs acabaron en el repositorio y la de turno viajaba en cada commit.
+     * las IP acabaron en el repositorio y la de turno viajaba en cada commit.
      *
      * Ahora depende de la compilacion y entra por `buildConfigField` (ver
      * `app/build.gradle.kts`):
