@@ -17,6 +17,7 @@ import android.content.Context
 import android.media.AudioManager
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.universidad.reta2.ui.components.SobreReta2Card
 import com.universidad.reta2.ui.navigation.Screen
 import kotlinx.coroutines.delay
 import androidx.compose.material3.Icon
@@ -338,6 +339,12 @@ fun ProfileScreen(
                     )
                 }
             }
+
+            // ----- Sobre Reta2 -----
+            // Va aquí y no tras «Guardar cambios» a propósito: lo de abajo son
+            // acciones —guardar, cerrar sesión— y esto es contenido. Meter algo
+            // que se lee en la zona de lo que se pulsa confunde las dos cosas.
+            SobreReta2Card()
 
             Spacer(modifier = Modifier.height(16.dp))
         }
