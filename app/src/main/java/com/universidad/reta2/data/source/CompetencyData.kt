@@ -1330,9 +1330,7 @@ object CompetencyData {
                     //
                     // Recuperado del cuadernillo oficial del ICFES, "Modulo de
                     // Competencias ciudadanas - Saber Pro 2018", el 16/10/2026.
-                    readingText = "Un estudio reveló que el 30 % de las mujeres en Colombia son víctimas de violencia física. A partir de este estudio varias organizaciones feministas solicitaron el endurecimiento de las penas para las personas que ejercían violencia contra las mujeres.
-
-Ante esta petición un funcionario del Gobierno señaló que el estudio no era confiable, porque no consideraba los distintos contextos de estas agresiones y que era muy importante tener en cuenta la justificación de los hechos."
+                    readingText = "Un estudio reveló que el 30 % de las mujeres en Colombia son víctimas de violencia física. A partir de este estudio varias organizaciones feministas solicitaron el endurecimiento de las penas para las personas que ejercían violencia contra las mujeres.\n\nAnte esta petición un funcionario del Gobierno señaló que el estudio no era confiable, porque no consideraba los distintos contextos de estas agresiones y que era muy importante tener en cuenta la justificación de los hechos.",
                 ),
                 Question(
                     id = 1016,
