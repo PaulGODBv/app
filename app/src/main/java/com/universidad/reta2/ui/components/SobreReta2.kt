@@ -39,7 +39,7 @@ import com.universidad.reta2.R
 /**
  * Quién hizo esta aplicación y cómo se le escribe.
  *
- * POR QUÉ EXISTE. Lo pidió el profesor en la revisión: que quien use Reta2
+ * POR QUÉ EXISTE. que quien use Reta2
  * pueda saber de dónde sale y tener por dónde contactar al que la hizo. Es un
  * trabajo de grado, y un trabajo de grado que nadie puede atribuir a nadie se
  * queda a medias.

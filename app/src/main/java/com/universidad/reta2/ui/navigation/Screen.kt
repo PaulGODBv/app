@@ -6,8 +6,14 @@ import androidx.navigation.navArgument
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Registration : Screen("registration")
+
+    /** «¿Olvidaste tu contraseña?», verificando con el bloqueo del teléfono. */
+    object RecuperarClave : Screen("recuperar_clave")
     object Competencies : Screen("competencies")
     object Profile : Screen("profile")
+
+    /** Los ajustes, que hasta ahora vivían dentro de Perfil. */
+    object Configuracion : Screen("configuracion")
     object Progress : Screen("progress")
     object Splash:Screen("splash")
     object Home:Screen("home")

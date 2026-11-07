@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import com.universidad.reta2.ui.screens.racha.RachaScreen
+import com.universidad.reta2.ui.screens.configuracion.ConfiguracionScreen
 import com.universidad.reta2.ui.screens.login.LoginScreen
+import com.universidad.reta2.ui.screens.recuperar.RecuperarClaveScreen
 import com.universidad.reta2.ui.screens.competencies.CompetenciesScreen
 import com.universidad.reta2.ui.screens.competenceDetail.CompetenceDetailScreen
 import com.universidad.reta2.ui.screens.profile.ProfileScreen
@@ -87,6 +89,18 @@ fun NavGraph(
             popExitTransition = Transiciones.fundidoSalida(animar)
         ) {
             LoginScreen(navController = navController)
+        }
+
+        // ---------- Recuperar la contraseña ----------
+        // Del login, y se funde igual: tampoco se baja a ningun sitio.
+        composable(
+            route = Screen.RecuperarClave.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            exitTransition = Transiciones.fundidoSalida(animar),
+            popEnterTransition = Transiciones.fundidoEntrada(animar),
+            popExitTransition = Transiciones.fundidoSalida(animar)
+        ) {
+            RecuperarClaveScreen(navController = navController)
         }
 
         // ---------- Registro ----------
@@ -242,6 +256,18 @@ fun NavGraph(
             popEnterTransition = Transiciones.fundidoEntrada(animar)
         ) {
             ProgressScreen(navController = navController)
+        }
+
+        // ---------- Ajustes ----------
+        // Pestaña de la barra, igual que Perfil: se funde, no se desliza.
+        composable(
+            route = Screen.Configuracion.route,
+            enterTransition = Transiciones.fundidoEntrada(animar),
+            exitTransition = Transiciones.fundidoSalida(animar),
+            popEnterTransition = Transiciones.fundidoEntrada(animar),
+            popExitTransition = Transiciones.fundidoSalida(animar)
+        ) {
+            ConfiguracionScreen(navController = navController)
         }
 
         // ---------- Perfil ----------

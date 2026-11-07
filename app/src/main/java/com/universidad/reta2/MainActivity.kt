@@ -1,8 +1,8 @@
 package com.universidad.reta2
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +28,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+/* `FragmentActivity` y no `ComponentActivity`: lo exige `BiometricPrompt`,
+ * que es lo que verifica la identidad al recuperar la contrasena. Es una
+ * subclase de `ComponentActivity`, asi que `setContent` y Hilt siguen igual y
+ * no hace falta tema de AppCompat. */
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -71,7 +75,8 @@ fun AppContent(themeViewModel: ThemeViewModel = hiltViewModel()) {
             Screen.Home.route,
             Screen.Competencies.route,
             Screen.Progress.route,
-            Screen.Profile.route
+            Screen.Profile.route,
+            Screen.Configuracion.route
         ) && currentRoute != null // Asegurar que no se muestre durante la carga/splash
 
         // La música de fondo suena en el menú y calla dentro de un nivel. A
@@ -88,6 +93,7 @@ fun AppContent(themeViewModel: ThemeViewModel = hiltViewModel()) {
             Screen.Competencies.route,
             Screen.Progress.route,
             Screen.Profile.route,
+            Screen.Configuracion.route,
             Screen.CompetenceDetail.route
         )
         val context = LocalContext.current

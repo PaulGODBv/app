@@ -316,8 +316,13 @@ fun LevelXpBar(totalQuestionsAnswered: Int) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                // «Faltan 50 XP» y no «Siguiente nivel»: lo segundo es una
+                // etiqueta que no dice nada —ya se ve que hay un nivel
+                // siguiente—, y lo primero es el unico dato que da una razon
+                // para volver. Perfil quedo siendo una pantalla de solo
+                // lectura; si no dice que falta, no invita a nada.
                 Text(
-                    text = "Siguiente nivel",
+                    text = "Faltan ${maxXp - currentXp} XP",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )

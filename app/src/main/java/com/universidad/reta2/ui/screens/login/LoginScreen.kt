@@ -164,6 +164,12 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(onClick = {
+            navController.navigate(Screen.RecuperarClave.route)
+        }) {
+            Text("¿Olvidaste tu contraseña?")
+        }
+
+        TextButton(onClick = {
             navController.navigate(Screen.Registration.route)
         }) {
             Text("¿No tienes cuenta? Regístrate aquí")

@@ -98,8 +98,16 @@ android {
         // porque no cambia nada de lo que el estudiante hace con la app:
         // anade una tarjeta que se lee. Va con el arreglo del pasaje de la
         // 1015, que dejaba el arbol sin compilar.
-        versionCode = 6
-        versionName = "1.3.1"
+        //
+        // 6 = recuperar la contrasena con la huella o el PIN del telefono, y
+        // los ajustes salen de Perfil a una quinta pestania en acordeon. Sube
+        // la menor y no el parche por el mismo criterio que la 4: cambia lo
+        // que el estudiante hace y donde lo encuentra —hay un destino nuevo en
+        // la barra y una forma de volver a entrar si olvido la clave—, no
+        // arregla algo que estuviera roto. «Competencias» pasa a «Modulos»
+        // porque a cinco pestanias ya no cabia.
+        versionCode = 7
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -275,6 +283,12 @@ dependencies {
     implementation(libs.coil.compose)
 
     // Testing
+    // Huella o PIN del telefono, para recuperar la contrasena. La cuenta del
+    // estudiante vive solo en Room, en este aparato, asi que tenerlo
+    // desbloqueado ES la prueba de ser su dueno; un correo demostraria otra
+    // cosa. Trae `androidx.fragment`, que es lo que exige `FragmentActivity`.
+    implementation("androidx.biometric:biometric:1.1.0")
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
